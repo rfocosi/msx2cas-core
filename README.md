@@ -3,6 +3,9 @@ Converts MSX files to cassette audio to play on MSX hardware.
 
 It was developed in Java to make possible to run it on Windows/MacOS/Linux.
 
+This core is used on Android app MSX2Cas:
+[MSX2Cas on Google Play](https://play.google.com/store/apps/details?id=br.com.dod.msx2cas)
+
 This project has as reference CasLink2 (Thanks Alexey Podrezov):
 
 http://www.finnov.net/~wierzbowsky/caslink2.htm
