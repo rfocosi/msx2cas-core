@@ -14,9 +14,9 @@ http://www.finnov.net/~wierzbowsky/caslink2.htm
 
 You can just download the compiled files for use (to run its required Java 7):
 
-[msx2cas.zip](msx2cas.zip)
+[msx2cas.zip](https://github.com/rfocosi/msx2cas-core/releases/download/v1.0.0/msx2cas.zip)
 
-[msx2cas.tar.gz](msx2cas.tar.gz)
+[msx2cas.tar.gz](https://github.com/rfocosi/msx2cas-core/releases/download/v1.0.0/msx2cas.tar.gz)
 
 ## Source requirements
 
