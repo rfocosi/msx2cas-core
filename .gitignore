@@ -6,3 +6,9 @@ bin
 .orig
 target/
 *.wav
+msx2cas-core/resources/lib/*.jar
+*.iml
+.gradle/
+build/
+.idea
+!dotnet-types.jar

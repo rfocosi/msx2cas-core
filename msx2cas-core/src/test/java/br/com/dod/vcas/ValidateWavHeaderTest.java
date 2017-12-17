@@ -11,7 +11,7 @@ public class ValidateWavHeaderTest {
 	@Test
 	public void test() throws FlowException, Exception {
 		WavHeader header = new VirtualCas(Wav.SampleRate.sr33075)
-				.convert("./resources/flapbird (rev.A).rom").getWavHeader();
+				.convert(AllTests.PROJECT_FOLDER + "/resources/flapbird (rev.A).rom").getWavHeader();
 		
 		Assert.assertEquals(1688854, header.SampleLength.intValue());
 		Assert.assertEquals(Wav.SampleRate.sr33075.intValue(), header.SamplesPerSec.intValue());

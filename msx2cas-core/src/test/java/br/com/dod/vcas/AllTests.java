@@ -9,4 +9,6 @@ import org.junit.runners.Suite.SuiteClasses;
 	FileEncodingTest.class, ValidateWavHeaderTest.class })
 public class AllTests {
 
+	public static String PROJECT_FOLDER = "/home/rfocosi/workspace/msx2cas-core/msx2cas-core";
+
 }

@@ -24,7 +24,7 @@ public class FileEncodingTest {
 	
 	@BeforeClass
 	public static void generateFiles() throws FlowException, Exception {
-		Files.createDirectories(new File("./resources/generated/").toPath());
+		Files.createDirectories(new File(AllTests.PROJECT_FOLDER + "/resources/generated/").toPath());
 		
 		files = new LinkedHashMap<String,String>();
 		files.put("asciib.bas", "asciib");
@@ -107,8 +107,8 @@ public class FileEncodingTest {
 	}
 	
 	public void fileTest(String inputFileName, String fileId, SampleRate sampleRate) throws FlowException, Exception{		
-		byte[] wavFileBytes = new VirtualCas(sampleRate).convert("./resources/"+ inputFileName).toBytes();
-		byte[] inputFileHandler = getFileBytes("./resources/generated/"+fileId+"-"+sampleRate.bps()+".wav");
+		byte[] wavFileBytes = new VirtualCas(sampleRate).convert(AllTests.PROJECT_FOLDER + "/resources/"+ inputFileName).toBytes();
+		byte[] inputFileHandler = getFileBytes(AllTests.PROJECT_FOLDER + "/resources/generated/"+fileId+"-"+sampleRate.bps()+".wav");
 
 		Assert.assertEquals(sampleRate.intValue() +" Error!", inputFileHandler.length, wavFileBytes.length);
 
@@ -124,15 +124,15 @@ public class FileEncodingTest {
 
 	public static void generateFile(String inputFileName, String fileId, SampleRate sampleRate) throws FlowException, Exception{
 		String finalFileName = fileId +"-"+ sampleRate.bps();
-		Path finalPath = new File("./resources/generated/"+ finalFileName +".wav").toPath();
+		Path finalPath = new File(AllTests.PROJECT_FOLDER + "/resources/generated/"+ finalFileName +".wav").toPath();
 		
 		if (Files.notExists(finalPath) || forceGenerate ) {
 			Files.deleteIfExists(finalPath);
 			System.out.println("Generating: "+ finalPath.getFileName());
 
-			byte[] wavFile = new VirtualCas(sampleRate).convert("./resources/"+ inputFileName).toBytes();
+			byte[] wavFile = new VirtualCas(sampleRate).convert(AllTests.PROJECT_FOLDER + "/resources/"+ inputFileName).toBytes();
 			
-			writeWav(wavFile, "./resources/generated/"+finalPath.getFileName());
+			writeWav(wavFile, AllTests.PROJECT_FOLDER + "/resources/generated/"+finalPath.getFileName());
 			
 		} else {
 			System.out.println("File already exists: "+ finalPath.getFileName());
