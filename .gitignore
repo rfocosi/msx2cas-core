@@ -7,7 +7,6 @@ bin
 target/
 *.wav
 msx2cas-core/resources/lib/*.jar
-*.iml
 .gradle/
 build/
 .idea
