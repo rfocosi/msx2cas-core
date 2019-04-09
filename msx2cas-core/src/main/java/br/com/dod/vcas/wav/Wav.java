@@ -9,50 +9,53 @@ import br.com.dod.vcas.WavHeader;
 import br.com.dod.vcas.cas.CasFile;
 import br.com.dod.vcas.exception.FlowException;
 
-public abstract class Wav {  
-	protected static final char START_BIT = 0;
-	protected static final char STOP_BIT = 1;
-	protected static final char SILENCE = 0x80;
-	protected static final char HIGH_AMPLITUDE = 0xFF;
-	protected static final char LOW_AMPLITUDE = 0;
-	protected static final int CAS_FILENAME_LENGTH = FileCommons.CAS_FILENAME_LENGTH;
-	protected static final char WAV_HEADER_OFFSET_VALUE = 0x77;
-	
-	protected static final long MIN_ENC_INPUTFILE_LENGTH = 5L;
-	protected static final long MAX_ENC_INPUTFILE_LENGTH = 32768L;
-	protected static final long LENGTH_CORRECTION = 25;
+public abstract class Wav {
 
-	protected static final double LONG_HEADER_LENGTH = 20d/3d;
-	protected static final double SHORT_HEADER_LENGTH = 5d/3d;
+	static final long MIN_ENC_INPUTFILE_LENGTH = 5L;
+	static final long MAX_ENC_INPUTFILE_LENGTH = 32768L;
 
-	protected static final char SEPARATOR_PAUSE_LENGTH = 4;	// Seconds
-	protected static final char FIRST_PAUSE_LENGTH = 2;	// Seconds
-	protected static final char DEFAULT_PAUSE_LENGTH = 1; // Second
+	static final int CAS_FILENAME_LENGTH = FileCommons.CAS_FILENAME_LENGTH;
 
-	protected static final int SIZE_OF_BITSTREAM = 11;
-	protected static final int BIT_ENCODING_BASE_LENGTH = 10;
+	private static final char START_BIT = 0;
+	private static final char STOP_BIT = 1;
+	private static final char SILENCE = 0x80;
+	private static final char HIGH_AMPLITUDE = 0xFF;
+	private static final char LOW_AMPLITUDE = 0;
 
-	protected static final char[] ZERO_BIT = {LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
-	protected static final char[] SET_BIT = {LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
+	private static final char WAV_HEADER_OFFSET_VALUE = 0x77;
+	private static final long LENGTH_CORRECTION = 25;
 
-	protected long wavSampleRate;
-	protected long sampleScale;
+	static final double LONG_HEADER_LENGTH = 20d/3d;
+	static final double SHORT_HEADER_LENGTH = 5d/3d;
 
-	protected double pureSampleShortHeaderLength;
+	static final char SEPARATOR_PAUSE_LENGTH = 4;	// Seconds
+	static final char FIRST_PAUSE_LENGTH = 2;	// Seconds
+	static final char DEFAULT_PAUSE_LENGTH = 1; // Second
 
-	protected DWORD extraBytes;
-	protected DWORD fileOffset;
-	protected DWORD moreExtraBytes;
-	protected char[] fileHeader;
-	protected double bitEncodingLength;
+	static final int SIZE_OF_BITSTREAM = 11;
 
-	protected String[] nameBuffer;
+	private static final Double BIT_ENCODING_BASE_LENGTH = 10.0;
 
-	protected WavHeader wavHeader;
+	private static final char[] ZERO_BIT = {LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
+	private static final char[] SET_BIT = {LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
 
-	protected byte[] inputMemPointer;
+	long wavSampleRate;
+	long sampleScale;
 
-	protected StringBuilder outputBuffer;
+	double pureSampleShortHeaderLength;
+
+	DWORD extraBytes;
+	DWORD fileOffset;
+	DWORD moreExtraBytes;
+	char[] fileHeader;
+	double bitEncodingLength;
+
+	String[] nameBuffer;
+
+	private WavHeader wavHeader;
+	private StringBuilder outputBuffer;
+
+	byte[] inputMemPointer;
 
 	int fileLength;
 	List<CasFile> casList;
@@ -79,7 +82,7 @@ public abstract class Wav {
 		}
 	}
 
-	protected void initVars(String inputFileName, SampleRate sampleRate, DWORD fileOffset, char[] fileHeaderId) throws FlowException {
+	private void initVars(String inputFileName, SampleRate sampleRate, DWORD fileOffset, char[] fileHeaderId) {
 
 		nameBuffer = new String[1];
 		wavHeader = new WavHeader();
@@ -88,10 +91,10 @@ public abstract class Wav {
 		this.fileOffset = fileOffset;
 		this.fileHeader = fileHeaderId;
 
-		this.wavSampleRate = new Long(sampleRate.intValue());
-		this.sampleScale = new Long(wavSampleRate / SampleRate.sr11025.intValue()); 
+		this.wavSampleRate = sampleRate.intValue();
+		this.sampleScale = wavSampleRate / SampleRate.sr11025.intValue();
 
-		this.bitEncodingLength = new Double(BIT_ENCODING_BASE_LENGTH) / (wavSampleRate / SampleRate.sr11025.intValue());
+		this.bitEncodingLength = BIT_ENCODING_BASE_LENGTH / (wavSampleRate / SampleRate.sr11025.intValue());
 
 		this.nameBuffer[0] = String.format("%1$-" + CAS_FILENAME_LENGTH + "s", FileCommons.getCasName(inputFileName));
 
@@ -126,9 +129,7 @@ public abstract class Wav {
 		int offset = wavHeaderBytes.length;
 		byte[] outBytes = new byte[offset + outputBuffer.length()];
 
-		for (int i=0; i< offset; i++) {
-			outBytes[i] = wavHeaderBytes[i];
-		}
+		System.arraycopy(wavHeaderBytes, 0, outBytes, 0, offset);
 
 		for (int i=0; i < outputBuffer.length(); i++ ){
 			outBytes[i+offset] = (byte) outputBuffer.charAt(i);
@@ -137,7 +138,7 @@ public abstract class Wav {
 		return outBytes;
 	}
 
-	private void setDefaultHeader() throws FlowException {
+	private void setDefaultHeader() {
 		wavHeader.BlkAllign = new WORD(1);
 		wavHeader.FormatTag = new WORD(1); // PCM
 		wavHeader.NumChannels = new WORD(1); // mono
@@ -156,31 +157,31 @@ public abstract class Wav {
 		wavHeader.SampleLength = new DWORD(wavHeader.PureSampleLength.longValue() + WAV_HEADER_OFFSET_VALUE);
 	}
 
-	protected void encodeLongHeader() throws FlowException {
+	void encodeLongHeader() {
 		encodeHeader(LONG_HEADER_LENGTH);
 	}
 
-	protected void encodeShortHeader() throws FlowException {
+	void encodeShortHeader() {
 		encodeHeader(SHORT_HEADER_LENGTH);
 	}
 
-	private void encodeHeader(double length) throws FlowException {
+	private void encodeHeader(double length) {
 		for (int j = 0; j < (wavSampleRate * length / BIT_ENCODING_BASE_LENGTH); j++)	{
 			writeByteChars(SET_BIT);
 		}
 	}
 	
-	protected void encodeData(char[] data) throws FlowException {		
+	void encodeData(char[] data) {
 		for (int i = 0; i < sizeof(data); i++) {
 			writeDataByte(data[i]);
 		}		
 	}
 
-	protected void encodePause(int pauseLength) throws FlowException {
+	void encodePause(int pauseLength) {
 		encodePause(pauseLength, 0);
 	}
 
-	protected void encodePause(int pauseLength, long lenghtCorrection) throws FlowException {
+	private void encodePause(int pauseLength, long lenghtCorrection) {
 		int charLenght = (int) (wavSampleRate * pauseLength + lenghtCorrection);		
 		char[] chars = new char[charLenght];
 
@@ -190,7 +191,7 @@ public abstract class Wav {
 		writeByteChars(chars);
 	}
 
-	protected void writeDataByte(char ch) throws FlowException {
+	void writeDataByte(char ch) {
 		final char[] bitStream = new char[SIZE_OF_BITSTREAM];
 
 		char bitMask = 1;
@@ -210,20 +211,18 @@ public abstract class Wav {
 
 		for (int i = 0; i < sizeof(bitStream); i++) {
 			char[] bit = (bitStream[i] == 0 ? ZERO_BIT : SET_BIT);
-			for (int j = 0; j < bitSampleLength; j++) {	
-				dataByte[i * bitSampleLength + j] = bit[j];
-			}
+			System.arraycopy(bit, 0, dataByte, i * bitSampleLength, bitSampleLength);
 		}
 		writeByteChars(dataByte);
 	}
 
-	protected void writeByteChars(char[] ch) throws FlowException {
-		for (int i=0; i < ch.length; i++) {
-			outputBuffer.append(ch[i]);
+	private void writeByteChars(char[] ch) {
+		for (char c : ch) {
+			outputBuffer.append(c);
 		}
 	}
 	
-	protected static int sizeof(char[] charArray) {		
+	static int sizeof(char[] charArray) {
 		return (charArray == null ? 0 : charArray.length);
 	}
 
@@ -235,7 +234,7 @@ public abstract class Wav {
 
 		private int sampleRate;
 
-		private SampleRate(int sampleRate) {
+		SampleRate(int sampleRate) {
 			this.sampleRate = sampleRate;
 		}
 
@@ -263,7 +262,7 @@ public abstract class Wav {
 		return this.wavHeader;	
 	}
 
-	abstract protected void validate() throws FlowException;
-	abstract protected void setup() throws FlowException;
-	abstract protected void encodeFileContent() throws FlowException;
+	abstract void validate() throws FlowException;
+	abstract void setup() throws FlowException;
+	abstract void encodeFileContent() throws FlowException;
 }

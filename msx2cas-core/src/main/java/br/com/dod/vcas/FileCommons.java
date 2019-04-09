@@ -46,7 +46,7 @@ public class FileCommons {
 		return inputMemPointer;
 	}
 
-	public static FileType detectFile(String fileName) throws IOException {
+	static FileType detectFile(String fileName) throws IOException {
 		FileType fileType = FileType.ASCII;
 
 		if (FileType.CAS.equals(fileName)) {
@@ -63,7 +63,7 @@ public class FileCommons {
 
 	}
 
-	public static FileType detectFile(byte[] inputHandler) throws IOException {
+	static FileType detectFile(byte[] inputHandler) throws IOException {
 		FileType fileType = FileType.ASCII;
 
 		if (FileType.CAS.equals(inputHandler)) {

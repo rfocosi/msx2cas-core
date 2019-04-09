@@ -1,13 +1,9 @@
 package br.com.dod.vcas.wav;
 
-import java.util.logging.Logger;
-
 import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.exception.FlowException;
 
 public class Rom extends Wav {
-
-	public static final Logger log = Logger.getLogger(Rom.class.getSimpleName());
 
 	private static final char[] romFileHeader = {0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0};
 
@@ -45,9 +41,7 @@ public class Rom extends Wav {
 		
 		if (nameBuffer.length > 1) {
 			char[] nameCharArray = nameBuffer[1].trim().toCharArray();
-			for (int i = 0; i < nameCharArray.length; i++)	{
-				loader32K1[i + 0x15] = nameCharArray[i];
-			}
+			System.arraycopy(nameCharArray, 0, loader32K1, 21, nameCharArray.length);
 		}
 	}
 
@@ -96,7 +90,7 @@ public class Rom extends Wav {
 
 		char headId = getRomTypeHeader();
 		if (is24KBMax()) {
-			encodeRom(0, inputMemPointer.length, headId);
+			encodeRom(inputMemPointer.length, headId);
 		} else {
 			if (headId > 0x80) headId = 0x40;
 			else if (headId < 0x40) headId = 0;			
@@ -104,23 +98,22 @@ public class Rom extends Wav {
 		}
 	}
 
-	private void encodeRom(int blockStart, int blockSize, char headId) throws FlowException {
+	private void encodeRom(final int blockSize, final char headId) {
 
 		// Calculate CRC of the whole ROM
 		char romCRC = 0;
-		for (int i = blockStart; i < blockSize; i++) romCRC += (char) inputMemPointer[i];
+		for (int i = 0; i < blockSize; i++) romCRC += (char) inputMemPointer[i];
 
 		encodeShortHeader();
 
 		char[] addressBuffer = new char[6];
 
-		char ch = headId;
-		if (ch < 0x80) {
+		if (headId < 0x80) {
 			char a = (char) (sizeof(loader) + blockSize + 0x9000 - 1);
 			// Set binary start addresses
 			addressBuffer[0] = 0;
 			addressBuffer[1] = 0x90;
-			addressBuffer[2] = (char) a;
+			addressBuffer[2] = a;
 			addressBuffer[3] = (char)(a >> 8);
 			addressBuffer[4] = 0;
 			addressBuffer[5] = 0x90;
@@ -128,7 +121,7 @@ public class Rom extends Wav {
 			encodeData(addressBuffer);
 
 			// Set ROM loader addresses
-			a = (char) ((ch & 0xf0) << 8);
+			a = (char) ((headId & 0xf0) << 8);
 			loader[3] = 0;
 			loader[4] = (char)(a >> 8);
 			a = (char) (a + blockSize);
@@ -142,11 +135,11 @@ public class Rom extends Wav {
 
 		} else {
 			// Encode 6 bytes of addresses			
-			char a = (char) ((ch & 0xf0) << 8);
+			char a = (char) ((headId & 0xf0) << 8);
 			addressBuffer[0] = 0;
 			addressBuffer[1] = (char)(a >> 8);
 			a = (char) (a + blockSize - 1);
-			addressBuffer[2] = (char) a;
+			addressBuffer[2] = a;
 			addressBuffer[3] = (char)(a >> 8);
 			addressBuffer[4] = (char)inputMemPointer[2];
 			addressBuffer[5] = (char)inputMemPointer[3];
@@ -160,7 +153,7 @@ public class Rom extends Wav {
 		}
 	}
 
-	private void encode32KRom(char headId) throws FlowException {
+	private void encode32KRom(char headId) {
 		// Calculate CRC of the first half of ROM
 		char romCRC = 0;
 		for (int i = 0; i < 16384; i++) {
@@ -174,7 +167,7 @@ public class Rom extends Wav {
 		char a = (char) (sizeof(loader32K1) + 16384 + 0x9000 - 1);
 		addressBuffer[0] = 0;
 		addressBuffer[1] = 0x90;
-		addressBuffer[2] = (char)a;
+		addressBuffer[2] = a;
 		addressBuffer[3] = (char)(a >> 8);
 		addressBuffer[4] = 0;
 		addressBuffer[5] = 0x90;
@@ -227,7 +220,7 @@ public class Rom extends Wav {
 		a = (char) (sizeof(loader32K2) + inputMemPointer.length - 16384 + 0x9000 - 1);
 		addressBuffer[0] = 0;
 		addressBuffer[1] = 0x90;
-		addressBuffer[2] = (char)a;
+		addressBuffer[2] = a;
 		addressBuffer[3] = (char)(a >> 8);
 		addressBuffer[4] = 0;
 		addressBuffer[5] = 0x90;
@@ -257,7 +250,7 @@ public class Rom extends Wav {
 
 	private void initLoader() {
 
-		char[] loader = {
+		this.loader = new char[]{
 				0xC3, 0x30, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3C, 0x20, 0x4D,
 				0x53, 0x58, 0x32, 0x43, 0x61, 0x73, 0x20, 0x3E, 0x20, 0x4C, 0x6F, 0x61, 0x64,
 				0x69, 0x6E, 0x67, 0x20, 0x66, 0x69, 0x6C, 0x65, 0x2C, 0x20, 0x77, 0x61, 0x69,
@@ -277,9 +270,8 @@ public class Rom extends Wav {
 				0x90, 0xED, 0x5B, 0x05, 0x90, 0xEB, 0xED, 0x52, 0x44, 0x4D, 0x21, 0xE3, 0x90,
 				0xD1, 0xED, 0xB0, 0xFB, 0xC9, 0x00
 			};
-		this.loader = loader;
-		
-		char[] loader32K1 = {
+
+		this.loader32K1 = new char[]{
 				0xC3, 0x76, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1E, 0x62, 0x6C,
 				0x6F, 0x61, 0x64, 0x22, 0x63, 0x61, 0x73, 0x3A, 0x00, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x22, 0x2C, 0x52, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x0D,
@@ -311,9 +303,8 @@ public class Rom extends Wav {
 				0x03, 0x90, 0xED, 0xB0, 0xF1, 0xD3, 0xA8, 0xF1, 0x32, 0xFF, 0xFF, 0xFB, 0xC9,
 				0x00
 			};
-		this.loader32K1 = loader32K1;
-		
-		char[] loader32K2 = {
+
+		this.loader32K2 = new char[]{
 				0xC3, 0x30, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3C, 0x20, 0x4D,
 				0x53, 0x58, 0x32, 0x43, 0x61, 0x73, 0x20, 0x3E, 0x20, 0x4C, 0x6F, 0x61, 0x64,
 				0x69, 0x6E, 0x67, 0x20, 0x66, 0x69, 0x6C, 0x65, 0x2C, 0x20, 0x77, 0x61, 0x69,
@@ -335,7 +326,6 @@ public class Rom extends Wav {
 				0xFE, 0x90, 0xED, 0x5B, 0x03, 0x90, 0xED, 0xB0, 0xF1, 0xD3, 0xA8, 0xF1, 0x32,
 				0xFF, 0xFF, 0xF7, 0x00, 0x00, 0x00, 0x00
 			};
-		this.loader32K2 = loader32K2;
 	}
 
 

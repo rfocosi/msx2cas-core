@@ -23,7 +23,7 @@ public class VirtualCas {
 	private SampleRate sampleRate;
 
 	public VirtualCas(SampleRate sampleRate) {
-		this.fileList = new LinkedList<String>();
+		this.fileList = new LinkedList<>();
 
 		this.sampleRate = sampleRate;
 	}
@@ -44,27 +44,25 @@ public class VirtualCas {
 	}
 	
 	public List<Wav> convert() throws FlowException, Exception {
-		List<Wav> wavList = new LinkedList<Wav>();
+		final List<Wav> wavList = new LinkedList<>();
 
 		for (String fileName : fileList) {
-			Wav wav = null;
 			switch (FileCommons.detectFile(fileName)) {
 			case BAS:
-				wav = new Bas(fileName, sampleRate);
+				wavList.add(new Bas(fileName, sampleRate).convert());
 				break;
 			case BIN:
-				wav = new Bin(fileName, sampleRate);
+				wavList.add(new Bin(fileName, sampleRate).convert());
 				break;
 			case CAS:
-				wav = new Cas(fileName, sampleRate);
+				wavList.add(new Cas(fileName, sampleRate).convert());
 				break;
 			case ROM:
-				wav = new Rom(fileName, sampleRate);
+				wavList.add(new Rom(fileName, sampleRate).convert());
 				break;
 			default:
-				wav = new Ascii(fileName, sampleRate);
+				wavList.add(new Ascii(fileName, sampleRate).convert());
 			}
-			if (wav != null) wavList.add(wav.convert());
 		}
 		return wavList;
 	}
