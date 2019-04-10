@@ -1,4 +1,4 @@
-package br.com.dod.vcas;
+package br.com.dod.vcas.model;
 
 import java.io.FileInputStream;
 import java.io.IOException;

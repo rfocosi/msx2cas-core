@@ -2,21 +2,19 @@ package br.com.dod.vcas;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.logging.Logger;
 
 import br.com.dod.vcas.cas.CasFile;
 import br.com.dod.vcas.exception.FlowException;
+import br.com.dod.vcas.model.SampleRate;
+import br.com.dod.vcas.util.FileCommons;
 import br.com.dod.vcas.wav.Ascii;
 import br.com.dod.vcas.wav.Bas;
 import br.com.dod.vcas.wav.Bin;
 import br.com.dod.vcas.wav.Cas;
 import br.com.dod.vcas.wav.Rom;
 import br.com.dod.vcas.wav.Wav;
-import br.com.dod.vcas.wav.Wav.SampleRate;
 
 public class VirtualCas {
-
-	public static final Logger log = Logger.getLogger(VirtualCas.class.getSimpleName());
 
 	private List<String> fileList;
 
@@ -37,7 +35,7 @@ public class VirtualCas {
 		return addFile(filePath).convert().get(0);
 	}
 
-	public Wav convert(List<CasFile> casList) throws FlowException, Exception {
+	public Wav convert(List<CasFile> casList) throws FlowException {
 		if (casList == null || casList.size() < 1) throw FlowException.error("cas_list_empty");
 		Wav wav = new Cas(casList.get(0).getName(), sampleRate, casList);
 		return wav.convert();

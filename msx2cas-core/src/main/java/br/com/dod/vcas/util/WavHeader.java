@@ -1,4 +1,4 @@
-package br.com.dod.vcas;
+package br.com.dod.vcas.util;
 
 import java.util.LinkedList;
 import java.util.List;

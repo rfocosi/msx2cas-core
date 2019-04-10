@@ -8,12 +8,12 @@ import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map.Entry;
 
+import br.com.dod.vcas.model.SampleRate;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import br.com.dod.vcas.exception.FlowException;
-import br.com.dod.vcas.wav.Wav.SampleRate;
 
 public class FileEncodingTest {
 

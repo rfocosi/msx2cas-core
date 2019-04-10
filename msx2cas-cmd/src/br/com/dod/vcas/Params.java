@@ -6,7 +6,8 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import br.com.dod.vcas.wav.Wav.SampleRate;
+import br.com.dod.vcas.model.SampleRate;
+import br.com.dod.vcas.util.FileCommons;
 
 public class Params {
 	private static final String SPEEDS = "1200|2400|3600";
@@ -15,11 +16,11 @@ public class Params {
 	private SampleRate sampleRate;
 	private List<ConvertFile> files;
 
-	public Params(String[] args) {
+	Params(String[] args) {
 		if (args.length < 2 || Arrays.asList(args).size() < 2) {
 			displayUsage();
 		} else {
-			Pattern pattern = Pattern.compile("(-w)?(?:\\s{1,})?([^\\s]+)?(?:\\s{1,})?(" + SPEEDS + ")\\s{1,}(.+)");
+			Pattern pattern = Pattern.compile("(-w)?(?:\\s+)?([^\\s]+)?(?:\\s+)?(" + SPEEDS + ")\\s+(.+)");
 			Matcher matcher = pattern.matcher(String.join(" ", Arrays.asList(args)));
 
 			while (matcher.find()) {
@@ -35,7 +36,7 @@ public class Params {
 	}
 
 	private void setFileList(String[] args, boolean writeEnabled, String outputFilename) {
-		files = new LinkedList<ConvertFile>();
+		files = new LinkedList<>();
 		for (int a = (writeEnabled ? 2 : 1); a < args.length; a++) {
 			if (args[a].matches(".+\\..{3}$")) {
 				files.add(new ConvertFile(args[a], getOutputFilename(args[a], outputFilename)));
@@ -44,7 +45,7 @@ public class Params {
 	}
 
 	private static String getOutputFilename(String inputFilename, String outputFilename) {
-		String out = "";
+		String out;
 		if (outputFilename == null) {
 			out = FileCommons.getCasName(inputFilename);
 		} else {
@@ -64,7 +65,7 @@ public class Params {
 		System.exit(0);
 	}
 
-	public boolean isWriteEnabled() {
+	boolean isWriteEnabled() {
 		return writeEnabled;
 	}
 
@@ -72,7 +73,7 @@ public class Params {
 		return sampleRate;
 	}
 
-	public List<ConvertFile> getFiles() {
+	List<ConvertFile> getFiles() {
 		return files;
 	}
 }

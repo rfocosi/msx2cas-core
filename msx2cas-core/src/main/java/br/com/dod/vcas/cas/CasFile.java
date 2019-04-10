@@ -2,7 +2,7 @@ package br.com.dod.vcas.cas;
 
 import java.io.Serializable;
 
-import br.com.dod.vcas.FileType;
+import br.com.dod.vcas.model.FileType;
 
 public class CasFile implements Serializable {
 	private static final long serialVersionUID = 1803823303043524163L;

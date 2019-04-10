@@ -11,6 +11,7 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
 import javax.sound.sampled.LineUnavailableException;
 
+import br.com.dod.vcas.model.SampleRate;
 import org.jnativehook.GlobalScreen;
 import org.jnativehook.NativeHookException;
 import org.jnativehook.keyboard.NativeKeyEvent;
@@ -18,7 +19,6 @@ import org.jnativehook.keyboard.NativeKeyListener;
 
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.wav.Wav;
-import br.com.dod.vcas.wav.Wav.SampleRate;
 
 public class Main implements NativeKeyListener {
 
@@ -59,7 +59,7 @@ public class Main implements NativeKeyListener {
 		System.exit(0);
 	}
 
-	private static void writeWav(Wav wavFile, ConvertFile file) throws FlowException, Exception {
+	private static void writeWav(Wav wavFile, ConvertFile file) throws Exception {
 		Date start = Calendar.getInstance().getTime();
 		System.out.println("Input file: " + file.getInputName());
 
@@ -78,10 +78,10 @@ public class Main implements NativeKeyListener {
 		Date end = Calendar.getInstance().getTime();
 		System.out.println("File wrote: " + outputFile.getAbsolutePath());
 		System.out.println(
-				"Generated in " + (new Double(end.getTime() - start.getTime()) / 1000) + " seconds");
+				"Generated in " + ((double) (end.getTime() - start.getTime()) / 1000) + " seconds");
 	}
 
-	public static void play(Wav file, SampleRate sampleRate) throws Exception {
+	private static void play(Wav file, SampleRate sampleRate) throws Exception {
 		clip = AudioSystem.getClip();
 
 		boolean keyListener = true;

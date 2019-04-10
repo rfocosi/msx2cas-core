@@ -6,6 +6,7 @@ import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.cas.CasFile;
 import br.com.dod.vcas.cas.CasUtil;
 import br.com.dod.vcas.exception.FlowException;
+import br.com.dod.vcas.model.SampleRate;
 
 public class Cas extends Wav { 
 

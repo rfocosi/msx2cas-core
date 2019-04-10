@@ -2,6 +2,7 @@ package br.com.dod.vcas.wav;
 
 import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.exception.FlowException;
+import br.com.dod.vcas.model.SampleRate;
 
 public class Rom extends Wav {
 

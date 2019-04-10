@@ -5,8 +5,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 import br.com.dod.dotnet.types.DWORD;
-import br.com.dod.vcas.FileCommons;
-import br.com.dod.vcas.FileType;
+import br.com.dod.vcas.util.FileCommons;
+import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.exception.FlowException;
 
 public class CasUtil {

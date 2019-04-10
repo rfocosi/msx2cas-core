@@ -5,6 +5,7 @@ import java.util.List;
 
 import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.exception.FlowException;
+import br.com.dod.vcas.model.SampleRate;
 
 public class Ascii extends Wav { 
 
