@@ -1,0 +1,36 @@
+<assembly xmlns="http://maven.apache.org/ASSEMBLY/2.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/ASSEMBLY/2.0.0 http://maven.apache.org/xsd/assembly-2.0.0.xsd">
+    <id>bin</id>
+    <formats>
+        <format>tar.gz</format>
+        <format>tar.bz2</format>
+        <format>zip</format>
+    </formats>
+
+    <files>
+        <file>
+            <source>${project.basedir}/msx2cas-cmd/target/cmd-${version}-jar-with-dependencies.jar</source>
+            <outputDirectory>/</outputDirectory>
+            <destName>msx2cas.jar</destName>
+        </file>
+    </files>
+
+    <fileSets>
+        <fileSet>
+            <directory>${project.basedir}/msx2cas-cmd/target</directory>
+            <outputDirectory>/</outputDirectory>
+            <includes>
+                <include>msx2cas.jar</include>
+            </includes>
+        </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/msx2cas-cmd/resources/cmd</directory>
+            <outputDirectory>/</outputDirectory>
+            <includes>
+                <include>*</include>
+            </includes>
+        </fileSet>
+    </fileSets>
+
+</assembly>

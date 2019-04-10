@@ -26,6 +26,8 @@ You can just download the compiled files for use (to run its required Java 7):
 
 Execute `FileEncodingTest.java` a first time, before editing source, to generate comparable WAV's
 
+Compile with `mvn clean package` at sources root
+
 ## Contributing
 
 1. Fork it ( https://github.com/rfocosi/msx2cas-core/fork )
