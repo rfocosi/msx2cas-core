@@ -54,7 +54,11 @@ public class Main implements NativeKeyListener {
 			System.out.println(e.getMessage());
 			System.exit(-1);
 		} finally {
-			GlobalScreen.unregisterNativeHook();
+			try {
+				GlobalScreen.unregisterNativeHook();
+			} catch (NativeHookException e) {
+				System.out.println(e.getMessage());
+			}
 		}
 		System.exit(0);
 	}
@@ -89,7 +93,7 @@ public class Main implements NativeKeyListener {
 		try {
 			if (!GlobalScreen.isNativeHookRegistered()) {
 				GlobalScreen.registerNativeHook();
-				GlobalScreen.getInstance().addNativeKeyListener(new Main());
+				GlobalScreen.addNativeKeyListener(new Main());
 			}		
 		} catch (NativeHookException nhe) {
 			System.out.println(nhe.getMessage());
@@ -136,15 +140,15 @@ public class Main implements NativeKeyListener {
  	}
 
 	public void nativeKeyReleased(NativeKeyEvent e) {
-		if (e.getKeyCode() == NativeKeyEvent.VK_ESCAPE) {
+		if (e.getKeyCode() == NativeKeyEvent.VC_ESCAPE) {
 			clip.close();
 			
-		} else if (e.getKeyCode() == NativeKeyEvent.VK_ENTER) {
+		} else if (e.getKeyCode() == NativeKeyEvent.VC_ENTER) {
 			clip.setFramePosition(0);
 			frameCheck = frameProp;
 			System.out.println();
 			
-		} else if (e.getKeyCode() == NativeKeyEvent.VK_SPACE) {
+		} else if (e.getKeyCode() == NativeKeyEvent.VC_SPACE) {
 			System.out.print("\b");
 			if (clip.isRunning())
 				clip.stop();

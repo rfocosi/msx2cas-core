@@ -1,2 +1,2 @@
 @ECHO OFF
-java -jar msx2cas.jar %1
+java -jar cmd-1.0-jar-with-dependencies.jar %1
