@@ -1,4 +1,4 @@
-package br.com.dod.vcas;
+package br.com.dod.vcas.model;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -16,7 +16,7 @@ public enum FileType {
 	private char[] header;
 	private String name;
 
-	private FileType(char[] id, String name, char[] header) {
+	FileType(char[] id, String name, char[] header) {
 		this.id = id;
 		this.name = name;
 		this.header = header;
@@ -24,19 +24,13 @@ public enum FileType {
 
 	public boolean equals(String fileName) throws IOException {
 		byte[] fileHeader = new byte[id.length];
-		FileInputStream fileInputStream = null;
-		try {
-			fileInputStream = new FileInputStream(fileName);
-			fileInputStream.read(fileHeader, 0, fileHeader.length);
-		} catch (IOException e) {
-			throw e; // To reach finally block and always close fileInputStream
-		} finally {
-			if (fileInputStream != null) fileInputStream.close();
+		try (FileInputStream fileInputStream = new FileInputStream(fileName)) {
+			if (fileInputStream.read(fileHeader, 0, fileHeader.length) <= 0) throw new IOException("File empty!");
 		}
 		return equals(fileHeader);
 	}
 
-	public boolean equals(byte[] inputHandler) throws IOException {
+	public boolean equals(byte[] inputHandler) {
 		for (int i=0; i < id.length; i++) {
 			if ((byte) id[i] != inputHandler[i]) return false;
 		}

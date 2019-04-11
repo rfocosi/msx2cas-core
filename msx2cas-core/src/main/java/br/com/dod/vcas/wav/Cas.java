@@ -1,12 +1,12 @@
 package br.com.dod.vcas.wav;
 
-import java.io.IOException;
 import java.util.List;
 
 import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.cas.CasFile;
 import br.com.dod.vcas.cas.CasUtil;
 import br.com.dod.vcas.exception.FlowException;
+import br.com.dod.vcas.model.SampleRate;
 
 public class Cas extends Wav { 
 
@@ -19,12 +19,8 @@ public class Cas extends Wav {
 	}
 
 	@Override
-	protected void validate() throws FlowException {
-		try {
-			if (casList == null || casList.isEmpty()) this.casList = new CasUtil(this.inputMemPointer).list();
-		} catch (IOException e) {
-			throw FlowException.error("error_detecting_file");
-		}
+	protected void validate() {
+		if (casList == null || casList.isEmpty()) this.casList = new CasUtil(this.inputMemPointer).list();
 	}
 	
 	@Override
@@ -52,14 +48,14 @@ public class Cas extends Wav {
 	}
 
 	@Override
-	protected void encodeFileContent() throws FlowException {
+	protected void encodeFileContent() {
 
 		CasFile firstFile = casList.get(0);
 
 		encodeShortHeader();		
 		Byte[] content = firstFile.getContent();
-		for (int i = 0; i < content.length; i++) {
-			writeDataByte((char) content[i].byteValue());
+		for (Byte value : content) {
+			writeDataByte((char) value.byteValue());
 		}
 
 		for (int j=1; j < casList.size(); j++) {
@@ -74,8 +70,8 @@ public class Cas extends Wav {
 			}
 
 			content = file.getContent();
-			for (int i = 0; i < content.length; i++) {
-				writeDataByte((char) content[i].byteValue());
+			for (Byte aByte : content) {
+				writeDataByte((char) aByte.byteValue());
 			}
 		}
 	}

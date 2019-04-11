@@ -2,10 +2,11 @@ package br.com.dod.vcas.wav;
 
 import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.exception.FlowException;
+import br.com.dod.vcas.model.SampleRate;
 
 public class Bas extends Wav {
 
-	public static final char[] basicFileHeader = {0xd3, 0xd3, 0xd3, 0xd3, 0xd3, 0xd3, 0xd3, 0xd3, 0xd3, 0xd3};
+	private static final char[] basicFileHeader = {0xd3, 0xd3, 0xd3, 0xd3, 0xd3, 0xd3, 0xd3, 0xd3, 0xd3, 0xd3};
 
 	public Bas(String inputFileName, SampleRate sampleRate) throws FlowException {
 		super(inputFileName, sampleRate, new DWORD(1), basicFileHeader);
@@ -23,7 +24,7 @@ public class Bas extends Wav {
 	}
 
 	@Override
-	protected void encodeFileContent() throws FlowException {
+	protected void encodeFileContent() {
 		encodeShortHeader();
 		
 		for (int i = fileOffset.intValue(); i < inputMemPointer.length; i++) {
@@ -33,7 +34,7 @@ public class Bas extends Wav {
 		encodeFinalize();
 	}
 
-	private void encodeFinalize() throws FlowException {
+	private void encodeFinalize() {
 		for (int i = 0; i < 7; i++) {
 			writeDataByte((char) 0x00);
 		}

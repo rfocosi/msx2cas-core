@@ -1,13 +1,12 @@
 package br.com.dod.vcas.cas;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 
 import br.com.dod.dotnet.types.DWORD;
-import br.com.dod.vcas.FileCommons;
-import br.com.dod.vcas.FileType;
+import br.com.dod.vcas.util.FileCommons;
+import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.exception.FlowException;
 
 public class CasUtil {
@@ -15,11 +14,11 @@ public class CasUtil {
 
 	private byte[] inputHandler;
 
-	public CasUtil(String filename) throws IOException, FlowException {
+	public CasUtil(String filename) throws FlowException {
 		this(new File(filename));		
 	}
 
-	public CasUtil(File file) throws IOException, FlowException {
+	public CasUtil(File file) throws FlowException {
 		this(FileCommons.readFile(file));	
 	}
 
@@ -27,8 +26,8 @@ public class CasUtil {
 		this.inputHandler = inputHandler;
 	}
 
-	public List<CasFile> list() throws IOException {
-		List<CasFile> casFileList = new LinkedList<CasFile>();
+	public List<CasFile> list() {
+		List<CasFile> casFileList = new LinkedList<>();
 		new DWORD(0);
 
 		int i = 0;
@@ -60,7 +59,7 @@ public class CasUtil {
 			}
 			casFile.setName(itemName);
 
-			List<Byte> content = new LinkedList<Byte>();
+			List<Byte> content = new LinkedList<>();
 
 			int nextHeader = nextHeader(i, inputHandler);
 			nextHeader = (nextHeader == -1 ? inputHandler.length : nextHeader);

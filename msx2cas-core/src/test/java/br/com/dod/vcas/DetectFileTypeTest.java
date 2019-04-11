@@ -2,6 +2,8 @@ package br.com.dod.vcas;
 
 import java.io.IOException;
 
+import br.com.dod.vcas.model.FileType;
+import br.com.dod.vcas.util.FileCommons;
 import org.junit.Assert;
 import org.junit.Test;
 

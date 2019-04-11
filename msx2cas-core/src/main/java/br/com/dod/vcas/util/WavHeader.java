@@ -1,8 +1,7 @@
-package br.com.dod.vcas;
+package br.com.dod.vcas.util;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.logging.Logger;
 
 import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.dotnet.types.WORD;
@@ -10,12 +9,10 @@ import br.com.dod.types.IntegerType;
 
 public class WavHeader { 
 
-	public static final Logger log = Logger.getLogger(WavHeader.class.getName());
-	
-	public static final DWORD WAV_HEADER_ID = new DWORD("RIFF".toCharArray());
-	public static final DWORD MM_FILE_TYPE = new DWORD("WAVE".toCharArray());
-	public static final DWORD FORMAT_ID = new DWORD("fmt ".toCharArray());
-	public static final DWORD DATA_ID = new DWORD("data".toCharArray());
+	private static final DWORD WAV_HEADER_ID = new DWORD("RIFF".toCharArray());
+	private static final DWORD MM_FILE_TYPE = new DWORD("WAVE".toCharArray());
+	private static final DWORD FORMAT_ID = new DWORD("fmt ".toCharArray());
+	private static final DWORD DATA_ID = new DWORD("data".toCharArray());
 
 	public DWORD SampleLength;
 	public DWORD FormatSize;
@@ -28,7 +25,7 @@ public class WavHeader {
 	public DWORD PureSampleLength;
 
 	private List<IntegerType> getHeader() {
-		final List<IntegerType> charList = new LinkedList<IntegerType>();	
+		final List<IntegerType> charList = new LinkedList<>();
 		
 		charList.add(WAV_HEADER_ID);
 		charList.add(SampleLength);
@@ -50,14 +47,14 @@ public class WavHeader {
 	public byte[] toBytes() {
 		final List<IntegerType> charList = getHeader();
 
-		List<Byte> bytesList = new LinkedList<Byte>();
+		List<Byte> bytesList = new LinkedList<>();
 
-		for (int i = 0; i < charList.size(); i++) {
-			byte[] cur = charList.get(i).getBytes();
+		for (IntegerType integerType : charList) {
+			byte[] cur = integerType.getBytes();
 
-			for (int j = 0; j < cur.length; j++) {
-				bytesList.add(cur[j]);
-			}				
+			for (byte b : cur) {
+				bytesList.add(b);
+			}
 		}		
 		
 		byte[] bytes = new byte[bytesList.size()];

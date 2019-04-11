@@ -1,2 +1,2 @@
 #!/bin/sh
-java -jar msx2cas.jar $1
+java -jar msx2cas.jar $*

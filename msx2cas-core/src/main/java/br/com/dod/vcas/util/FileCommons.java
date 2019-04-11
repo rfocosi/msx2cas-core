@@ -1,10 +1,11 @@
-package br.com.dod.vcas;
+package br.com.dod.vcas.util;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 
 import br.com.dod.vcas.exception.FlowException;
+import br.com.dod.vcas.model.FileType;
 
 public class FileCommons {
 
@@ -21,13 +22,10 @@ public class FileCommons {
 
 	public static byte[] readFile(File inputFile) throws FlowException {
 		byte[] inputMemPointer;
-		FileInputStream fis = null;
-		try {
+		try (final FileInputStream fis = new FileInputStream(inputFile)) {
 			if (!inputFile.exists()) throw FlowException.error("file_not_found");
 			if (!inputFile.isFile()) throw FlowException.error("not_a_file");
 			if (!inputFile.canRead()) throw FlowException.error("file_access_denied");
-
-			fis = new FileInputStream(inputFile);
 
 			inputMemPointer = new byte[(int) inputFile.length()];
 
@@ -36,12 +34,6 @@ public class FileCommons {
 			}
 		} catch (IOException e) {
 			throw FlowException.error("file_not_found");
-		} finally {
-			try {
-				if (fis != null) fis.close();
-			} catch (IOException e) {
-				throw FlowException.error("file_access_denied");
-			}
 		}
 		return inputMemPointer;
 	}

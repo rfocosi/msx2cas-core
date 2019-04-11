@@ -2,7 +2,6 @@
 .classpath
 .project
 .settings
-bin
 .orig
 target/
 *.wav

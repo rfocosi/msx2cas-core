@@ -5,10 +5,11 @@ import java.util.List;
 
 import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.exception.FlowException;
+import br.com.dod.vcas.model.SampleRate;
 
 public class Ascii extends Wav { 
 
-	public static final char[] asciiFileHeader = {0xea, 0xea, 0xea, 0xea, 0xea, 0xea, 0xea, 0xea, 0xea, 0xea};
+	private static final char[] asciiFileHeader = {0xea, 0xea, 0xea, 0xea, 0xea, 0xea, 0xea, 0xea, 0xea, 0xea};
 	
 	public Ascii(String inputFileName, SampleRate sampleRate) throws FlowException {
 		super(inputFileName, sampleRate, new DWORD(0), asciiFileHeader);
@@ -55,7 +56,7 @@ public class Ascii extends Wav {
 	}
 
 	@Override
-	protected void encodeFileContent() throws FlowException {
+	protected void encodeFileContent() {
 		
 		long fileLength = inputMemPointer.length;
 
@@ -80,14 +81,14 @@ public class Ascii extends Wav {
 		encodeFinalize();
 	}
 
-	private void encodeFinalize() throws FlowException {
+	private void encodeFinalize() {
 		for (int i = 0; i < 256; i++) {
 			writeDataByte((char) 0x1a);	// Encode 256 bytes at the end of ascii program
 		}
 	}
 
 	private void fixFileNewLines() {
-		final List<Byte> convertedContent = new LinkedList<Byte>(); 
+		final List<Byte> convertedContent = new LinkedList<>();
 		final byte[] filec = inputMemPointer.clone();
 		
 		for (int i =0 ; i < filec.length; i++) {

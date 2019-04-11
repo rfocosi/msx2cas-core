@@ -2,6 +2,7 @@ package br.com.dod.vcas.wav;
 
 import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.exception.FlowException;
+import br.com.dod.vcas.model.SampleRate;
 
 public class Bin extends Wav { 
 
@@ -52,7 +53,7 @@ public class Bin extends Wav {
 		encodeData(loader);
 	}
 
-	private void encodeBinaryStartAddress() throws FlowException {
+	private void encodeBinaryStartAddress() {
 		char[] adressBuffer = new char[6];
 
 		adressBuffer[0] = 0;
@@ -76,8 +77,6 @@ public class Bin extends Wav {
 		char binCRC = 0;
 		char binBegin = (char) ((new DWORD(inputMemPointer[2]).getLow()).intValue() * 0x100 + (new DWORD(inputMemPointer[1]).getLow()).intValue());
 		char binEnd = (char) ((new DWORD(inputMemPointer[4]).getLow()).intValue() * 0x100 + (new DWORD(inputMemPointer[3]).getLow()).intValue());
-		// char binStart = (char) ((new DWORD(inputMemPointer[6]).getLow()).intValue() * 0x100 + (new DWORD(inputMemPointer[5]).getLow()).intValue());
-		// if (binEnd <= binBegin || binStart >= binEnd || binStart < binBegin) throw FlowException.error("header_conflicting_information");	
 		if (binEnd <= binBegin) throw FlowException.error("header_conflicting_information");
 		
 		for (int i = fileOffset.intValue(); i < (binEnd-binBegin) + fileOffset.intValue(); i++) binCRC += (char) inputMemPointer[i];
@@ -87,7 +86,7 @@ public class Bin extends Wav {
 
 	private void initLoader() {
 
-		char[] loader = {
+		this.loader = new char[]{
 				0xC3, 0x30, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3C, 0x20, 0x4D,
 				0x53, 0x58, 0x32, 0x43, 0x61, 0x73, 0x20, 0x3E, 0x4C, 0x6F, 0x61, 0x64, 0x69,
 				0x6E, 0x67, 0x20, 0x66, 0x61, 0x69, 0x6C, 0x65, 0x64, 0x3A, 0x20, 0x43, 0x52,
@@ -105,6 +104,5 @@ public class Bin extends Wav {
 				0x2A, 0x03, 0x90, 0xED, 0x5B, 0x05, 0x90, 0xEB, 0xED, 0x52, 0x44, 0x4D, 0x21,
 				0xCE, 0x90, 0xED, 0x5B, 0x03, 0x90, 0xED, 0xB0, 0xFB, 0xC9, 0x00
 		};
-		this.loader = loader;
 	}
 }
