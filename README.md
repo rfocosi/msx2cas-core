@@ -24,7 +24,7 @@ You can just download the compiled files for use (to run its required Java 8):
 
 Execute `FileEncodingTest.java` a first time, before editing source, to generate comparable WAV's
 
-Compile with `mvn clean package` at sources root
+Compile with `mvn clean initialize && mvn package` at sources root
 
 ## Contributing
 

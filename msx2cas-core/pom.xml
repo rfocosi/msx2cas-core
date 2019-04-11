@@ -5,8 +5,8 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>br.com.dod.msx2cas</groupId>
-    <artifactId>core</artifactId>
+    <groupId>br.com.dod</groupId>
+    <artifactId>msx2cas-core</artifactId>
     <packaging>jar</packaging>
     <version>1.1</version>
 
@@ -15,8 +15,6 @@
             <groupId>br.com.dod.dotnet</groupId>
             <artifactId>dotnet-types</artifactId>
             <version>1.0</version>
-            <scope>system</scope>
-            <systemPath>${basedir}/resources/lib/dotnet-types.jar</systemPath>
         </dependency>
 
         <dependency>
@@ -43,6 +41,27 @@
                     <target>1.8</target>
                     <encoding>UTF-8</encoding>
                 </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-install-plugin</artifactId>
+                <version>2.5.2</version>
+                <executions>
+                    <execution>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>install-file</goal>
+                        </goals>
+                        <configuration>
+                            <groupId>br.com.dod.dotnet</groupId>
+                            <artifactId>dotnet-types</artifactId>
+                            <version>1.0</version>
+                            <packaging>jar</packaging>
+                            <file>${basedir}/resources/lib/dotnet-types.jar</file>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

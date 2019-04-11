@@ -6,6 +6,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.logging.Level;
+import java.util.logging.LogManager;
+import java.util.logging.Logger;
 
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
@@ -28,6 +31,8 @@ public class Main implements NativeKeyListener {
 	private static int frameCheck;
 
 	public static void main(String[] args) {
+		Logger.getLogger(GlobalScreen.class.getPackage().getName()).setLevel(Level.OFF);
+
 		try {
 			Params params = new Params(args);
 
