@@ -5,6 +5,7 @@
 .orig
 target/
 *.wav
+*.iml
 msx2cas-core/resources/lib/*.jar
 .gradle/
 build/

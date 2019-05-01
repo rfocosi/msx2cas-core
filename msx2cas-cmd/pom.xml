@@ -5,16 +5,16 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>br.com.dod</groupId>
-    <artifactId>msx2cas-cmd</artifactId>
+    <groupId>br.com.dod.msx2cas</groupId>
+    <artifactId>cmd</artifactId>
     <packaging>jar</packaging>
-    <version>1.1</version>
+    <version>1.2</version>
 
     <dependencies>
         <dependency>
             <groupId>br.com.dod.msx2cas</groupId>
             <artifactId>core</artifactId>
-            <version>1.1</version>
+            <version>1.2</version>
         </dependency>
 
         <dependency>

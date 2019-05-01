@@ -6,9 +6,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>br.com.dod</groupId>
-    <artifactId>msx2cas-root</artifactId>
+    <artifactId>msx2cas</artifactId>
     <packaging>pom</packaging>
-    <version>1.1</version>
+    <version>1.2</version>
 
     <modules>
         <module>msx2cas-core</module>

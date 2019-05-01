@@ -13,15 +13,15 @@ public class WavHeader {
 	private static final DWORD MM_FILE_TYPE = new DWORD("WAVE".toCharArray());
 	private static final DWORD FORMAT_ID = new DWORD("fmt ".toCharArray());
 	private static final DWORD DATA_ID = new DWORD("data".toCharArray());
+	private static final DWORD FormatSize = new DWORD(16);
+	private static final WORD BlkAllign = new WORD(1);
+	private static final WORD FormatTag = new WORD(1); // PCM
+	public static final WORD NumChannels = new WORD(1); // Mono
+	public static final WORD BitsPerSample = new WORD(8); // 8 bit
 
 	public DWORD SampleLength;
-	public DWORD FormatSize;
-	public WORD FormatTag;
-	public WORD NumChannels;
 	public DWORD SamplesPerSec;
 	public DWORD BytesPerSec;
-	public WORD BlkAllign;
-	public WORD BitsPerSample;
 	public DWORD PureSampleLength;
 
 	private List<IntegerType> getHeader() {

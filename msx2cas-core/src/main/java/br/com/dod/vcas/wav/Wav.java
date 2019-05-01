@@ -3,7 +3,6 @@ package br.com.dod.vcas.wav;
 import java.util.List;
 
 import br.com.dod.dotnet.types.DWORD;
-import br.com.dod.dotnet.types.WORD;
 import br.com.dod.vcas.model.SampleRate;
 import br.com.dod.vcas.util.FileCommons;
 import br.com.dod.vcas.util.WavHeader;
@@ -140,15 +139,8 @@ public abstract class Wav {
 	}
 
 	private void setDefaultHeader() {
-		wavHeader.BlkAllign = new WORD(1);
-		wavHeader.FormatTag = new WORD(1); // PCM
-		wavHeader.NumChannels = new WORD(1); // mono
-		wavHeader.BitsPerSample = new WORD(8); // 8 bit
 		wavHeader.SamplesPerSec = new DWORD(wavSampleRate);
-		wavHeader.BytesPerSec = new DWORD(wavSampleRate * (wavHeader.BitsPerSample.longValue() / 8) * wavHeader.NumChannels.longValue());
-
-		wavHeader.FormatSize = new DWORD(wavHeader.FormatTag.getSize() + wavHeader.NumChannels.getSize() + wavHeader.BitsPerSample.getSize() +
-				wavHeader.SamplesPerSec.getSize() + wavHeader.BytesPerSec.getSize() + wavHeader.BlkAllign.getSize());
+		wavHeader.BytesPerSec = new DWORD(wavSampleRate * (WavHeader.BitsPerSample.longValue() / 8) * WavHeader.NumChannels.longValue());
 
 		wavHeader.PureSampleLength = new DWORD((wavSampleRate * (FIRST_PAUSE_LENGTH + DEFAULT_PAUSE_LENGTH + DEFAULT_PAUSE_LENGTH)) + // Length of pauses
 				Math.round(wavSampleRate * (LONG_HEADER_LENGTH + pureSampleShortHeaderLength)) +	// Length of headers
