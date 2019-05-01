@@ -140,7 +140,6 @@ public abstract class Wav {
 
 	private void setDefaultHeader() {
 		wavHeader.SamplesPerSec = new DWORD(wavSampleRate);
-		wavHeader.BytesPerSec = new DWORD(wavSampleRate * (WavHeader.BitsPerSample.longValue() / 8) * WavHeader.NumChannels.longValue());
 
 		wavHeader.PureSampleLength = new DWORD((wavSampleRate * (FIRST_PAUSE_LENGTH + DEFAULT_PAUSE_LENGTH + DEFAULT_PAUSE_LENGTH)) + // Length of pauses
 				Math.round(wavSampleRate * (LONG_HEADER_LENGTH + pureSampleShortHeaderLength)) +	// Length of headers
