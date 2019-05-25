@@ -17,7 +17,7 @@ public class Ascii extends Wav {
 
     @Override
     protected void validate() throws FlowException {
-        if (this.fileLength < MIN_ENC_INPUTFILE_LENGTH || this.fileLength > MAX_ENC_INPUTFILE_LENGTH) throw FlowException.error("file_size_invalid");
+        if (this.fileLength < MIN_ENC_INPUTFILE_LENGTH) throw FlowException.error("file_size_invalid");
     }
 
     @Override

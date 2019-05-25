@@ -34,6 +34,7 @@ public class FileEncodingTest {
         files.put("flapbird.cas", "flapc");
         files.put("flapbird (rev.A).rom", "flapA");
         files.put("flapbird (rev.B).rom", "flapB");
+        files.put("Arkanoid.rom", "arkano");
 
         System.out.println("Generating test files...");
         for (Entry<String,String> entry : files.entrySet()) {
