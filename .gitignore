@@ -6,6 +6,8 @@
 target/
 *.wav
 *.iml
+*.rom
+*.bin
 msx2cas-core/resources/lib/*.jar
 .gradle/
 build/

@@ -22,7 +22,7 @@ public class Rom32K extends Rom {
     }
 
     @Override
-    protected void setup() throws FlowException {
+    protected void setup() {
 
         initLoader();
 
@@ -48,7 +48,7 @@ public class Rom32K extends Rom {
         return ch;
     }
 
-    private void setExtraBytes() throws FlowException {
+    private void setExtraBytes() {
 
         DWORD extraBytes = new DWORD(6);
 
@@ -76,55 +76,10 @@ public class Rom32K extends Rom {
 
         if (headId > 0x80) headId = 0x40;
         else if (headId < 0x40) headId = 0;
-        encode32KRom(headId);
-    }
 
-    private void encode32KRom(char headId) {
-        // Calculate CRC of the first half of ROM
-        char romCRC = 0;
-        for (int i = 0; i < 16384; i++) {
-            romCRC = (char) (romCRC + inputMemPointer[i]);
-        }
-
-        encodeShortHeader();
-
-        char[] addressBuffer = new char[6];
-
-        char a = (char) (sizeof(loader32K1) + 16384 + 0x9000 - 1);
-        addressBuffer[0] = 0;
-        addressBuffer[1] = 0x90;
-        addressBuffer[2] = a;
-        addressBuffer[3] = (char)(a >> 8);
-        addressBuffer[4] = 0;
-        addressBuffer[5] = 0x90;
-
-        encodeData(addressBuffer);
-
-        a = (char) ((headId & 0xf0) << 8);
-        loader32K1[3] = 0;
-        loader32K1[4] = (char)(a >> 8);
-        a = (char) (a + 16384);
-        loader32K1[5] = a;
-        loader32K1[6] = (char)(a >> 8);
-        loader32K1[7] = (char)inputMemPointer[2];
-        loader32K1[8] = (char)inputMemPointer[3];
-        loader32K1[9] = romCRC;
-
-        // Encode first binary 32k ROM loader
-        encodeData(loader32K1);
-
-        // Encode half of 32k ROM data
-        for (int i = fileOffset.intValue(); i < 16384; i++)	{
-            writeDataByte((char) inputMemPointer[i]);	// Encode data byte
-        }
+        encodeRomBlock(headId, 0, 16384, loader32K1);
 
         encodePause(FIRST_PAUSE_LENGTH);
-
-        // Calculate CRC of second half of ROM
-        romCRC = 0;
-        for (int i = 16384; i < inputMemPointer.length; i++) {
-            romCRC = (char) (romCRC + inputMemPointer[i]);
-        }
 
         encodeLongHeader();
 
@@ -134,43 +89,31 @@ public class Rom32K extends Rom {
 
         encodePause(DEFAULT_PAUSE_LENGTH);
 
+        encodeRomBlock(headId, 16384, inputMemPointer.length, loader32K2);
+    }
+
+    private void encodeRomBlock(char headId, int blockStart, int blockEnd, char[] loader) throws FlowException {
+        char romCRC = calculateCRC(blockStart, blockEnd);
+
         encodeShortHeader();
 
-        if (inputMemPointer[3] > 0x80) {
-            headId = 0x40;
-        } else if (inputMemPointer[3] < 0x40) {
-            headId = 0;
-        }
+        encodeData(buildBinaryAddressBuffer(sizeof(loader) + blockEnd - blockStart));
 
-        // Set binary start addresses
-        a = (char) (sizeof(loader32K2) + inputMemPointer.length - 16384 + 0x9000 - 1);
-        addressBuffer[0] = 0;
-        addressBuffer[1] = 0x90;
-        addressBuffer[2] = a;
-        addressBuffer[3] = (char)(a >> 8);
-        addressBuffer[4] = 0;
-        addressBuffer[5] = 0x90;
+        char a = (char) ((headId & 0xf0) << 8);
+        a = (char) (a  + blockStart);
+        loader[3] = 0;
+        loader[4] = (char)(a >> 8);
+        a = (char) (a + blockEnd - blockStart);
+        loader[5] = a;
+        loader[6] = (char)(a >> 8);
+        loader[7] = (char)inputMemPointer[2];
+        loader[8] = (char)inputMemPointer[3];
+        loader[9] = romCRC;
 
-        // Encode 6 bytes of addresses
-        encodeData(addressBuffer);
+        encodeData(loader);
 
-        // Set ROM loader addresses
-        a = (char) ((headId & 0xf0) << 8);
-        a = (char) (a  + 16384);
-        loader32K2[3] = 0;
-        loader32K2[4] = (char)(a >> 8);
-        a = (char) (a + inputMemPointer.length - 16384);
-        loader32K2[5] = a;
-        loader32K2[6] = (char)(a >> 8);
-        loader32K2[7] = (char)inputMemPointer[2];
-        loader32K2[8] = (char)inputMemPointer[3];
-        loader32K2[9] = romCRC;
-
-        encodeData(loader32K2);
-
-        // Encode second half of 32k ROM data
-        for (int i = fileOffset.intValue() + 16384; i < inputMemPointer.length; i++) {
-            writeDataByte((char)inputMemPointer[i]);
+        for (int i = blockStart; i < blockEnd; i++)	{
+            writeDataByte((char) inputMemPointer[i]);	// Encode data byte
         }
     }
 

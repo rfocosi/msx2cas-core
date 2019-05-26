@@ -212,6 +212,28 @@ public abstract class Wav {
         }
     }
 
+    char calculateCRC(int blockStart, int blockEnd) throws FlowException {
+        if (blockStart > blockEnd) throw FlowException.error("header_conflicting_information");
+        char crc = 0;
+        for (int i = blockStart; i < blockEnd; i++) crc += (char) inputMemPointer[i];
+        return crc;
+    }
+
+    char[] buildBinaryAddressBuffer(final long binarySize) {
+        char a = (char) (binarySize + 0x9000 - 1);
+
+        char[] adressBuffer = new char[6];
+
+        adressBuffer[0] = 0;
+        adressBuffer[1] = 0x90;
+        adressBuffer[2] = a;
+        adressBuffer[3] = (char)(a >> 8);
+        adressBuffer[4] = 0;
+        adressBuffer[5] = 0x90;
+
+        return adressBuffer;
+    }
+
     static int sizeof(char[] charArray) {
         return (charArray == null ? 0 : charArray.length);
     }

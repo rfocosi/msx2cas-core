@@ -70,35 +70,22 @@ public class Rom extends Wav {
 
     @Override
     protected void encodeFileContent() throws FlowException {
-
         char headId = getRomTypeHeader();
         encodeRom(inputMemPointer.length, headId);
     }
 
-    private void encodeRom(final int blockSize, final char headId) {
-
-        // Calculate CRC of the whole ROM
-        char romCRC = 0;
-        for (int i = 0; i < blockSize; i++) romCRC += (char) inputMemPointer[i];
+    private void encodeRom(final int blockSize, final char headId) throws FlowException {
+        char romCRC = calculateCRC(0, blockSize);
 
         encodeShortHeader();
 
         char[] addressBuffer = new char[6];
 
         if (headId < 0x80) {
-            char a = (char) (sizeof(loader) + blockSize + 0x9000 - 1);
-            // Set binary start addresses
-            addressBuffer[0] = 0;
-            addressBuffer[1] = 0x90;
-            addressBuffer[2] = a;
-            addressBuffer[3] = (char)(a >> 8);
-            addressBuffer[4] = 0;
-            addressBuffer[5] = 0x90;
-
-            encodeData(addressBuffer);
+            encodeData(buildBinaryAddressBuffer(sizeof(loader) + blockSize));
 
             // Set ROM loader addresses
-            a = (char) ((headId & 0xf0) << 8);
+            char a = (char) ((headId & 0xf0) << 8);
             loader[3] = 0;
             loader[4] = (char)(a >> 8);
             a = (char) (a + blockSize);
