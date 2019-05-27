@@ -70,34 +70,17 @@ public class Rom extends Wav {
 
     @Override
     protected void encodeFileContent() throws FlowException {
+        int blockSize = inputMemPointer.length;
+
         char headId = getRomTypeHeader();
-        encodeRom(inputMemPointer.length, headId);
-    }
-
-    private void encodeRom(final int blockSize, final char headId) throws FlowException {
-        char romCRC = calculateCRC(0, blockSize);
-
-        encodeShortHeader();
-
-        char[] addressBuffer = new char[6];
 
         if (headId < 0x80) {
-            encodeData(buildBinaryAddressBuffer(sizeof(loader) + blockSize));
-
-            // Set ROM loader addresses
-            char a = (char) ((headId & 0xf0) << 8);
-            loader[3] = 0;
-            loader[4] = (char)(a >> 8);
-            a = (char) (a + blockSize);
-            loader[5] = a;
-            loader[6] = (char)(a >> 8);
-            loader[7] = (char) inputMemPointer[2];
-            loader[8] = (char) inputMemPointer[3];
-            loader[9] = romCRC;
-
-            encodeData(loader);
-
+            encodeRomBlock(headId, 0, blockSize, loader);
         } else {
+            encodeShortHeader();
+
+            char[] addressBuffer = new char[6];
+
             // Encode 6 bytes of addresses
             char a = (char) ((headId & 0xf0) << 8);
             addressBuffer[0] = 0;
@@ -109,11 +92,35 @@ public class Rom extends Wav {
             addressBuffer[5] = (char)inputMemPointer[3];
 
             encodeData(addressBuffer);
-        }
 
-        // Encode whole ROM data
-        for (int i = 0; i < blockSize; i++)	{
-            writeDataByte((char) inputMemPointer[i]);
+            for (int i = 0; i < blockSize; i++)	{
+                writeDataByte((char) inputMemPointer[i]);
+            }
+        }
+    }
+
+    void encodeRomBlock(char headId, int blockStart, int blockEnd, char[] loader) throws FlowException {
+        char romCRC = calculateCRC(blockStart, blockEnd);
+
+        encodeShortHeader();
+
+        encodeData(buildBinaryAddressBuffer(sizeof(loader) + blockEnd - blockStart));
+
+        char a = (char) ((headId & 0xf0) << 8);
+        a = (char) (a  + blockStart);
+        loader[3] = 0;
+        loader[4] = (char)(a >> 8);
+        a = (char) (a + blockEnd - blockStart);
+        loader[5] = a;
+        loader[6] = (char)(a >> 8);
+        loader[7] = (char)inputMemPointer[2];
+        loader[8] = (char)inputMemPointer[3];
+        loader[9] = romCRC;
+
+        encodeData(loader);
+
+        for (int i = blockStart; i < blockEnd; i++)	{
+            writeDataByte((char) inputMemPointer[i]);	// Encode data byte
         }
     }
 

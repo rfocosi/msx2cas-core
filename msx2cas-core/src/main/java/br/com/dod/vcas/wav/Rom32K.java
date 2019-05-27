@@ -92,31 +92,6 @@ public class Rom32K extends Rom {
         encodeRomBlock(headId, 16384, inputMemPointer.length, loader32K2);
     }
 
-    private void encodeRomBlock(char headId, int blockStart, int blockEnd, char[] loader) throws FlowException {
-        char romCRC = calculateCRC(blockStart, blockEnd);
-
-        encodeShortHeader();
-
-        encodeData(buildBinaryAddressBuffer(sizeof(loader) + blockEnd - blockStart));
-
-        char a = (char) ((headId & 0xf0) << 8);
-        a = (char) (a  + blockStart);
-        loader[3] = 0;
-        loader[4] = (char)(a >> 8);
-        a = (char) (a + blockEnd - blockStart);
-        loader[5] = a;
-        loader[6] = (char)(a >> 8);
-        loader[7] = (char)inputMemPointer[2];
-        loader[8] = (char)inputMemPointer[3];
-        loader[9] = romCRC;
-
-        encodeData(loader);
-
-        for (int i = blockStart; i < blockEnd; i++)	{
-            writeDataByte((char) inputMemPointer[i]);	// Encode data byte
-        }
-    }
-
     private void initLoader() {
         this.loader32K1 = new char[]{
                 0xC3, 0x76, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1E, 0x62, 0x6C,
