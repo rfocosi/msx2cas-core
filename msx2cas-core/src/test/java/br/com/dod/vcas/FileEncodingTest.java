@@ -5,6 +5,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.LinkedHashMap;
 import java.util.Map.Entry;
 
@@ -14,6 +15,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import br.com.dod.vcas.exception.FlowException;
+
+import static java.lang.System.*;
 
 public class FileEncodingTest {
 
@@ -26,16 +29,23 @@ public class FileEncodingTest {
     public static void generateFiles() throws FlowException, Exception {
         Files.createDirectories(new File(AllTests.PROJECT_FOLDER + "/resources/generated/").toPath());
 
-        files = new LinkedHashMap<String,String>();
-        files.put("asciib.bas", "asciib");
-        files.put("ascunix.bas", "ascuni");
-        files.put("token.bas", "token");
-        files.put("flapbird.bin", "flap");
-        files.put("flapbird.cas", "flapc");
-        files.put("flapbird (rev.A).rom", "flapA");
-        files.put("flapbird (rev.B).rom", "flapB");
+        files = new LinkedHashMap<>();
+        files.put(AllTests.PROJECT_FOLDER + "/resources/asciib.bas", "asciib");
+        files.put(AllTests.PROJECT_FOLDER + "/resources/ascunix.bas", "ascuni");
+        files.put(AllTests.PROJECT_FOLDER + "/resources/token.bas", "token");
+        files.put(AllTests.PROJECT_FOLDER + "/resources/flapbird.bin", "flap");
+        files.put(AllTests.PROJECT_FOLDER + "/resources/flapbird.cas", "flapc");
+        files.put(AllTests.PROJECT_FOLDER + "/resources/flapbird (rev.A).rom", "flapA");
+        files.put(AllTests.PROJECT_FOLDER + "/resources/flapbird (rev.B).rom", "flapB");
 
-        System.out.println("Generating test files...");
+        Files.list(getExtraTestResourcesPath())
+                .filter(path -> path.toString().endsWith(".rom")
+                        || path.toString().endsWith(".bin")
+                        || path.toString().endsWith(".bas")
+                        || path.toString().endsWith(".cas"))
+                .forEach( file -> files.put(file.toString(), file.getFileName().toString().substring(0,5)));
+
+        out.println("Generating test files...");
         for (Entry<String,String> entry : files.entrySet()) {
             String file = entry.getKey();
             String casName = entry.getValue();
@@ -44,12 +54,17 @@ public class FileEncodingTest {
             generateFile(file, casName, SampleRate.sr22050);
             generateFile(file, casName, SampleRate.sr33075);
         }
-        System.out.println("... done");
+        out.println("... done");
+    }
+
+    private static Path getExtraTestResourcesPath() {
+        String extra_test_resources_path = getenv("EXTRA_TEST_RESOURCES_PATH");
+        return Paths.get(extra_test_resources_path != null ? extra_test_resources_path : ".");
     }
 
     private static boolean getForceWavGenerateEnv() {
-        String forceWavGenerate = System.getenv("FORCE_WAV_GENERATE");
-        return forceWavGenerate != null && System.getenv("FORCE_WAV_GENERATE").equalsIgnoreCase("true");
+        String forceWavGenerate = getenv("FORCE_WAV_GENERATE");
+        return forceWavGenerate != null && getenv("FORCE_WAV_GENERATE").equalsIgnoreCase("true");
     }
 
     @Test
@@ -107,7 +122,7 @@ public class FileEncodingTest {
     }
 
     public void fileTest(String inputFileName, String fileId, SampleRate sampleRate) throws FlowException, Exception{
-        byte[] wavFileBytes = new VirtualCas(sampleRate).convert(AllTests.PROJECT_FOLDER + "/resources/"+ inputFileName).toBytes();
+        byte[] wavFileBytes = new VirtualCas(sampleRate).convert(inputFileName).toBytes();
         byte[] inputFileHandler = getFileBytes(AllTests.PROJECT_FOLDER + "/resources/generated/"+fileId+"-"+sampleRate.bps()+".wav");
 
         Assert.assertEquals(sampleRate.intValue() +" Error!", inputFileHandler.length, wavFileBytes.length);
@@ -128,14 +143,14 @@ public class FileEncodingTest {
 
         if (Files.notExists(finalPath) || forceGenerate ) {
             Files.deleteIfExists(finalPath);
-            System.out.println("Generating: "+ finalPath.getFileName());
+            out.println("Generating: "+ finalPath.getFileName());
 
-            byte[] wavFile = new VirtualCas(sampleRate).convert(AllTests.PROJECT_FOLDER + "/resources/"+ inputFileName).toBytes();
+            byte[] wavFile = new VirtualCas(sampleRate).convert(inputFileName).toBytes();
 
             writeWav(wavFile, AllTests.PROJECT_FOLDER + "/resources/generated/"+finalPath.getFileName());
 
         } else {
-            System.out.println("File already exists: "+ finalPath.getFileName());
+            out.println("File already exists: "+ finalPath.getFileName());
         }
     }
 
