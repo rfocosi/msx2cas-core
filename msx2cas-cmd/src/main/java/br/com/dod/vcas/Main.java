@@ -55,7 +55,7 @@ public class Main implements NativeKeyListener {
             System.out.println("If error persists, use '-w' to write a WAV file.");
             System.exit(-1);
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            System.out.println(e);
             System.exit(-1);
         } finally {
             try {
