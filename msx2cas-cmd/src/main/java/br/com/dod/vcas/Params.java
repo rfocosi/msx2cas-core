@@ -10,7 +10,7 @@ import br.com.dod.vcas.model.SampleRate;
 import br.com.dod.vcas.util.FileCommons;
 
 public class Params {
-    private static final String SPEEDS = "1200|2400|3000|3600";
+    private static final String SPEEDS = "1200|2400|3600";
 
     private boolean writeEnabled;
     private SampleRate sampleRate;

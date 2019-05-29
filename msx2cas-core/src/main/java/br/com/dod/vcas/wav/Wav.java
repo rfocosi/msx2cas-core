@@ -32,11 +32,19 @@ public abstract class Wav {
 
     static final int SIZE_OF_BITSTREAM = 11;
 
+    private static final double BIT_ENCODING_BASE_LENGTH = 10.0;
+
     private static final char[] ZERO_BIT = {LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
     private static final char[] SET_BIT = {LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
 
-    private static final char[] ZERO_BIT_HS = {LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
-    private static final char[] SET_BIT_HS = {LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE};
+    private static final char[] ZERO_BIT_I = {HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE};
+    private static final char[] SET_BIT_I = {HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE};
+
+//    private static final char[] ZERO_BIT_HS = {LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
+//    private static final char[] SET_BIT_HS = {LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE};
+//
+//    private static final char[] ZERO_BIT_HS_I = {HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE};
+//    private static final char[] SET_BIT_HS_I = {HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE};
 
     SampleRate sampleRate;
     long wavSampleRate;
@@ -48,7 +56,6 @@ public abstract class Wav {
     DWORD fileOffset;
     DWORD moreExtraBytes;
     char[] fileHeader;
-    double bitEncodingBaseLength;
     double bitEncodingLength;
 
     String[] nameBuffer;
@@ -96,9 +103,7 @@ public abstract class Wav {
         this.wavSampleRate = sampleRate.intValue();
         this.sampleScale = wavSampleRate / SampleRate.sr11025.intValue();
 
-        this.bitEncodingBaseLength = (sampleRate.isHighSpeed()) ? 5.0 : 10.0;
-
-        this.bitEncodingLength = bitEncodingBaseLength / (wavSampleRate / SampleRate.sr11025.intValue());
+        this.bitEncodingLength = BIT_ENCODING_BASE_LENGTH / (wavSampleRate / SampleRate.sr11025.intValue());
 
         this.nameBuffer[0] = String.format("%1$-" + CAS_FILENAME_LENGTH + "s", FileCommons.getCasName(inputFileName));
     }
@@ -161,15 +166,15 @@ public abstract class Wav {
     }
 
     private char[] setBit() {
-        return (sampleRate.isHighSpeed()) ? SET_BIT_HS : SET_BIT;
+        return sampleRate.isInverted() ? SET_BIT_I : SET_BIT;
     }
 
     private char[] zeroBit() {
-        return (sampleRate.isHighSpeed()) ? ZERO_BIT_HS : ZERO_BIT;
+        return sampleRate.isInverted() ? ZERO_BIT_I : ZERO_BIT;
     }
 
     private void encodeHeader(double length) {
-        for (int j = 0; j < (wavSampleRate * length / bitEncodingBaseLength); j++)	{
+        for (int j = 0; j < (wavSampleRate * length / BIT_ENCODING_BASE_LENGTH); j++)	{
             writeByteChars(setBit());
         }
     }

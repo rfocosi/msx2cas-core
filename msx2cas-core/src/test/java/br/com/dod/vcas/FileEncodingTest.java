@@ -52,7 +52,6 @@ public class FileEncodingTest {
 
             generateFile(file, casName, SampleRate.sr11025);
             generateFile(file, casName, SampleRate.sr22050);
-            generateFile(file, casName, SampleRate.sr27563);
             generateFile(file, casName, SampleRate.sr33075);
         }
         out.println("... done");
@@ -94,24 +93,6 @@ public class FileEncodingTest {
                 String casName = entry.getValue();
 
                 fileTest(file, casName, SampleRate.sr22050);
-            }
-        } catch (FlowException e) {
-            e.printStackTrace();
-            Assert.assertFalse(true);
-        } catch (Exception e) {
-            e.printStackTrace();
-            Assert.assertFalse(true);
-        }
-    }
-
-    @Test
-    public void test27563Files() {
-        try {
-            for (Entry<String,String> entry : files.entrySet()) {
-                String file = entry.getKey();
-                String casName = entry.getValue();
-
-                fileTest(file, casName, SampleRate.sr27563);
             }
         } catch (FlowException e) {
             e.printStackTrace();
