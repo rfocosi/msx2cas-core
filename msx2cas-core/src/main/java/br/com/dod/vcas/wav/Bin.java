@@ -16,7 +16,7 @@ public class Bin extends Wav {
 
     @Override
     protected void validate() throws FlowException {
-        if (this.fileLength < MIN_ENC_INPUTFILE_LENGTH || this.fileLength > MAX_ENC_INPUTFILE_LENGTH) throw FlowException.error("file_size_invalid");
+        if (this.fileLength < MIN_ENC_INPUTFILE_LENGTH) throw FlowException.error("file_size_invalid");
     }
 
     @Override
@@ -36,7 +36,7 @@ public class Bin extends Wav {
 
         encodeShortHeader();
 
-        encodeBinaryStartAddress();
+        encodeData(buildBinaryAddressBuffer(sizeof(loader) + inputMemPointer.length - fileOffset.longValue()));
 
         encodeLoader();
 
@@ -46,25 +46,11 @@ public class Bin extends Wav {
     }
 
     private void encodeLoader() throws FlowException {
-        calculateCRC();
+        calculateBinCRC();
 
         addStartAddressToLoader();
 
         encodeData(loader);
-    }
-
-    private void encodeBinaryStartAddress() {
-        char[] adressBuffer = new char[6];
-
-        adressBuffer[0] = 0;
-        adressBuffer[1] = 0x90;
-        char a = (char) (sizeof(loader) + inputMemPointer.length + 0x9000 - fileOffset.longValue() - 1);
-        adressBuffer[2] = a;
-        adressBuffer[3] = (char)(a >> 8);
-        adressBuffer[4] = 0;
-        adressBuffer[5] = 0x90;
-
-        encodeData(adressBuffer);
     }
 
     private void addStartAddressToLoader() {
@@ -73,15 +59,11 @@ public class Bin extends Wav {
         }
     }
 
-    private void calculateCRC() throws FlowException {
-        char binCRC = 0;
+    private void calculateBinCRC() throws FlowException {
         char binBegin = (char) ((new DWORD(inputMemPointer[2]).getLow()).intValue() * 0x100 + (new DWORD(inputMemPointer[1]).getLow()).intValue());
         char binEnd = (char) ((new DWORD(inputMemPointer[4]).getLow()).intValue() * 0x100 + (new DWORD(inputMemPointer[3]).getLow()).intValue());
-        if (binEnd <= binBegin) throw FlowException.error("header_conflicting_information");
 
-        for (int i = fileOffset.intValue(); i < (binEnd-binBegin) + fileOffset.intValue(); i++) binCRC += (char) inputMemPointer[i];
-
-        loader[9] = binCRC;
+        loader[9] = calculateCRC(fileOffset.intValue(), (binEnd-binBegin) + fileOffset.intValue());
     }
 
     private void initLoader() {

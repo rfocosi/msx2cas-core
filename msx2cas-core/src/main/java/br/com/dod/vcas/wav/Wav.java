@@ -12,8 +12,6 @@ import br.com.dod.vcas.exception.FlowException;
 public abstract class Wav {
 
     static final long MIN_ENC_INPUTFILE_LENGTH = 5L;
-    static final long MAX_ENC_INPUTFILE_LENGTH = 32768L;
-
     static final int CAS_FILENAME_LENGTH = FileCommons.CAS_FILENAME_LENGTH;
 
     private static final char START_BIT = 0;
@@ -34,11 +32,21 @@ public abstract class Wav {
 
     static final int SIZE_OF_BITSTREAM = 11;
 
-    private static final Double BIT_ENCODING_BASE_LENGTH = 10.0;
+    private static final double BIT_ENCODING_BASE_LENGTH = 10.0;
 
     private static final char[] ZERO_BIT = {LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
     private static final char[] SET_BIT = {LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
 
+    private static final char[] ZERO_BIT_I = {HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE};
+    private static final char[] SET_BIT_I = {HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE};
+
+//    private static final char[] ZERO_BIT_HS = {LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
+//    private static final char[] SET_BIT_HS = {LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE};
+//
+//    private static final char[] ZERO_BIT_HS_I = {HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE};
+//    private static final char[] SET_BIT_HS_I = {HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE};
+
+    SampleRate sampleRate;
     long wavSampleRate;
     long sampleScale;
 
@@ -91,13 +99,13 @@ public abstract class Wav {
         this.fileOffset = fileOffset;
         this.fileHeader = fileHeaderId;
 
+        this.sampleRate = sampleRate;
         this.wavSampleRate = sampleRate.intValue();
         this.sampleScale = wavSampleRate / SampleRate.sr11025.intValue();
 
         this.bitEncodingLength = BIT_ENCODING_BASE_LENGTH / (wavSampleRate / SampleRate.sr11025.intValue());
 
         this.nameBuffer[0] = String.format("%1$-" + CAS_FILENAME_LENGTH + "s", FileCommons.getCasName(inputFileName));
-
     }
 
     public String getFileId() {
@@ -157,9 +165,17 @@ public abstract class Wav {
         encodeHeader(SHORT_HEADER_LENGTH);
     }
 
+    private char[] setBit() {
+        return sampleRate.isInverted() ? SET_BIT_I : SET_BIT;
+    }
+
+    private char[] zeroBit() {
+        return sampleRate.isInverted() ? ZERO_BIT_I : ZERO_BIT;
+    }
+
     private void encodeHeader(double length) {
         for (int j = 0; j < (wavSampleRate * length / BIT_ENCODING_BASE_LENGTH); j++)	{
-            writeByteChars(SET_BIT);
+            writeByteChars(setBit());
         }
     }
 
@@ -187,7 +203,7 @@ public abstract class Wav {
         final char[] bitStream = new char[SIZE_OF_BITSTREAM];
 
         char bitMask = 1;
-        int bitSampleLength = ZERO_BIT.length;
+        int bitSampleLength = zeroBit().length;
         char[] dataByte = new char[bitSampleLength * sizeof(bitStream)];
 
         bitStream[0] =	START_BIT;
@@ -202,7 +218,7 @@ public abstract class Wav {
         }
 
         for (int i = 0; i < sizeof(bitStream); i++) {
-            char[] bit = (bitStream[i] == 0 ? ZERO_BIT : SET_BIT);
+            char[] bit = (bitStream[i] == 0 ? zeroBit() : setBit());
             System.arraycopy(bit, 0, dataByte, i * bitSampleLength, bitSampleLength);
         }
         writeByteChars(dataByte);
@@ -212,6 +228,28 @@ public abstract class Wav {
         for (char c : ch) {
             outputBuffer.append(c);
         }
+    }
+
+    char calculateCRC(int blockStart, int blockEnd) throws FlowException {
+        if (blockStart > blockEnd) throw FlowException.error("header_conflicting_information");
+        char crc = 0;
+        for (int i = blockStart; i < blockEnd; i++) crc += (char) inputMemPointer[i];
+        return crc;
+    }
+
+    char[] buildBinaryAddressBuffer(final long binarySize) {
+        char a = (char) (binarySize + 0x9000 - 1);
+
+        char[] adressBuffer = new char[6];
+
+        adressBuffer[0] = 0;
+        adressBuffer[1] = 0x90;
+        adressBuffer[2] = a;
+        adressBuffer[3] = (char)(a >> 8);
+        adressBuffer[4] = 0;
+        adressBuffer[5] = 0x90;
+
+        return adressBuffer;
     }
 
     static int sizeof(char[] charArray) {

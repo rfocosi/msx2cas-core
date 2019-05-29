@@ -21,9 +21,7 @@ public class DetectFileTypeTest {
             Assert.assertEquals(FileType.ROM, FileCommons.detectFile(AllTests.PROJECT_FOLDER + "/resources/flapbird (rev.A).rom"));
             Assert.assertEquals(FileType.ROM, FileCommons.detectFile(AllTests.PROJECT_FOLDER + "/resources/flapbird (rev.B).rom"));
         } catch (IOException e) {
-
             e.printStackTrace();
         }
-
     }
 }

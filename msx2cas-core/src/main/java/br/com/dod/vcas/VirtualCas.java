@@ -56,7 +56,7 @@ public class VirtualCas {
                     wavList.add(new Cas(fileName, sampleRate).convert());
                     break;
                 case ROM:
-                    wavList.add(new Rom(fileName, sampleRate).convert());
+                    wavList.add(Rom.build(fileName, sampleRate).convert());
                     break;
                 default:
                     wavList.add(new Ascii(fileName, sampleRate).convert());

@@ -6,9 +6,9 @@ import org.junit.runners.Suite.SuiteClasses;
 
 @RunWith(Suite.class)
 @SuiteClasses({ CasFileTest.class, DetectFileTypeTest.class,
-        FileEncodingTest.class, ValidateWavHeaderTest.class })
+        FileEncodingTest.class })
 public class AllTests {
 
-    public static String PROJECT_FOLDER = "/home/rfocosi/workspace/msx2cas-core/msx2cas-core";
+    public static String PROJECT_FOLDER = System.getProperty("user.dir");
 
 }
