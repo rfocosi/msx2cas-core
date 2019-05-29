@@ -10,13 +10,14 @@ import java.util.LinkedHashMap;
 import java.util.Map.Entry;
 
 import br.com.dod.vcas.model.SampleRate;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import br.com.dod.vcas.exception.FlowException;
 
 import static java.lang.System.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class FileEncodingTest {
 
@@ -53,6 +54,9 @@ public class FileEncodingTest {
             generateFile(file, casName, SampleRate.sr11025);
             generateFile(file, casName, SampleRate.sr22050);
             generateFile(file, casName, SampleRate.sr33075);
+            generateFile(file, casName, SampleRate.sr11025i);
+            generateFile(file, casName, SampleRate.sr22050i);
+            generateFile(file, casName, SampleRate.sr33075i);
         }
         out.println("... done");
     }
@@ -69,67 +73,59 @@ public class FileEncodingTest {
 
     @Test
     public void test11025Files() {
-        try {
-            for (Entry<String,String> entry : files.entrySet()) {
-                String file = entry.getKey();
-                String casName = entry.getValue();
-
-                fileTest(file, casName, SampleRate.sr11025);
-            }
-        } catch (FlowException e) {
-            e.printStackTrace();
-            Assert.assertFalse(true);
-        } catch (Exception e) {
-            e.printStackTrace();
-            Assert.assertFalse(true);
-        }
+        testFiles(SampleRate.sr11025);
     }
 
     @Test
     public void test22050Files() {
-        try {
-            for (Entry<String,String> entry : files.entrySet()) {
-                String file = entry.getKey();
-                String casName = entry.getValue();
-
-                fileTest(file, casName, SampleRate.sr22050);
-            }
-        } catch (FlowException e) {
-            e.printStackTrace();
-            Assert.assertFalse(true);
-        } catch (Exception e) {
-            e.printStackTrace();
-            Assert.assertFalse(true);
-        }
+        testFiles(SampleRate.sr22050);
     }
-
 
     @Test
     public void test33075Files() {
+        testFiles(SampleRate.sr33075);
+    }
+
+    @Test
+    public void test11025iFiles() {
+        testFiles(SampleRate.sr11025i);
+    }
+
+    @Test
+    public void test22050iFiles() {
+        testFiles(SampleRate.sr22050i);
+    }
+
+    @Test
+    public void test33075iFiles() {
+        testFiles(SampleRate.sr33075i);
+    }
+
+    private void testFiles(SampleRate sampleRate) {
         try {
             for (Entry<String,String> entry : files.entrySet()) {
                 String file = entry.getKey();
                 String casName = entry.getValue();
 
-                fileTest(file, casName, SampleRate.sr33075);
+                fileTest(file, casName, sampleRate);
             }
-        } catch (FlowException e) {
-            e.printStackTrace();
-            Assert.assertFalse(true);
+        } catch (FlowException fe) {
+            fe.printStackTrace();
+            fail();
         } catch (Exception e) {
             e.printStackTrace();
-            Assert.assertFalse(true);
+            fail();
         }
     }
 
-    public void fileTest(String inputFileName, String fileId, SampleRate sampleRate) throws FlowException, Exception{
+    private void fileTest(String inputFileName, String fileId, SampleRate sampleRate) throws FlowException, Exception{
         byte[] wavFileBytes = new VirtualCas(sampleRate).convert(inputFileName).toBytes();
-        byte[] inputFileHandler = getFileBytes(AllTests.PROJECT_FOLDER + "/resources/generated/"+fileId+"-"+sampleRate.bps()+".wav");
+        byte[] inputFileHandler = getFileBytes(AllTests.PROJECT_FOLDER + "/resources/generated/" + getWavFileName(fileId, sampleRate));
 
-        Assert.assertEquals(sampleRate.intValue() +" Error!", inputFileHandler.length, wavFileBytes.length);
+        assertEquals(sampleRate.intValue() +" Error!", inputFileHandler.length, wavFileBytes.length);
 
         for (int i = 0; i < inputFileHandler.length; i++) {
-            Assert.assertEquals("fileId:"+fileId+",sampleRate:"+sampleRate.intValue()
+            assertEquals("fileId:"+fileId+",sampleRate:"+sampleRate.intValue()
                     +",fileLength:"+inputFileHandler.length+",pos:"+i, inputFileHandler[i], wavFileBytes[i]);
         }
     }
@@ -138,9 +134,8 @@ public class FileEncodingTest {
         return Files.readAllBytes(new File(filename).toPath());
     }
 
-    public static void generateFile(String inputFileName, String fileId, SampleRate sampleRate) throws FlowException, Exception{
-        String finalFileName = fileId +"-"+ sampleRate.bps();
-        Path finalPath = new File(AllTests.PROJECT_FOLDER + "/resources/generated/"+ finalFileName +".wav").toPath();
+    private static void generateFile(String inputFileName, String fileId, SampleRate sampleRate) throws FlowException, Exception{
+        Path finalPath = new File(AllTests.PROJECT_FOLDER + "/resources/generated/"+ getWavFileName(fileId, sampleRate)).toPath();
 
         if (Files.notExists(finalPath) || forceGenerate ) {
             Files.deleteIfExists(finalPath);
@@ -161,5 +156,9 @@ public class FileEncodingTest {
         outputStream.write(wavBytes);
 
         outputStream.close();
+    }
+
+    private static String getWavFileName(String fileId, SampleRate sampleRate) {
+        return fileId +"-"+ sampleRate.bps() + (sampleRate.isInverted() ? "i" : "") + ".wav";
     }
 }

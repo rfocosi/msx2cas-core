@@ -108,7 +108,10 @@ public class Main implements NativeKeyListener {
         clip.open(AudioSystem.getAudioInputStream(new ByteArrayInputStream(file.toBytes())));
 
         System.out.println("Playing: " + file.getFileId());
-        System.out.println("Playback length:" + (clip.getFrameLength() / sampleRate.intValue()) + " seconds");
+        System.out.println("Playback length: " + (clip.getFrameLength() / sampleRate.intValue()) + " seconds");
+        System.out.println("Sample Rate: " + sampleRate.bps());
+        System.out.println("Wavform: " + (sampleRate.isInverted() ? "Inverted" : "Normal"));
+        System.out.println();
 
         if (keyListener) System.out.println("[SPACE] Start/Pause | [ESC] Stop | [ENTER] Restart");
 

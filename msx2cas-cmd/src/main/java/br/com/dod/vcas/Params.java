@@ -1,22 +1,43 @@
 package br.com.dod.vcas;
 
+import br.com.dod.vcas.model.SampleRate;
+import br.com.dod.vcas.util.FileCommons;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import br.com.dod.vcas.model.SampleRate;
-import br.com.dod.vcas.util.FileCommons;
+import java.util.stream.Collectors;
 
 public class Params {
-    private static final String SPEEDS = "1200|2400|3600";
+    private static final String SPEEDS = "1200|2400|3600|1200i|2400i|3600i";
 
     private boolean writeEnabled;
     private SampleRate sampleRate;
     private List<ConvertFile> files;
 
+    public String getVersion() {
+        try {
+            return new BufferedReader(new InputStreamReader((InputStream) getClass().getClassLoader().getResource("version.txt").getContent()))
+                    .lines().collect(Collectors.joining("\n"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return "";
+    }
+
+    public void printVersion() {
+        System.out.println("MSX2Cas v" + getVersion());
+    }
+
     Params(String[] args) {
+        printVersion();
+
         if (args.length < 2 || Arrays.asList(args).size() < 2) {
             displayUsage();
         } else {
@@ -26,7 +47,7 @@ public class Params {
             while (matcher.find()) {
                 writeEnabled = matcher.group(1) != null;
                 String outputFilename = (writeEnabled ? matcher.group(2) : null);
-                sampleRate = SampleRate.fromBps(Integer.valueOf(matcher.group(3)));
+                sampleRate = SampleRate.fromBps(matcher.group(3));
                 setFileList(args, writeEnabled, outputFilename);
             }
 
