@@ -12,6 +12,7 @@ import java.util.logging.Logger;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
 import javax.sound.sampled.LineUnavailableException;
+import javax.swing.*;
 
 import br.com.dod.vcas.model.SampleRate;
 import org.jnativehook.GlobalScreen;
@@ -22,7 +23,7 @@ import org.jnativehook.keyboard.NativeKeyListener;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.wav.Wav;
 
-public class Main implements NativeKeyListener {
+public class Main extends JFrame implements NativeKeyListener {
 
     private static Clip clip;
 
@@ -113,7 +114,7 @@ public class Main implements NativeKeyListener {
         System.out.println("Wavform: " + (sampleRate.isInverted() ? "Inverted" : "Normal"));
         System.out.println();
 
-        if (keyListener) System.out.println("[SPACE] Start/Pause | [ESC] Stop | [ENTER] Restart");
+        if (keyListener) System.out.println("[SPACE] Start/Pause | [ESC] Stop | [HOME] Restart");
 
         String progressBar = "|--------------------------------------|";
         System.out.println("1% _________________________________ 100%");
@@ -125,13 +126,12 @@ public class Main implements NativeKeyListener {
 
         if (!keyListener) clip.start();
 
-        int progressCount = 1;
         while (clip.isOpen() && clip.getFramePosition() < frameLength) {
-            if (clip.getFramePosition() >= frameCheck && progressCount < progressBar.length()) {
+            if (clip.isRunning() && clip.getFramePosition() >= frameCheck) {
                 frameCheck += frameProp;
                 System.out.print("=");
-                progressCount++;
             }
+            sleep();
         }
 
         if (clip.isOpen()) {
@@ -146,14 +146,26 @@ public class Main implements NativeKeyListener {
         }
     }
 
+    private static void sleep() {
+        try {
+            Thread.sleep(250);
+        } catch (InterruptedException e) {
+            // Silent
+        }
+    }
+
     public void nativeKeyReleased(NativeKeyEvent e) {
+
         if (e.getKeyCode() == NativeKeyEvent.VC_ESCAPE) {
             clip.close();
 
-        } else if (e.getKeyCode() == NativeKeyEvent.VC_ENTER) {
+        } else if (e.getKeyCode() == NativeKeyEvent.VC_HOME) {
+            clip.stop();
             clip.setFramePosition(0);
             frameCheck = frameProp;
-            System.out.println();
+            System.out.print("\r");
+            System.out.print("                                        ");
+            System.out.print("\r");
 
         } else if (e.getKeyCode() == NativeKeyEvent.VC_SPACE) {
             System.out.print("\b");
