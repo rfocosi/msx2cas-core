@@ -54,9 +54,9 @@ public class FileEncodingTest {
             generateFile(file, casName, SampleRate.sr11025);
             generateFile(file, casName, SampleRate.sr22050);
             generateFile(file, casName, SampleRate.sr33075);
-            generateFile(file, casName, SampleRate.sr11025i);
-            generateFile(file, casName, SampleRate.sr22050i);
-            generateFile(file, casName, SampleRate.sr33075i);
+            generateFile(file, casName, SampleRate.sr11025.invertWaveForm());
+            generateFile(file, casName, SampleRate.sr22050.invertWaveForm());
+            generateFile(file, casName, SampleRate.sr33075.invertWaveForm());
         }
         out.println("... done");
     }
@@ -88,17 +88,17 @@ public class FileEncodingTest {
 
     @Test
     public void test11025iFiles() {
-        testFiles(SampleRate.sr11025i);
+        testFiles(SampleRate.sr11025.invertWaveForm());
     }
 
     @Test
     public void test22050iFiles() {
-        testFiles(SampleRate.sr22050i);
+        testFiles(SampleRate.sr22050.invertWaveForm());
     }
 
     @Test
     public void test33075iFiles() {
-        testFiles(SampleRate.sr33075i);
+        testFiles(SampleRate.sr33075.invertWaveForm());
     }
 
     private void testFiles(SampleRate sampleRate) {

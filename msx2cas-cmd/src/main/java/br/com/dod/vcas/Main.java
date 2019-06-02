@@ -30,7 +30,7 @@ public class Main extends JFrame implements NativeKeyListener {
     private static int frameProp;
     private static int frameCheck;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         Logger.getLogger(GlobalScreen.class.getPackage().getName()).setLevel(Level.OFF);
 
         try {
@@ -38,13 +38,13 @@ public class Main extends JFrame implements NativeKeyListener {
 
             for (ConvertFile file : params.getFiles()) {
                 try {
-                    VirtualCas vcas = new VirtualCas(params.getSampleRate());
+                    VirtualCas vcas = new VirtualCas(file.getSampleRate());
                     Wav wavFile = vcas.convert(file.getInputName());
 
-                    if (params.isWriteEnabled()) {
+                    if (file.isWrite()) {
                         writeWav(wavFile, file);
                     } else {
-                        play(wavFile, params.getSampleRate());
+                        play(wavFile, file.getSampleRate());
                     }
                 } catch (FlowException|IOException e) {
                     System.out.println("Error: "+e.getMessage());
@@ -54,9 +54,6 @@ public class Main extends JFrame implements NativeKeyListener {
             System.out.println("Audio output not found.");
             System.out.println(iae.getMessage());
             System.out.println("If error persists, use '-w' to write a WAV file.");
-            System.exit(-1);
-        } catch (Exception e) {
-            System.out.println(e);
             System.exit(-1);
         } finally {
             try {
