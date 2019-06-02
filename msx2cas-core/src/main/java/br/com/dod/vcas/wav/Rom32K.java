@@ -58,13 +58,13 @@ public class Rom32K extends Rom {
     }
     private void setMoreExtraBytes() {
 
-        DWORD moreExtraBytes = new DWORD(((wavSampleRate * FIRST_PAUSE_LENGTH) + (wavSampleRate * DEFAULT_PAUSE_LENGTH) +
-                Math.round(wavSampleRate * LONG_HEADER_LENGTH + wavSampleRate * SHORT_HEADER_LENGTH) +
-                (fileHeader.length + CAS_FILENAME_LENGTH) * Math.round(sampleScale * SIZE_OF_BITSTREAM * bitEncodingLength)));
+        DWORD moreExtraBytes = new DWORD(((sampleRate.intValue() * FIRST_PAUSE_LENGTH) + (sampleRate.intValue() * DEFAULT_PAUSE_LENGTH) +
+                Math.round(sampleRate.intValue() * LONG_HEADER_LENGTH + sampleRate.intValue() * SHORT_HEADER_LENGTH) +
+                (fileHeader.length + CAS_FILENAME_LENGTH) * Math.round(sampleRate.sampleScale() * SIZE_OF_BITSTREAM * sampleRate.bitEncodingLength())));
 
-        moreExtraBytes = new DWORD((moreExtraBytes.longValue() + (wavSampleRate * FIRST_PAUSE_LENGTH) + (wavSampleRate * DEFAULT_PAUSE_LENGTH) +
-                Math.round(wavSampleRate * LONG_HEADER_LENGTH + wavSampleRate * SHORT_HEADER_LENGTH) +
-                (fileHeader.length + CAS_FILENAME_LENGTH - new DWORD(0).longValue()) * Math.round(sampleScale * SIZE_OF_BITSTREAM * bitEncodingLength)));
+        moreExtraBytes = new DWORD((moreExtraBytes.longValue() + (sampleRate.intValue() * FIRST_PAUSE_LENGTH) + (sampleRate.intValue() * DEFAULT_PAUSE_LENGTH) +
+                Math.round(sampleRate.intValue() * LONG_HEADER_LENGTH + sampleRate.intValue() * SHORT_HEADER_LENGTH) +
+                (fileHeader.length + CAS_FILENAME_LENGTH - new DWORD(0).longValue()) * Math.round(sampleRate.sampleScale() * SIZE_OF_BITSTREAM * sampleRate.bitEncodingLength())));
 
         this.moreExtraBytes = moreExtraBytes;
     }

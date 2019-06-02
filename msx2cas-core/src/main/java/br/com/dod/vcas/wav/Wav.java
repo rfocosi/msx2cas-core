@@ -32,23 +32,19 @@ public abstract class Wav {
 
     static final int SIZE_OF_BITSTREAM = 11;
 
-    private static final double BIT_ENCODING_BASE_LENGTH = 10.0;
-
     private static final char[] ZERO_BIT = {LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
     private static final char[] SET_BIT = {LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
 
     private static final char[] ZERO_BIT_I = {HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE};
     private static final char[] SET_BIT_I = {HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE};
 
-//    private static final char[] ZERO_BIT_HS = {LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
-//    private static final char[] SET_BIT_HS = {LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE};
-//
-//    private static final char[] ZERO_BIT_HS_I = {HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE};
-//    private static final char[] SET_BIT_HS_I = {HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE};
+    private static final char[] ZERO_BIT_HS = {LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
+    private static final char[] SET_BIT_HS = {LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE};
+
+    private static final char[] ZERO_BIT_HS_I = {HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE};
+    private static final char[] SET_BIT_HS_I = {HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE};
 
     SampleRate sampleRate;
-    long wavSampleRate;
-    long sampleScale;
 
     double pureSampleShortHeaderLength;
 
@@ -56,7 +52,6 @@ public abstract class Wav {
     DWORD fileOffset;
     DWORD moreExtraBytes;
     char[] fileHeader;
-    double bitEncodingLength;
 
     String[] nameBuffer;
 
@@ -100,10 +95,6 @@ public abstract class Wav {
         this.fileHeader = fileHeaderId;
 
         this.sampleRate = sampleRate;
-        this.wavSampleRate = sampleRate.intValue();
-        this.sampleScale = wavSampleRate / SampleRate.sr11025.intValue();
-
-        this.bitEncodingLength = BIT_ENCODING_BASE_LENGTH / (wavSampleRate / SampleRate.sr11025.intValue());
 
         this.nameBuffer[0] = String.format("%1$-" + CAS_FILENAME_LENGTH + "s", FileCommons.getCasName(inputFileName));
     }
@@ -147,11 +138,11 @@ public abstract class Wav {
     }
 
     private void setDefaultHeader() {
-        wavHeader.SamplesPerSec = new DWORD(wavSampleRate);
+        wavHeader.SamplesPerSec = new DWORD(sampleRate.intValue());
 
-        wavHeader.PureSampleLength = new DWORD((wavSampleRate * (FIRST_PAUSE_LENGTH + DEFAULT_PAUSE_LENGTH + DEFAULT_PAUSE_LENGTH)) + // Length of pauses
-                Math.round(wavSampleRate * (LONG_HEADER_LENGTH + pureSampleShortHeaderLength)) +	// Length of headers
-                ((sizeof(fileHeader) + CAS_FILENAME_LENGTH + fileLength + extraBytes.longValue() - fileOffset.longValue()) * Math.round(sampleScale * SIZE_OF_BITSTREAM * bitEncodingLength)) + // Length of data
+        wavHeader.PureSampleLength = new DWORD((sampleRate.intValue() * (FIRST_PAUSE_LENGTH + DEFAULT_PAUSE_LENGTH + DEFAULT_PAUSE_LENGTH)) + // Length of pauses
+                Math.round(sampleRate.intValue() * (LONG_HEADER_LENGTH + pureSampleShortHeaderLength)) +	// Length of headers
+                ((sizeof(fileHeader) + CAS_FILENAME_LENGTH + fileLength + extraBytes.longValue() - fileOffset.longValue()) * Math.round(sampleRate.sampleScale() * SIZE_OF_BITSTREAM * sampleRate.bitEncodingLength())) + // Length of data
                 moreExtraBytes.longValue());
 
         wavHeader.SampleLength = new DWORD(wavHeader.PureSampleLength.longValue() + WAV_HEADER_OFFSET_VALUE);
@@ -166,15 +157,31 @@ public abstract class Wav {
     }
 
     private char[] setBit() {
-        return sampleRate.isInverted() ? SET_BIT_I : SET_BIT;
+        return sampleRate.isInverted() ? setBitI() : setBitN();
     }
 
     private char[] zeroBit() {
-        return sampleRate.isInverted() ? ZERO_BIT_I : ZERO_BIT;
+        return sampleRate.isInverted() ? zeroBitI() : zeroBitN();
+    }
+
+    private char[] setBitN() {
+        return sampleRate.isHighSpeed() ? SET_BIT_HS : SET_BIT;
+    }
+
+    private char[] zeroBitN() {
+        return sampleRate.isHighSpeed() ? ZERO_BIT_HS : ZERO_BIT;
+    }
+
+    private char[] setBitI() {
+        return sampleRate.isHighSpeed() ? SET_BIT_HS_I : SET_BIT_I;
+    }
+
+    private char[] zeroBitI() {
+        return sampleRate.isHighSpeed() ? ZERO_BIT_HS_I : ZERO_BIT_I;
     }
 
     private void encodeHeader(double length) {
-        for (int j = 0; j < (wavSampleRate * length / BIT_ENCODING_BASE_LENGTH); j++)	{
+        for (int j = 0; j < sampleRate.headerEncodingLength(length); j++)	{
             writeByteChars(setBit());
         }
     }
@@ -190,7 +197,7 @@ public abstract class Wav {
     }
 
     private void encodePause(int pauseLength, long lenghtCorrection) {
-        int charLenght = (int) (wavSampleRate * pauseLength + lenghtCorrection);
+        int charLenght = (int) (sampleRate.intValue() * pauseLength + lenghtCorrection);
         char[] chars = new char[charLenght];
 
         for (int j = 0; j < charLenght; j++) {

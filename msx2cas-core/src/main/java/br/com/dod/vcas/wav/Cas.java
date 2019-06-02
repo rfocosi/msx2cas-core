@@ -34,13 +34,13 @@ public class Cas extends Wav {
 
         int remainingFiles = casList.size()-1; // The first file PAUSES are calculated on setDefaultHeader
 
-        int mExtraBytes = new DWORD(Math.round(wavSampleRate * SHORT_HEADER_LENGTH)).intValue();
+        int mExtraBytes = new DWORD(Math.round(sampleRate.intValue() * SHORT_HEADER_LENGTH)).intValue();
 
         for (int f=1; f <= remainingFiles; f++) {
-            mExtraBytes += new DWORD(Math.round(wavSampleRate * (LONG_HEADER_LENGTH + SEPARATOR_PAUSE_LENGTH))).intValue();
+            mExtraBytes += new DWORD(Math.round(sampleRate.intValue() * (LONG_HEADER_LENGTH + SEPARATOR_PAUSE_LENGTH))).intValue();
             CasFile file = casList.get(f);
             if (!"".equals(file.getName())) {
-                mExtraBytes += new DWORD(Math.round(wavSampleRate * (DEFAULT_PAUSE_LENGTH + SHORT_HEADER_LENGTH))).intValue();
+                mExtraBytes += new DWORD(Math.round(sampleRate.intValue() * (DEFAULT_PAUSE_LENGTH + SHORT_HEADER_LENGTH))).intValue();
             }
         }
         this.moreExtraBytes = new DWORD(mExtraBytes);

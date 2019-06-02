@@ -26,12 +26,36 @@ public enum SampleRate {
         return this;
     }
 
+    public boolean isHighSpeed() {
+        return false; // sampleRate > 22050;
+    }
+
+    public boolean isInverted() {
+        return inverted;
+    }
+
+    public double bitEncodingLength() {
+        return bitEncodingBaseLength() / ((double) (intValue() / SampleRate.sr11025.intValue()));
+    }
+
+    public double headerEncodingLength(double length) {
+        return (intValue() * length / bitEncodingBaseLength());
+    }
+
+    public long sampleScale() {
+        return intValue() / SampleRate.sr11025.intValue();
+    }
+
+    public double bitEncodingBaseLength() {
+        return (isHighSpeed() ? 5.0 : 10.0);
+    }
+
     public int intValue(){
         return this.sampleRate;
     }
 
     public int bps() {
-        return (int) (this.sampleRate / 9.1875);
+        return (int) (intValue() / 9.1875);
     }
 
     public static SampleRate fromBps(final Object bps) {
@@ -40,10 +64,6 @@ public enum SampleRate {
             if (sampleRate.bps() == bpsi) return sampleRate;
         }
         return null;
-    }
-
-    public boolean isInverted() {
-        return inverted;
     }
 
     public static SampleRate fromInt(int sampleRate) {
