@@ -38,12 +38,6 @@ public abstract class Wav {
     private static final char[] ZERO_BIT_I = {HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE};
     private static final char[] SET_BIT_I = {HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE};
 
-    private static final char[] ZERO_BIT_HS = {LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
-    private static final char[] SET_BIT_HS = {LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE};
-
-    private static final char[] ZERO_BIT_HS_I = {HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE};
-    private static final char[] SET_BIT_HS_I = {HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE};
-
     SampleRate sampleRate;
 
     double pureSampleShortHeaderLength;
@@ -157,27 +151,11 @@ public abstract class Wav {
     }
 
     private char[] setBit() {
-        return sampleRate.isInverted() ? setBitI() : setBitN();
+        return sampleRate.isInverted() ? SET_BIT_I : SET_BIT;
     }
 
     private char[] zeroBit() {
-        return sampleRate.isInverted() ? zeroBitI() : zeroBitN();
-    }
-
-    private char[] setBitN() {
-        return sampleRate.isHighSpeed() ? SET_BIT_HS : SET_BIT;
-    }
-
-    private char[] zeroBitN() {
-        return sampleRate.isHighSpeed() ? ZERO_BIT_HS : ZERO_BIT;
-    }
-
-    private char[] setBitI() {
-        return sampleRate.isHighSpeed() ? SET_BIT_HS_I : SET_BIT_I;
-    }
-
-    private char[] zeroBitI() {
-        return sampleRate.isHighSpeed() ? ZERO_BIT_HS_I : ZERO_BIT_I;
+        return sampleRate.isInverted() ? ZERO_BIT_I : ZERO_BIT;
     }
 
     private void encodeHeader(double length) {
