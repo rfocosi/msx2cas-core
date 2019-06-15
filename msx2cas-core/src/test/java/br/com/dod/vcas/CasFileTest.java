@@ -2,7 +2,6 @@ package br.com.dod.vcas;
 
 import java.util.List;
 
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -10,11 +9,14 @@ import br.com.dod.vcas.cas.CasFile;
 import br.com.dod.vcas.cas.CasUtil;
 import br.com.dod.vcas.exception.FlowException;
 
+import static br.com.dod.vcas.AllTests.PROJECT_FOLDER;
+import static org.junit.Assert.assertEquals;
+
 public class CasFileTest {
 
     private static List<CasFile> casList;
 
-    private static String filename = AllTests.PROJECT_FOLDER + "/resources/flapbird.cas";
+    private static String filename = PROJECT_FOLDER + "/resources/flapbird.cas";
 
     @BeforeClass
     public static void setup() {
@@ -22,9 +24,7 @@ public class CasFileTest {
             CasUtil casUtil = new CasUtil(filename);
             casList = casUtil.list();
 
-        } catch (Exception e) {
-            e.printStackTrace();
-        } catch (FlowException e) {
+        } catch (Exception | FlowException e) {
             e.printStackTrace();
         }
     }
@@ -34,8 +34,8 @@ public class CasFileTest {
         try {
 
             CasFile track01 = casList.get(0);
-            Assert.assertEquals("flapbi", track01.getName());
-            Assert.assertEquals(8208, track01.getSize());
+            assertEquals("flapbi", track01.getName());
+            assertEquals(8208, track01.getSize());
 
         } catch (Exception e) {
             e.printStackTrace();

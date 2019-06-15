@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 import static java.util.Arrays.*;
 
 class Params {
-    private static final String SPEEDS = "1200|2400|3600";
+    private static final String SPEEDS = "1200|2400|3000|3600";
 
     private List<ConvertFile> files;
 

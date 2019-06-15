@@ -147,7 +147,4 @@ public class Rom extends Wav {
                 0xD1, 0xED, 0xB0, 0xFB, 0xC9, 0x00
         };
     }
-
-
-
 }

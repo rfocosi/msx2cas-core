@@ -15,7 +15,9 @@ import org.junit.Test;
 
 import br.com.dod.vcas.exception.FlowException;
 
-import static java.lang.System.*;
+import static br.com.dod.vcas.AllTests.PROJECT_FOLDER;
+import static java.lang.System.getenv;
+import static java.lang.System.out;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -28,16 +30,16 @@ public class FileEncodingTest {
 
     @BeforeClass
     public static void generateFiles() throws FlowException, Exception {
-        Files.createDirectories(new File(AllTests.PROJECT_FOLDER + "/resources/generated/").toPath());
+        Files.createDirectories(new File(PROJECT_FOLDER + "/resources/generated/").toPath());
 
         files = new LinkedHashMap<>();
-        files.put(AllTests.PROJECT_FOLDER + "/resources/asciib.bas", "asciib");
-        files.put(AllTests.PROJECT_FOLDER + "/resources/ascunix.bas", "ascuni");
-        files.put(AllTests.PROJECT_FOLDER + "/resources/token.bas", "token");
-        files.put(AllTests.PROJECT_FOLDER + "/resources/flapbird.bin", "flap");
-        files.put(AllTests.PROJECT_FOLDER + "/resources/flapbird.cas", "flapc");
-        files.put(AllTests.PROJECT_FOLDER + "/resources/flapbird (rev.A).rom", "flapA");
-        files.put(AllTests.PROJECT_FOLDER + "/resources/flapbird (rev.B).rom", "flapB");
+        files.put(PROJECT_FOLDER + "/resources/asciib.bas", "asciib");
+        files.put(PROJECT_FOLDER + "/resources/ascunix.bas", "ascuni");
+        files.put(PROJECT_FOLDER + "/resources/token.bas", "token");
+        files.put(PROJECT_FOLDER + "/resources/flapbird.bin", "flap");
+        files.put(PROJECT_FOLDER + "/resources/flapbird.cas", "flapc");
+        files.put(PROJECT_FOLDER + "/resources/flapbird (rev.A).rom", "flapA");
+        files.put(PROJECT_FOLDER + "/resources/flapbird (rev.B).rom", "flapB");
 
         Files.list(getExtraTestResourcesPath())
                 .filter(path -> path.toString().endsWith(".rom")
@@ -109,18 +111,15 @@ public class FileEncodingTest {
 
                 fileTest(file, casName, sampleRate);
             }
-        } catch (FlowException fe) {
+        } catch (FlowException | Exception fe) {
             fe.printStackTrace();
-            fail();
-        } catch (Exception e) {
-            e.printStackTrace();
             fail();
         }
     }
 
     private void fileTest(String inputFileName, String fileId, SampleRate sampleRate) throws FlowException, Exception{
         byte[] wavFileBytes = new VirtualCas(sampleRate).convert(inputFileName).toBytes();
-        byte[] inputFileHandler = getFileBytes(AllTests.PROJECT_FOLDER + "/resources/generated/" + getWavFileName(fileId, sampleRate));
+        byte[] inputFileHandler = getFileBytes(PROJECT_FOLDER + "/resources/generated/" + getWavFileName(fileId, sampleRate));
 
         assertEquals(sampleRate.intValue() +" Error!", inputFileHandler.length, wavFileBytes.length);
 
@@ -135,7 +134,7 @@ public class FileEncodingTest {
     }
 
     private static void generateFile(String inputFileName, String fileId, SampleRate sampleRate) throws FlowException, Exception{
-        Path finalPath = new File(AllTests.PROJECT_FOLDER + "/resources/generated/"+ getWavFileName(fileId, sampleRate)).toPath();
+        Path finalPath = new File(PROJECT_FOLDER + "/resources/generated/"+ getWavFileName(fileId, sampleRate)).toPath();
 
         if (Files.notExists(finalPath) || forceGenerate ) {
             Files.deleteIfExists(finalPath);
@@ -143,7 +142,7 @@ public class FileEncodingTest {
 
             byte[] wavFile = new VirtualCas(sampleRate).convert(inputFileName).toBytes();
 
-            writeWav(wavFile, AllTests.PROJECT_FOLDER + "/resources/generated/"+finalPath.getFileName());
+            writeWav(wavFile, PROJECT_FOLDER + "/resources/generated/"+finalPath.getFileName());
 
         } else {
             out.println("File already exists: "+ finalPath.getFileName());
