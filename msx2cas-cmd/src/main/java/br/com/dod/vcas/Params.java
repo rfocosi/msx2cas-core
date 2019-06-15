@@ -87,15 +87,15 @@ class Params {
     }
 
     private static void displayUsage() {
-        System.out.println("Usage: vcas [-i] [-w [<output-file>]] <" + SPEEDS + "> <input-file> [<input-file>...]");
+        System.out.println("Usage: msx2cas [-i] [-w [<output-file>]] <" + SPEEDS + "> <input-file> [<input-file>...]");
         System.out.println(
-                "-i: Invert Wavform (fix playback on some soundboards)");
+                "-i: Invert Waveform (fix playback on some soundboards)");
         System.out.println(
                 "-w: Write a WAV file with <output-file> name OR with file token name (first 6 characters from <filename>)");
         System.out.println("<" + SPEEDS + ">: Playback speed in bps");
-        System.out.println("<input-file>: A ROM or BAS(tokenized or not) file");
+        System.out.println("<input-file>: A ROM or BAS(tokenize or not) file");
         System.out.println();
-        System.out.println("If you do not use -w, vcas will play to default sound interface");
+        System.out.println("If you do not use -w, MSX2Cas will play to default sound interface");
         System.exit(0);
     }
 

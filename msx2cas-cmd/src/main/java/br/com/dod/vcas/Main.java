@@ -108,7 +108,7 @@ public class Main extends JFrame implements NativeKeyListener {
         System.out.println("Playing: " + file.getFileId());
         System.out.println("Playback length: " + (clip.getFrameLength() / sampleRate.intValue()) + " seconds");
         System.out.println("Sample Rate: " + sampleRate.bps());
-        System.out.println("Wavform: " + (sampleRate.isInverted() ? "Inverted" : "Normal"));
+        System.out.println("Waveform: " + (sampleRate.isInverted() ? "Inverted" : "Normal"));
         System.out.println();
 
         if (keyListener) System.out.println("[SPACE] Start/Pause | [ESC] Stop | [HOME] Restart");
