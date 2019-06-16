@@ -16,6 +16,10 @@ public class FileCommons {
         return fileName.replaceFirst("(?:.*/)?(\\w{1," + CAS_FILENAME_LENGTH + "}).*", "$1");
     }
 
+    public static char[] getNameBuffer(String fileName) {
+        return String.format("%1$-" + CAS_FILENAME_LENGTH + "s", getCasName(fileName)).toCharArray();
+    }
+
     public static byte[] readFile(String inputFileName) throws FlowException {
         return readFile(new File(inputFileName));
     }

@@ -7,7 +7,7 @@ import br.com.dod.vcas.util.FileCommons;
 
 public class Rom extends Wav {
 
-    private static final long MAX_ENC_INPUTFILE_LENGTH = 16384;
+    static final long MAX_ENC_INPUT_FILE_LENGTH = 16384;
 
     private static final char[] romFileHeader = {0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0};
 
@@ -29,7 +29,7 @@ public class Rom extends Wav {
 
     @Override
     protected void validate() throws FlowException {
-        if (this.fileLength < MIN_ENC_INPUTFILE_LENGTH || this.fileLength > MAX_ENC_INPUTFILE_LENGTH) throw FlowException.error("file_size_invalid");
+        if (this.fileLength < MIN_ENC_INPUTFILE_LENGTH || this.fileLength > MAX_ENC_INPUT_FILE_LENGTH) throw FlowException.error("file_size_invalid");
     }
 
     @Override
@@ -42,8 +42,7 @@ public class Rom extends Wav {
         setMoreExtraBytes();
 
         if (nameBuffer.length > 1) {
-            char[] nameCharArray = nameBuffer[1].trim().toCharArray();
-            System.arraycopy(nameCharArray, 0, loader, 21, nameCharArray.length);
+            System.arraycopy(nameBuffer, 0, loader, 21, nameBuffer.length);
         }
     }
 

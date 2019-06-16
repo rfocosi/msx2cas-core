@@ -4,23 +4,25 @@ import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.SampleRate;
 
-public class Rom32K extends Rom {
+public class Rom49K extends Rom {
 
-    static final long MAX_ENC_INPUT_FILE_LENGTH = 32768L;
+    static final long MAX_ENC_INPUT_FILE_LENGTH = 50176;
 
-    private char[] nameBuffer1;
     private char[] loader1;
 
-    private char[] nameBuffer2;
     private char[] loader2;
 
-    public Rom32K(String inputFileName, SampleRate sampleRate) throws FlowException {
+    private char[] loader3;
+    private char[] nameBuffer1;
+    private char[] nameBuffer2;
+
+    public Rom49K(String inputFileName, SampleRate sampleRate) throws FlowException {
         super(inputFileName, sampleRate);
     }
 
     @Override
     protected void validate() throws FlowException {
-        if (this.fileLength < Rom.MAX_ENC_INPUT_FILE_LENGTH || this.fileLength > MAX_ENC_INPUT_FILE_LENGTH) throw FlowException.error("file_size_invalid");
+        if (this.fileLength < Rom32K.MAX_ENC_INPUT_FILE_LENGTH || this.fileLength > MAX_ENC_INPUT_FILE_LENGTH) throw FlowException.error("file_size_invalid");
     }
 
     @Override
@@ -38,11 +40,6 @@ public class Rom32K extends Rom {
         nameBuffer2 = String.format("%1$-" + CAS_FILENAME_LENGTH + "s", fileLoaderId.substring(0, fileLoaderIdCutSize) +"2").toCharArray();
 
         System.arraycopy(nameBuffer2, 0, loader1, 21, nameBuffer2.length);
-    }
-
-    @Override
-    public char[] getFileId() {
-        return nameBuffer1;
     }
 
     private char getRomTypeHeader() throws FlowException {

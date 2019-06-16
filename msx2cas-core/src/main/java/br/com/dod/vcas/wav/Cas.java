@@ -29,7 +29,7 @@ public class Cas extends Wav {
         CasFile firstFile = casList.get(0);
 
         this.fileHeader = firstFile.getHeader();
-        this.nameBuffer[0] = firstFile.getName();
+        this.nameBuffer = firstFile.getName().toCharArray();
         this.extraBytes = new DWORD(0);
 
         int remainingFiles = casList.size()-1; // The first file PAUSES are calculated on setDefaultHeader

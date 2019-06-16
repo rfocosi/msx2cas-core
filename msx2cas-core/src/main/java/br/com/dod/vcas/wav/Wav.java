@@ -47,7 +47,7 @@ public abstract class Wav {
     DWORD moreExtraBytes;
     char[] fileHeader;
 
-    String[] nameBuffer;
+    char[] nameBuffer;
 
     private WavHeader wavHeader;
     private StringBuilder outputBuffer;
@@ -81,7 +81,6 @@ public abstract class Wav {
 
     private void initVars(String inputFileName, SampleRate sampleRate, DWORD fileOffset, char[] fileHeaderId) {
 
-        nameBuffer = new String[1];
         wavHeader = new WavHeader();
         pureSampleShortHeaderLength = SHORT_HEADER_LENGTH;
 
@@ -90,11 +89,11 @@ public abstract class Wav {
 
         this.sampleRate = sampleRate;
 
-        this.nameBuffer[0] = String.format("%1$-" + CAS_FILENAME_LENGTH + "s", FileCommons.getCasName(inputFileName));
+        this.nameBuffer = FileCommons.getNameBuffer(inputFileName);
     }
 
-    public String getFileId() {
-        return nameBuffer[0];
+    public char[] getFileId() {
+        return nameBuffer;
     }
 
     public Wav convert() throws FlowException {
@@ -107,7 +106,7 @@ public abstract class Wav {
         encodeLongHeader();
 
         encodeData(fileHeader);
-        encodeData(nameBuffer[0].toCharArray());
+        encodeData(getFileId());
         encodePause(DEFAULT_PAUSE_LENGTH);
 
         encodeFileContent();
