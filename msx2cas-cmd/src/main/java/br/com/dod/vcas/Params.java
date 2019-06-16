@@ -14,6 +14,7 @@ import static java.util.Arrays.*;
 
 class Params {
     private static final String SPEEDS = "1200|2400|3000|3600";
+    private boolean resetRom;
 
     private List<ConvertFile> files;
 
@@ -46,6 +47,7 @@ class Params {
 
             boolean inverted = arguments.remove("-i");
             boolean write = arguments.remove("-w");
+            this.resetRom = arguments.remove("-r");
 
             String outputFileName = "";
             if (write) {
@@ -87,9 +89,11 @@ class Params {
     }
 
     private static void displayUsage() {
-        System.out.println("Usage: msx2cas [-i] [-w [<output-file>]] <" + SPEEDS + "> <input-file> [<input-file>...]");
+        System.out.println("Usage: msx2cas [-i] [-r] [-w [<output-file>]] <" + SPEEDS + "> <input-file> [<input-file>...]");
         System.out.println(
                 "-i: Invert Waveform (fix playback on some soundboards)");
+        System.out.println(
+                "-r: Reset MSX after loading a ROM");
         System.out.println(
                 "-w: Write a WAV file with <output-file> name OR with file token name (first 6 characters from <filename>)");
         System.out.println("<" + SPEEDS + ">: Playback speed in bps");
@@ -101,5 +105,9 @@ class Params {
 
     List<ConvertFile> getFiles() {
         return files;
+    }
+
+    public boolean resetRom() {
+        return this.resetRom;
     }
 }

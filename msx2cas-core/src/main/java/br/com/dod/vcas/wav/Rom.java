@@ -22,6 +22,11 @@ public class Rom extends Wav {
         return (FileCommons.readFile(inputFileName).length > 25000) ? new Rom32K(inputFileName, sampleRate) : new Rom(inputFileName, sampleRate);
     }
 
+    public Wav convert(boolean reset) throws FlowException {
+        this.reset = reset;
+        return super.convert();
+    }
+
     @Override
     protected void validate() throws FlowException {
         if (this.fileLength < MIN_ENC_INPUTFILE_LENGTH || this.fileLength > MAX_ENC_INPUTFILE_LENGTH) throw FlowException.error("file_size_invalid");
@@ -62,11 +67,9 @@ public class Rom extends Wav {
 
     private void setMoreExtraBytes() {
 
-        DWORD moreExtraBytes = new DWORD(((sampleRate.intValue() * FIRST_PAUSE_LENGTH) + (sampleRate.intValue() * DEFAULT_PAUSE_LENGTH) +
+        this.moreExtraBytes = new DWORD(((sampleRate.intValue() * FIRST_PAUSE_LENGTH) + (sampleRate.intValue() * DEFAULT_PAUSE_LENGTH) +
                 Math.round(sampleRate.intValue() * LONG_HEADER_LENGTH + sampleRate.intValue() * SHORT_HEADER_LENGTH) +
                 (fileHeader.length + CAS_FILENAME_LENGTH) * Math.round(sampleRate.sampleScale() * SIZE_OF_BITSTREAM * sampleRate.bitEncodingLength())));
-
-        this.moreExtraBytes = moreExtraBytes;
     }
 
     @Override
@@ -94,8 +97,8 @@ public class Rom extends Wav {
 
             encodeData(addressBuffer);
 
-            for (int i = 0; i < blockSize; i++)	{
-                writeDataByte((char) inputMemPointer[i]);
+            for (byte b : inputMemPointer) {
+                writeDataByte((char) b);
             }
         }
     }

@@ -1,8 +1,5 @@
 package br.com.dod.vcas;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -22,6 +19,7 @@ public class VirtualCas {
     private List<String> fileList;
 
     private SampleRate sampleRate;
+    private boolean reset;
 
     public VirtualCas(SampleRate sampleRate) {
         this.fileList = new LinkedList<>();
@@ -31,6 +29,11 @@ public class VirtualCas {
 
     public VirtualCas addFile(String filePath) {
         this.fileList.add(filePath);
+        return this;
+    }
+
+    public VirtualCas resetRom(boolean reset) {
+        this.reset = reset;
         return this;
     }
 
@@ -59,7 +62,7 @@ public class VirtualCas {
                     wavList.add(new Cas(fileName, sampleRate).convert());
                     break;
                 case ROM:
-                    wavList.add(Rom.build(fileName, sampleRate).convert());
+                    wavList.add(Rom.build(fileName, sampleRate).convert(reset));
                     break;
                 default:
                     wavList.add(new Ascii(fileName, sampleRate).convert());
