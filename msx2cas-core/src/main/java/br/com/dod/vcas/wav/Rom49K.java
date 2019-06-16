@@ -3,18 +3,19 @@ package br.com.dod.vcas.wav;
 import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.SampleRate;
+import br.com.dod.vcas.util.FileCommons;
 
 public class Rom49K extends Rom {
 
     static final long MAX_ENC_INPUT_FILE_LENGTH = 50176;
 
     private char[] loader1;
-
     private char[] loader2;
-
     private char[] loader3;
+
     private char[] nameBuffer1;
     private char[] nameBuffer2;
+    private char[] nameBuffer3;
 
     public Rom49K(String inputFileName, SampleRate sampleRate) throws FlowException {
         super(inputFileName, sampleRate);
@@ -36,10 +37,17 @@ public class Rom49K extends Rom {
 
         String fileLoaderId = String.valueOf(nameBuffer).trim();
         int fileLoaderIdCutSize = (fileLoaderId.length() >= CAS_FILENAME_LENGTH ? CAS_FILENAME_LENGTH - 1 : fileLoaderId.length());
-        nameBuffer1 = String.format("%1$-" + CAS_FILENAME_LENGTH + "s", fileLoaderId.substring(0, fileLoaderIdCutSize) +"1").toCharArray();
-        nameBuffer2 = String.format("%1$-" + CAS_FILENAME_LENGTH + "s", fileLoaderId.substring(0, fileLoaderIdCutSize) +"2").toCharArray();
+        nameBuffer1 = FileCommons.getNameBuffer(fileLoaderId.substring(0, fileLoaderIdCutSize) +"1");
+        nameBuffer2 = FileCommons.getNameBuffer(fileLoaderId.substring(0, fileLoaderIdCutSize) +"2");
+        nameBuffer3 = FileCommons.getNameBuffer(fileLoaderId.substring(0, fileLoaderIdCutSize) +"3");
 
         System.arraycopy(nameBuffer2, 0, loader1, 21, nameBuffer2.length);
+        System.arraycopy(nameBuffer3, 0, loader2, 21, nameBuffer3.length);
+    }
+
+    @Override
+    public char[] getFileId() {
+        return nameBuffer1;
     }
 
     private char getRomTypeHeader() throws FlowException {
@@ -52,7 +60,7 @@ public class Rom49K extends Rom {
 
         DWORD extraBytes = new DWORD(6);
 
-        extraBytes = new DWORD((extraBytes.longValue() + loader1.length + loader2.length + 12));
+        extraBytes = new DWORD((extraBytes.longValue() + loader1.length + loader2.length +loader3.length + 12));
 
         this.extraBytes = extraBytes;
     }

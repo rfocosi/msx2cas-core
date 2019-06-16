@@ -3,15 +3,16 @@ package br.com.dod.vcas.wav;
 import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.SampleRate;
+import br.com.dod.vcas.util.FileCommons;
 
 public class Rom32K extends Rom {
 
     static final long MAX_ENC_INPUT_FILE_LENGTH = 32768L;
 
     private char[] nameBuffer1;
-    private char[] loader1;
-
     private char[] nameBuffer2;
+
+    private char[] loader1;
     private char[] loader2;
 
     public Rom32K(String inputFileName, SampleRate sampleRate) throws FlowException {
@@ -34,8 +35,8 @@ public class Rom32K extends Rom {
 
         String fileLoaderId = String.valueOf(nameBuffer).trim();
         int fileLoaderIdCutSize = (fileLoaderId.length() >= CAS_FILENAME_LENGTH ? CAS_FILENAME_LENGTH - 1 : fileLoaderId.length());
-        nameBuffer1 = String.format("%1$-" + CAS_FILENAME_LENGTH + "s", fileLoaderId.substring(0, fileLoaderIdCutSize) +"1").toCharArray();
-        nameBuffer2 = String.format("%1$-" + CAS_FILENAME_LENGTH + "s", fileLoaderId.substring(0, fileLoaderIdCutSize) +"2").toCharArray();
+        nameBuffer1 = FileCommons.getNameBuffer(fileLoaderId.substring(0, fileLoaderIdCutSize) +"1");
+        nameBuffer2 = FileCommons.getNameBuffer(fileLoaderId.substring(0, fileLoaderIdCutSize) +"2");
 
         System.arraycopy(nameBuffer2, 0, loader1, 21, nameBuffer2.length);
     }
