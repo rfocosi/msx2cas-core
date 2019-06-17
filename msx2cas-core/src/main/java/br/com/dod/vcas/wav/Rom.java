@@ -131,8 +131,16 @@ public class Rom extends Wav {
         a = (char) (a + blockEnd - blockStart);
         loader[5] = a;
         loader[6] = (char)(a >> 8);
-        loader[7] = (char)inputMemPointer[2];
-        loader[8] = (char)inputMemPointer[3];
+        if ((char) inputMemPointer[0] == 'A' && (char) inputMemPointer[1] == 'B')
+        {
+            loader[7] = (char) inputMemPointer[2];
+            loader[8] = (char) inputMemPointer[3];
+        }
+		else if ((char) inputMemPointer[0x4000] == 'A' && (char) inputMemPointer[0x4001] == 'B')
+        {
+            loader[7] = (char) inputMemPointer[0x4002];
+            loader[8] = (char) inputMemPointer[0x4003];
+        }
         loader[9] = romCRC;
 
         encodeData(loader);

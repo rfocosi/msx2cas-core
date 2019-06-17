@@ -27,6 +27,9 @@ public class Rom49K extends Rom {
 
     @Override
     protected void validate() throws FlowException {
+        if (((char) inputMemPointer[0] != 'A' && (char) inputMemPointer[1] != 'B')
+                && ((char) inputMemPointer[0x4000] != 'A' && (char) inputMemPointer[0x4001] != 'B')) throw FlowException.error("invalid_file_format");
+
         if (!matchSize(this.fileLength)) throw FlowException.error("file_size_invalid");
     }
 
@@ -54,19 +57,8 @@ public class Rom49K extends Rom {
         return nameBuffer1;
     }
 
-    private char getRomTypeHeader() throws FlowException {
-        char ch = (char) inputMemPointer[3];
-        if ((ch & 0xf0) >= 0xD0) throw FlowException.error("type_32k_not_supported");
-        return ch;
-    }
-
     private void setExtraBytes() {
-
-        DWORD extraBytes = new DWORD(6);
-
-        extraBytes = new DWORD((extraBytes.longValue() + loader1.length + loader2.length + loader3.length + 12));
-
-        this.extraBytes = extraBytes;
+        this.extraBytes = new DWORD((167 + loader1.length + loader2.length + loader3.length + 12));
     }
     private void setMoreExtraBytes() {
 
@@ -76,7 +68,7 @@ public class Rom49K extends Rom {
 
         moreExtraBytes = new DWORD((moreExtraBytes.longValue() + (sampleRate.intValue() * FIRST_PAUSE_LENGTH) + (sampleRate.intValue() * DEFAULT_PAUSE_LENGTH) +
                 Math.round(sampleRate.intValue() * LONG_HEADER_LENGTH + sampleRate.intValue() * SHORT_HEADER_LENGTH) +
-                (fileHeader.length + CAS_FILENAME_LENGTH - new DWORD(0).longValue()) * Math.round(sampleRate.sampleScale() * SIZE_OF_BITSTREAM * sampleRate.bitEncodingLength())));
+                (fileHeader.length + CAS_FILENAME_LENGTH) * Math.round(sampleRate.sampleScale() * SIZE_OF_BITSTREAM * sampleRate.bitEncodingLength())) * 2);
 
         this.moreExtraBytes = moreExtraBytes;
     }
@@ -84,12 +76,9 @@ public class Rom49K extends Rom {
     @Override
     protected void encodeFileContent() throws FlowException {
 
-        char headId = getRomTypeHeader();
+        char headId = 0;
 
-        if (headId > 0x80) headId = 0x40;
-        else if (headId < 0x40) headId = 0;
-
-        encodeRomBlock(headId, 0, 16384, loader1);
+        encodeRomBlock(headId, 0, (int) Rom.MAX_ENC_INPUT_FILE_LENGTH, loader1);
 
         encodePause(FIRST_PAUSE_LENGTH);
 
@@ -100,7 +89,7 @@ public class Rom49K extends Rom {
 
         encodePause(DEFAULT_PAUSE_LENGTH);
 
-        encodeRomBlock(headId, 16384, 32768, loader2);
+        encodeRomBlock(headId, (int) Rom.MAX_ENC_INPUT_FILE_LENGTH, (int) Rom32K.MAX_ENC_INPUT_FILE_LENGTH, loader2);
 
         encodePause(FIRST_PAUSE_LENGTH);
 
@@ -111,7 +100,7 @@ public class Rom49K extends Rom {
 
         encodePause(DEFAULT_PAUSE_LENGTH);
 
-        encodeRomBlock(headId, 32768, inputMemPointer.length, loader3);
+        encodeRomBlock(headId, (int) Rom32K.MAX_ENC_INPUT_FILE_LENGTH, inputMemPointer.length, loader3);
     }
 
     private void initLoader() {
