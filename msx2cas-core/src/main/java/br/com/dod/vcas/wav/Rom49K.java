@@ -56,11 +56,6 @@ public class Rom49K extends Rom {
         System.arraycopy(nameBuffer3, 0, loader2, 21, nameBuffer3.length);
     }
 
-    @Override
-    public char[] getFileId() {
-        return nameBuffer0;
-    }
-
     private void setExtraBytes() {
         this.extraBytes = new DWORD((preloader.length + 6 + loader1.length + loader2.length + loader3.length + 12));
     }
@@ -82,6 +77,15 @@ public class Rom49K extends Rom {
     protected void encodeFileContent() throws FlowException {
 
         char headId = 0;
+
+        encodePause(FIRST_PAUSE_LENGTH);
+
+        encodeLongHeader();
+
+        encodeData(fileHeader);
+        encodeData(nameBuffer0);
+
+        encodePause(DEFAULT_PAUSE_LENGTH);
 
         encodeRomBlock(headId, 0, preloader.length, preloader);
 

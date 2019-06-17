@@ -50,6 +50,15 @@ public class Cas extends Wav {
     @Override
     protected void encodeFileContent() {
 
+        encodePause(FIRST_PAUSE_LENGTH);
+
+        encodeLongHeader();
+
+        encodeData(fileHeader);
+        encodeData(nameBuffer);
+
+        encodePause(DEFAULT_PAUSE_LENGTH);
+
         CasFile firstFile = casList.get(0);
 
         encodeShortHeader();

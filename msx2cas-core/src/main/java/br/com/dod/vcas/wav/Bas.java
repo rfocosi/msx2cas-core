@@ -25,6 +25,16 @@ public class Bas extends Wav {
 
     @Override
     protected void encodeFileContent() {
+
+        encodePause(FIRST_PAUSE_LENGTH);
+
+        encodeLongHeader();
+
+        encodeData(fileHeader);
+        encodeData(nameBuffer);
+
+        encodePause(DEFAULT_PAUSE_LENGTH);
+
         encodeShortHeader();
 
         for (int i = fileOffset.intValue(); i < inputMemPointer.length; i++) {

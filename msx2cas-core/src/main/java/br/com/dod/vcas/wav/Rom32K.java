@@ -45,11 +45,6 @@ public class Rom32K extends Rom {
         System.arraycopy(nameBuffer2, 0, loader1, 21, nameBuffer2.length);
     }
 
-    @Override
-    public char[] getFileId() {
-        return nameBuffer1;
-    }
-
     private char getRomTypeHeader() throws FlowException {
         char ch = (char) inputMemPointer[3];
         if ((ch & 0xf0) >= 0xD0) throw FlowException.error("type_32k_not_supported");
@@ -84,6 +79,15 @@ public class Rom32K extends Rom {
 
         if (headId > 0x80) headId = 0x40;
         else if (headId < 0x40) headId = 0;
+
+        encodePause(FIRST_PAUSE_LENGTH);
+
+        encodeLongHeader();
+
+        encodeData(fileHeader);
+        encodeData(nameBuffer1);
+
+        encodePause(DEFAULT_PAUSE_LENGTH);
 
         encodeRomBlock(headId, 0, 16384, loader1);
 

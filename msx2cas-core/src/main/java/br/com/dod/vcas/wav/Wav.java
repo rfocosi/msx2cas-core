@@ -92,22 +92,11 @@ public abstract class Wav {
         this.nameBuffer = FileCommons.getNameBuffer(inputFileName);
     }
 
-    public char[] getFileId() {
-        return nameBuffer;
-    }
-
     public Wav convert() throws FlowException {
         validate();
         setup();
 
         setDefaultHeader();
-
-        encodePause(FIRST_PAUSE_LENGTH);
-        encodeLongHeader();
-
-        encodeData(fileHeader);
-        encodeData(getFileId());
-        encodePause(DEFAULT_PAUSE_LENGTH);
 
         encodeFileContent();
 

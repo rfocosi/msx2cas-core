@@ -88,9 +88,19 @@ public class Rom extends Wav {
 
     @Override
     protected void encodeFileContent() throws FlowException {
+
         int blockSize = inputMemPointer.length;
 
         char headId = getRomTypeHeader();
+
+        encodePause(FIRST_PAUSE_LENGTH);
+
+        encodeLongHeader();
+
+        encodeData(fileHeader);
+        encodeData(nameBuffer);
+
+        encodePause(DEFAULT_PAUSE_LENGTH);
 
         if (headId < 0x80) {
             encodeRomBlock(headId, 0, blockSize, loader);

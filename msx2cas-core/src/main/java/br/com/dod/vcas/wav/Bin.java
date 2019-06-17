@@ -34,6 +34,15 @@ public class Bin extends Wav {
     @Override
     protected void encodeFileContent() throws FlowException {
 
+        encodePause(FIRST_PAUSE_LENGTH);
+
+        encodeLongHeader();
+
+        encodeData(fileHeader);
+        encodeData(nameBuffer);
+
+        encodePause(DEFAULT_PAUSE_LENGTH);
+
         encodeShortHeader();
 
         encodeData(buildBinaryAddressBuffer(sizeof(loader) + inputMemPointer.length - fileOffset.longValue()));
