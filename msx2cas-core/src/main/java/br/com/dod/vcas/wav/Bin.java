@@ -16,7 +16,7 @@ public class Bin extends Wav {
 
     @Override
     protected void validate() throws FlowException {
-        if (this.fileLength < MIN_ENC_INPUTFILE_LENGTH) throw FlowException.error("file_size_invalid");
+        if (this.fileLength < MIN_ENC_INPUT_FILE_LENGTH) throw FlowException.error("file_size_invalid");
     }
 
     @Override

@@ -19,9 +19,13 @@ public class Rom32K extends Rom {
         super(inputFileName, sampleRate);
     }
 
+    static boolean matchSize(final long fileSize) {
+        return (fileSize > Rom.MAX_ENC_INPUT_FILE_LENGTH && fileSize <= MAX_ENC_INPUT_FILE_LENGTH);
+    }
+
     @Override
     protected void validate() throws FlowException {
-        if (this.fileLength < Rom.MAX_ENC_INPUT_FILE_LENGTH || this.fileLength > MAX_ENC_INPUT_FILE_LENGTH) throw FlowException.error("file_size_invalid");
+        if (!matchSize(this.fileLength)) throw FlowException.error("file_size_invalid");
     }
 
     @Override

@@ -11,7 +11,7 @@ import br.com.dod.vcas.exception.FlowException;
 
 public abstract class Wav {
 
-    static final long MIN_ENC_INPUTFILE_LENGTH = 5L;
+    static final long MIN_ENC_INPUT_FILE_LENGTH = 5L;
     static final int CAS_FILENAME_LENGTH = FileCommons.CAS_FILENAME_LENGTH;
 
     private static final char START_BIT = 0;

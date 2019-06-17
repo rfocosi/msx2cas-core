@@ -19,7 +19,18 @@ public class Rom extends Wav {
     }
 
     public static Rom build(String inputFileName, SampleRate sampleRate) throws FlowException {
-        return (FileCommons.readFile(inputFileName).length > 25000) ? new Rom32K(inputFileName, sampleRate) : new Rom(inputFileName, sampleRate);
+
+        long fileSize = FileCommons.readFile(inputFileName).length;
+
+        if (Rom.matchSize(fileSize)) {
+            return new Rom(inputFileName, sampleRate);
+        } else if (Rom32K.matchSize(fileSize)) {
+            return new Rom32K(inputFileName, sampleRate);
+        } else if (Rom49K.matchSize(fileSize)) {
+            return new Rom49K(inputFileName, sampleRate);
+        }
+
+        throw FlowException.error("file_size_invalid");
     }
 
     public Wav convert(boolean reset) throws FlowException {
@@ -27,9 +38,13 @@ public class Rom extends Wav {
         return super.convert();
     }
 
+    static boolean matchSize(final long fileSize) {
+        return (fileSize > MIN_ENC_INPUT_FILE_LENGTH && fileSize <= MAX_ENC_INPUT_FILE_LENGTH);
+    }
+
     @Override
     protected void validate() throws FlowException {
-        if (this.fileLength < MIN_ENC_INPUTFILE_LENGTH || this.fileLength > MAX_ENC_INPUT_FILE_LENGTH) throw FlowException.error("file_size_invalid");
+        if (!matchSize(this.fileLength)) throw FlowException.error("file_size_invalid");
     }
 
     @Override
