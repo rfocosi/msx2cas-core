@@ -51,7 +51,7 @@ public class Rom49K extends Rom {
         nameBuffer2 = FileCommons.getNameBuffer(fileLoaderId.substring(0, fileLoaderIdCutSize) +"2");
         nameBuffer3 = FileCommons.getNameBuffer(fileLoaderId.substring(0, fileLoaderIdCutSize) +"3");
 
-        System.arraycopy(nameBuffer0, 0, preloader, 14, nameBuffer0.length);
+        System.arraycopy(nameBuffer1, 0, preloader, 14, nameBuffer1.length);
         System.arraycopy(nameBuffer2, 0, loader1, 21, nameBuffer2.length);
         System.arraycopy(nameBuffer3, 0, loader2, 21, nameBuffer3.length);
     }

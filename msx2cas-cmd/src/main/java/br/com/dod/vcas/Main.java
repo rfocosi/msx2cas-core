@@ -105,7 +105,7 @@ public class Main extends JFrame implements NativeKeyListener {
 
         clip.open(AudioSystem.getAudioInputStream(new ByteArrayInputStream(file.toBytes())));
 
-        System.out.println("Playing: " + String.valueOf(file.getFileId()));
+//        System.out.println("Playing: " + String.valueOf(file.getFileId()));
         System.out.println("Playback length: " + (clip.getFrameLength() / sampleRate.intValue()) + " seconds");
         System.out.println("Sample Rate: " + sampleRate.bps());
         System.out.println("Waveform: " + (sampleRate.isInverted() ? "Inverted" : "Normal"));
