@@ -73,6 +73,14 @@ public class Rom49K extends Rom {
         this.moreExtraBytes = moreExtraBytes;
     }
 
+    private void encodePreLoaderBLock(char[] preloader) {
+        encodeShortHeader();
+
+        encodeData(buildBinaryAddressBuffer(sizeof(preloader)));
+
+        encodeData(preloader);
+    }
+
     @Override
     protected void encodeFileContent() throws FlowException {
 
@@ -87,7 +95,7 @@ public class Rom49K extends Rom {
 
         encodePause(DEFAULT_PAUSE_LENGTH);
 
-        encodeRomBlock(headId, 0, preloader.length, preloader);
+        encodePreLoaderBLock(preloader);
 
         encodePause(FIRST_PAUSE_LENGTH);
 
