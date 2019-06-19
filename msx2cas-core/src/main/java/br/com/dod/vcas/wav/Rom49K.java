@@ -57,18 +57,18 @@ public class Rom49K extends Rom {
     }
 
     private void setExtraBytes() {
-        this.extraBytes = new DWORD((preloader.length + 6 + loader1.length + loader2.length + loader3.length + 12));
+        this.extraBytes = new DWORD((sizeof(preloader) + sizeof(loader1) + sizeof(loader2) + sizeof(loader3) + 18));
     }
 
     private void setMoreExtraBytes() {
 
         DWORD moreExtraBytes = new DWORD(((sampleRate.intValue() * FIRST_PAUSE_LENGTH) + (sampleRate.intValue() * DEFAULT_PAUSE_LENGTH) +
                 Math.round(sampleRate.intValue() * LONG_HEADER_LENGTH + sampleRate.intValue() * SHORT_HEADER_LENGTH) +
-                (fileHeader.length + CAS_FILENAME_LENGTH) * Math.round(sampleRate.sampleScale() * SIZE_OF_BITSTREAM * sampleRate.bitEncodingLength())));
+                (sizeof(fileHeader) + CAS_FILENAME_LENGTH) * Math.round(sampleRate.sampleScale() * SIZE_OF_BITSTREAM * sampleRate.bitEncodingLength())));
 
-        moreExtraBytes = new DWORD((moreExtraBytes.longValue() + (sampleRate.intValue() * FIRST_PAUSE_LENGTH) + (sampleRate.intValue() * DEFAULT_PAUSE_LENGTH) +
+        moreExtraBytes = new DWORD(moreExtraBytes.longValue() + (sampleRate.intValue() * FIRST_PAUSE_LENGTH) + (sampleRate.intValue() * DEFAULT_PAUSE_LENGTH) +
                 Math.round(sampleRate.intValue() * LONG_HEADER_LENGTH + sampleRate.intValue() * SHORT_HEADER_LENGTH) +
-                (fileHeader.length + CAS_FILENAME_LENGTH) * Math.round(sampleRate.sampleScale() * SIZE_OF_BITSTREAM * sampleRate.bitEncodingLength())) * 2);
+                (sizeof(fileHeader) + CAS_FILENAME_LENGTH) * Math.round(sampleRate.sampleScale() * SIZE_OF_BITSTREAM * sampleRate.bitEncodingLength()) * 2 );
 
         this.moreExtraBytes = moreExtraBytes;
     }
@@ -97,6 +97,8 @@ public class Rom49K extends Rom {
 
         encodePreLoaderBLock(preloader);
 
+        // 1st block
+
         encodePause(FIRST_PAUSE_LENGTH);
 
         encodeLongHeader();
@@ -108,6 +110,8 @@ public class Rom49K extends Rom {
 
         encodeRomBlock(headId, 0, (int) Rom.MAX_ENC_INPUT_FILE_LENGTH, loader1);
 
+        // 2nd block
+
         encodePause(FIRST_PAUSE_LENGTH);
 
         encodeLongHeader();
@@ -118,6 +122,8 @@ public class Rom49K extends Rom {
         encodePause(DEFAULT_PAUSE_LENGTH);
 
         encodeRomBlock(headId, (int) Rom.MAX_ENC_INPUT_FILE_LENGTH, (int) Rom32K.MAX_ENC_INPUT_FILE_LENGTH, loader2);
+
+        // 3rd block
 
         encodePause(FIRST_PAUSE_LENGTH);
 
