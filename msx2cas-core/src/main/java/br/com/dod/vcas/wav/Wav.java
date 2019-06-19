@@ -40,7 +40,7 @@ public abstract class Wav {
 
     SampleRate sampleRate;
 
-    double pureSampleShortHeaderLength;
+    long lengthOfHeaders;
 
     DWORD extraBytes;
     DWORD fileOffset;
@@ -82,7 +82,7 @@ public abstract class Wav {
     private void initVars(String inputFileName, SampleRate sampleRate, DWORD fileOffset, char[] fileHeaderId) {
 
         wavHeader = new WavHeader();
-        pureSampleShortHeaderLength = SHORT_HEADER_LENGTH;
+        lengthOfHeaders = Math.round(sampleRate.intValue() * (LONG_HEADER_LENGTH + SHORT_HEADER_LENGTH));
 
         this.fileOffset = fileOffset;
         this.fileHeader = fileHeaderId;
@@ -123,7 +123,7 @@ public abstract class Wav {
         wavHeader.SamplesPerSec = new DWORD(sampleRate.intValue());
 
         wavHeader.PureSampleLength = new DWORD((sampleRate.intValue() * (FIRST_PAUSE_LENGTH + DEFAULT_PAUSE_LENGTH + DEFAULT_PAUSE_LENGTH)) + // Length of pauses
-                Math.round(sampleRate.intValue() * (LONG_HEADER_LENGTH + pureSampleShortHeaderLength)) +	// Length of headers
+                lengthOfHeaders +
                 ((sizeof(fileHeader) + CAS_FILENAME_LENGTH + fileLength + extraBytes.longValue() - fileOffset.longValue()) * Math.round(sampleRate.sampleScale() * SIZE_OF_BITSTREAM * sampleRate.bitEncodingLength())) + // Length of data
                 moreExtraBytes.longValue());
 

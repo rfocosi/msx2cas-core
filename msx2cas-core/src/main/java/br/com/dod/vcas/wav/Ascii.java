@@ -32,7 +32,7 @@ public class Ascii extends Wav {
             }
         }
 
-        this.pureSampleShortHeaderLength = SHORT_HEADER_LENGTH * b;
+        this.lengthOfHeaders =  Math.round(sampleRate.intValue() * (LONG_HEADER_LENGTH + SHORT_HEADER_LENGTH * b));
 
         this.extraBytes = new DWORD(256);
         this.moreExtraBytes = new DWORD(0);

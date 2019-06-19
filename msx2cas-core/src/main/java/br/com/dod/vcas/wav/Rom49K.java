@@ -40,6 +40,8 @@ public class Rom49K extends Rom {
 
         initLoader();
 
+        this.lengthOfHeaders =  Math.round(sampleRate.intValue() * LONG_HEADER_LENGTH + sampleRate.intValue() * SHORT_HEADER_LENGTH);
+
         setExtraBytes();
 
         setMoreExtraBytes();
