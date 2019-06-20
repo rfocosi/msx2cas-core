@@ -32,6 +32,9 @@ public class Rom49K extends Rom {
         if (((char) inputMemPointer[0] != 'A' && (char) inputMemPointer[1] != 'B')
                 && ((char) inputMemPointer[0x4000] != 'A' && (char) inputMemPointer[0x4001] != 'B')) throw FlowException.error("invalid_file_format");
 
+        if ((char) inputMemPointer[3] >= 0x40 && (char) inputMemPointer[0x4000] != 'A'
+                && (char) inputMemPointer[0x4001] != 'B') throw FlowException.error("mappers_not_supported");
+
         if (!matchSize(this.fileLength)) throw FlowException.error("file_size_invalid");
     }
 
