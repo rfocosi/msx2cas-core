@@ -3,38 +3,22 @@ package br.com.dod.vcas.wav;
 import java.util.LinkedList;
 import java.util.List;
 
-import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.exception.FlowException;
+import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.model.SampleRate;
 
 public class Ascii extends Wav {
 
-    private static final char[] asciiFileHeader = {0xea, 0xea, 0xea, 0xea, 0xea, 0xea, 0xea, 0xea, 0xea, 0xea};
-
     public Ascii(String inputFileName, SampleRate sampleRate) throws FlowException {
-        super(inputFileName, sampleRate, new DWORD(0), asciiFileHeader);
+        super(inputFileName, sampleRate);
+        setup();
     }
 
-    @Override
-    protected void validate() throws FlowException {
-        if (this.fileLength < MIN_ENC_INPUT_FILE_LENGTH) throw FlowException.error("file_size_invalid");
-    }
-
-    @Override
-    protected void setup() throws FlowException {
-
-        int b = 1;
-        if (this.fileLength > 256) {
-            long inputFileLengthTmp = this.fileLength;
-            for (b = 2; ; b++) {
-                inputFileLengthTmp = inputFileLengthTmp - 256;
-                if (inputFileLengthTmp <= 256) break;
-            }
-        }
+    private void setup() throws FlowException {
 
         fixFileNewLines();
 
-        for (int i = 0; i < this.fileLength; i++) {
+        for (int i = 0; i < getFileSize(); i++) {
             if (inputMemPointer[i] == 0xa && inputMemPointer[i-1] != 0xd) {
                 throw FlowException.error("wrong_char_sequence");
             }
@@ -57,8 +41,8 @@ public class Ascii extends Wav {
 
         encodeLongHeader();
 
-        encodeData(fileHeader);
-        encodeData(nameBuffer);
+        encodeData(FileType.ASCII.getHeader());
+        encodeData(getNameBuffer());
 
         encodePause(DEFAULT_PAUSE_LENGTH);
 
@@ -68,7 +52,7 @@ public class Ascii extends Wav {
         if (fileLength <= b) b = fileLength;
 
         // Encode 256 bytes + header chunks of data
-        for (int i = fileOffset.intValue(); ; i += 256) {
+        for (int i = 0; ; i += 256) {
             encodeShortHeader();
 
             // Encode 256 (or less) bytes

@@ -43,7 +43,7 @@ public class VirtualCas {
 
     public Wav convert(List<CasFile> casList) throws FlowException {
         if (casList == null || casList.size() < 1) throw FlowException.error("cas_list_empty");
-        Wav wav = new Cas(casList.get(0).getName(), sampleRate, casList);
+        Wav wav = new Cas(casList, sampleRate);
         return wav.convert();
     }
 

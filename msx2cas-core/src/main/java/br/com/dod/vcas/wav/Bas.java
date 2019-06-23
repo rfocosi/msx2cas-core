@@ -1,24 +1,13 @@
 package br.com.dod.vcas.wav;
 
-import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.exception.FlowException;
+import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.model.SampleRate;
 
 public class Bas extends Wav {
 
-    private static final char[] basicFileHeader = {0xd3, 0xd3, 0xd3, 0xd3, 0xd3, 0xd3, 0xd3, 0xd3, 0xd3, 0xd3};
-
     public Bas(String inputFileName, SampleRate sampleRate) throws FlowException {
-        super(inputFileName, sampleRate, new DWORD(1), basicFileHeader);
-    }
-
-    @Override
-    protected void validate() throws FlowException {
-        if (this.fileLength < MIN_ENC_INPUT_FILE_LENGTH) throw FlowException.error("file_size_invalid");
-    }
-
-    @Override
-    void setup() throws FlowException {
+        super(inputFileName, sampleRate);
     }
 
     @Override
@@ -28,14 +17,14 @@ public class Bas extends Wav {
 
         encodeLongHeader();
 
-        encodeData(fileHeader);
-        encodeData(nameBuffer);
+        encodeData(FileType.BAS.getHeader());
+        encodeData(getNameBuffer());
 
         encodePause(DEFAULT_PAUSE_LENGTH);
 
         encodeShortHeader();
 
-        for (int i = fileOffset.intValue(); i < inputMemPointer.length; i++) {
+        for (int i = 1; i < inputMemPointer.length; i++) {
             writeDataByte((char)inputMemPointer[i]);
         }
 

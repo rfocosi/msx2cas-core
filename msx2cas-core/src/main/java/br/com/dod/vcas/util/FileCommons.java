@@ -7,9 +7,9 @@ import java.io.IOException;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.FileType;
 
-public class FileCommons {
+import static br.com.dod.vcas.wav.Wav.CAS_FILENAME_LENGTH;
 
-    public static final int CAS_FILENAME_LENGTH = 6;
+public class FileCommons {
 
     public static String getCasName(String fileName) {
         fileName = fileName.replaceFirst(".+/", "").replaceAll("[^.\\w]", "");
@@ -51,26 +51,10 @@ public class FileCommons {
             fileType = FileType.BAS;
         } else if (FileType.BIN.equals(fileName)) {
             fileType = FileType.BIN;
-        } else if (fileName.toLowerCase().endsWith(".rom") ||
-                fileName.toLowerCase().endsWith(".mx1") ||
-                fileName.toLowerCase().endsWith(".mx2")) {
+        } else if (FileType.ROM.equals(fileName)) {
             fileType = FileType.ROM;
         }
         return fileType;
 
-    }
-
-    public static FileType detectFile(byte[] inputHandler) {
-        FileType fileType = FileType.ASCII;
-
-        if (FileType.CAS.equals(inputHandler)) {
-            fileType = FileType.CAS;
-        } else if (FileType.BAS.equals(inputHandler)) {
-            fileType = FileType.BAS;
-        } else if (FileType.BIN.equals(inputHandler)) {
-            fileType = FileType.BIN;
-        }
-
-        return fileType;
     }
 }

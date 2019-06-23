@@ -1,18 +1,15 @@
 package br.com.dod.vcas.wav;
 
-import java.util.List;
-
-import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.model.SampleRate;
 import br.com.dod.vcas.util.FileCommons;
 import br.com.dod.vcas.util.WavHeader;
-import br.com.dod.vcas.cas.CasFile;
 import br.com.dod.vcas.exception.FlowException;
 
 public abstract class Wav {
 
     static final long MIN_ENC_INPUT_FILE_LENGTH = 5L;
-    static final int CAS_FILENAME_LENGTH = FileCommons.CAS_FILENAME_LENGTH;
+
+    public static final int CAS_FILENAME_LENGTH = 6;
 
     private static final char START_BIT = 0;
     private static final char STOP_BIT = 1;
@@ -29,7 +26,7 @@ public abstract class Wav {
     static final char FIRST_PAUSE_LENGTH = 2;	// Seconds
     static final char DEFAULT_PAUSE_LENGTH = 1; // Second
 
-    private static final int SIZE_OF_BITSTREAM = 11;
+    private static final int SIZE_OF_BIT_STREAM = 11;
 
     private static final char[] ZERO_BIT = {LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
     private static final char[] SET_BIT = {LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
@@ -39,53 +36,26 @@ public abstract class Wav {
 
     private SampleRate sampleRate;
 
-    DWORD fileOffset;
-    char[] fileHeader;
-
-    char[] nameBuffer;
+    private char[] nameBuffer;
 
     private StringBuilder outputBuffer;
-
     byte[] inputMemPointer;
 
-    int fileLength;
-    List<CasFile> casList;
-
-    public Wav(String inputFileName, SampleRate sampleRate, DWORD fileOffset, char[] fileHeaderId) throws FlowException {
-        this(inputFileName, sampleRate, fileOffset, fileHeaderId, null);
-    }
-
-    public Wav(String inputFileName, SampleRate sampleRate, DWORD fileOffset, char[] fileHeaderId, List<CasFile> casList) throws FlowException {
-        outputBuffer = new StringBuilder();
-
-        initVars(inputFileName, sampleRate, fileOffset, fileHeaderId);
-
-        if (casList == null || casList.isEmpty()) {
-            this.inputMemPointer = FileCommons.readFile(inputFileName);
-            this.fileLength = inputMemPointer.length;
-        } else {
-            this.casList = casList;
-            int casFileSize = 0;
-            for (CasFile casFile : casList) {
-                casFileSize += casFile.getSize();
-            }
-            this.fileLength = casFileSize;
-        }
-    }
-
-    private void initVars(String inputFileName, SampleRate sampleRate, DWORD fileOffset, char[] fileHeaderId) {
-
-        this.fileOffset = fileOffset;
-        this.fileHeader = fileHeaderId;
-
+    protected Wav(SampleRate sampleRate) {
+        this.outputBuffer = new StringBuilder();
         this.sampleRate = sampleRate;
+    }
+
+    public Wav(String inputFileName, SampleRate sampleRate) throws FlowException {
+        this(sampleRate);
+
+        this.inputMemPointer = FileCommons.readFile(inputFileName);
 
         this.nameBuffer = FileCommons.getNameBuffer(inputFileName);
     }
 
     public Wav convert() throws FlowException {
-        validate();
-        setup();
+        validateMinFileSize();
 
         encodeFileContent();
 
@@ -153,7 +123,7 @@ public abstract class Wav {
     }
 
     void writeDataByte(char ch) {
-        final char[] bitStream = new char[SIZE_OF_BITSTREAM];
+        final char[] bitStream = new char[SIZE_OF_BIT_STREAM];
 
         char bitMask = 1;
         int bitSampleLength = zeroBit().length;
@@ -193,27 +163,37 @@ public abstract class Wav {
     char[] buildBinaryAddressBuffer(final long binarySize) {
         char a = (char) (binarySize + 0x9000 - 1);
 
-        char[] adressBuffer = new char[6];
+        char[] addressBuffer = new char[6];
 
-        adressBuffer[0] = 0;
-        adressBuffer[1] = 0x90;
-        adressBuffer[2] = a;
-        adressBuffer[3] = (char)(a >> 8);
-        adressBuffer[4] = 0;
-        adressBuffer[5] = 0x90;
+        addressBuffer[0] = 0;
+        addressBuffer[1] = 0x90;
+        addressBuffer[2] = a;
+        addressBuffer[3] = (char)(a >> 8);
+        addressBuffer[4] = 0;
+        addressBuffer[5] = 0x90;
 
-        return adressBuffer;
+        return addressBuffer;
     }
 
     public String getName() {
         return String.valueOf(nameBuffer);
     }
 
+    char[] getNameBuffer() {
+        return nameBuffer;
+    }
+
+    int getFileSize() {
+        return inputMemPointer.length;
+    }
+
+    private void validateMinFileSize() throws FlowException {
+        if (getFileSize() < MIN_ENC_INPUT_FILE_LENGTH) throw FlowException.error("file_size_invalid");
+    }
+
     static int sizeof(char[] charArray) {
         return (charArray == null ? 0 : charArray.length);
     }
 
-    abstract void validate() throws FlowException;
-    abstract void setup() throws FlowException;
     abstract void encodeFileContent() throws FlowException;
 }

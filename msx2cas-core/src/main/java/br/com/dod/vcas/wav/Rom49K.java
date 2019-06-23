@@ -1,14 +1,15 @@
 package br.com.dod.vcas.wav;
 
 import br.com.dod.vcas.exception.FlowException;
+import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.model.SampleRate;
 import br.com.dod.vcas.util.FileCommons;
 
 public class Rom49K extends Rom {
 
-    static final long MAX_ENC_INPUT_FILE_LENGTH = 50176;
+    private static final long MAX_ENC_INPUT_FILE_LENGTH = 50176;
 
-    private char[] preloader;
+    private char[] preLoader;
     private char[] loader1;
     private char[] loader2;
     private char[] loader3;
@@ -28,28 +29,24 @@ public class Rom49K extends Rom {
 
     @Override
     protected void validate() throws FlowException {
-        if (((char) inputMemPointer[0] != 'A' && (char) inputMemPointer[1] != 'B')
-                && ((char) inputMemPointer[0x4000] != 'A' && (char) inputMemPointer[0x4001] != 'B')) throw FlowException.error("invalid_file_format");
-
         if ((char) inputMemPointer[3] >= 0x40 && (char) inputMemPointer[0x4000] != 'A'
                 && (char) inputMemPointer[0x4001] != 'B') throw FlowException.error("mappers_not_supported");
 
-        if (!matchSize(this.fileLength)) throw FlowException.error("file_size_invalid");
+        if (!matchSize(getFileSize())) throw FlowException.error("file_size_invalid");
     }
 
     @Override
     protected void setup() {
-
         initLoader();
 
-        nameBuffer0 = nameBuffer;
-        String fileLoaderId = String.valueOf(nameBuffer).trim();
+        nameBuffer0 = getNameBuffer();
+        String fileLoaderId = String.valueOf(nameBuffer0).trim();
         int fileLoaderIdCutSize = (fileLoaderId.length() >= CAS_FILENAME_LENGTH ? CAS_FILENAME_LENGTH - 1 : fileLoaderId.length());
         nameBuffer1 = FileCommons.getNameBuffer(fileLoaderId.substring(0, fileLoaderIdCutSize) +"1");
         nameBuffer2 = FileCommons.getNameBuffer(fileLoaderId.substring(0, fileLoaderIdCutSize) +"2");
         nameBuffer3 = FileCommons.getNameBuffer(fileLoaderId.substring(0, fileLoaderIdCutSize) +"3");
 
-        System.arraycopy(nameBuffer1, 0, preloader, 14, nameBuffer1.length);
+        System.arraycopy(nameBuffer1, 0, preLoader, 14, nameBuffer1.length);
         System.arraycopy(nameBuffer2, 0, loader1, 21, nameBuffer2.length);
         System.arraycopy(nameBuffer3, 0, loader2, 21, nameBuffer3.length);
     }
@@ -71,12 +68,12 @@ public class Rom49K extends Rom {
 
         encodeLongHeader();
 
-        encodeData(fileHeader);
+        encodeData(FileType.ROM.getHeader());
         encodeData(nameBuffer0);
 
         encodePause(DEFAULT_PAUSE_LENGTH);
 
-        encodePreLoaderBLock(preloader);
+        encodePreLoaderBLock(preLoader);
 
         // 1st block
 
@@ -84,7 +81,7 @@ public class Rom49K extends Rom {
 
         encodeLongHeader();
 
-        encodeData(fileHeader);
+        encodeData(FileType.ROM.getHeader());
         encodeData(nameBuffer1);
 
         encodePause(DEFAULT_PAUSE_LENGTH);
@@ -97,7 +94,7 @@ public class Rom49K extends Rom {
 
         encodeLongHeader();
 
-        encodeData(fileHeader);
+        encodeData(FileType.ROM.getHeader());
         encodeData(nameBuffer2);
 
         encodePause(DEFAULT_PAUSE_LENGTH);
@@ -110,7 +107,7 @@ public class Rom49K extends Rom {
 
         encodeLongHeader();
 
-        encodeData(fileHeader);
+        encodeData(FileType.ROM.getHeader());
         encodeData(nameBuffer3);
 
         encodePause(DEFAULT_PAUSE_LENGTH);
@@ -119,7 +116,7 @@ public class Rom49K extends Rom {
     }
 
     private void initLoader() {
-        this.preloader = new char[]{
+        this.preLoader = new char[]{
                 0xC3, 0x49, 0x90, 0x1E, 0x62, 0x6C, 0x6F, 0x61, 0x64, 0x22, 0x63, 0x61, 0x73, 0x3A, 0x20, 0x20,
                 0x20, 0x20, 0x20, 0x20, 0x22, 0x2C, 0x72, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x0D,
                 0x00, 0x3C, 0x20, 0x4D, 0x53, 0x58, 0x32, 0x43, 0x61, 0x73, 0x20, 0x3E, 0x20, 0x4C, 0x6F, 0x61,

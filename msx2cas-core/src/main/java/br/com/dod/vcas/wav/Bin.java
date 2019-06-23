@@ -2,25 +2,17 @@ package br.com.dod.vcas.wav;
 
 import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.exception.FlowException;
+import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.model.SampleRate;
 
 public class Bin extends Wav {
 
-    private static final char[] binFileHeader = {0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0};
-
     private char[] loader;
 
+    private static final int FILE_OFFSET = 7;
+
     public Bin(String inputFileName, SampleRate sampleRate) throws FlowException {
-        super(inputFileName, sampleRate, new DWORD(7), binFileHeader);
-    }
-
-    @Override
-    protected void validate() throws FlowException {
-        if (this.fileLength < MIN_ENC_INPUT_FILE_LENGTH) throw FlowException.error("file_size_invalid");
-    }
-
-    @Override
-    protected void setup() {
+        super(inputFileName, sampleRate);
         initLoader();
     }
 
@@ -31,18 +23,18 @@ public class Bin extends Wav {
 
         encodeLongHeader();
 
-        encodeData(fileHeader);
-        encodeData(nameBuffer);
+        encodeData(FileType.BIN.getHeader());
+        encodeData(getNameBuffer());
 
         encodePause(DEFAULT_PAUSE_LENGTH);
 
         encodeShortHeader();
 
-        encodeData(buildBinaryAddressBuffer(sizeof(loader) + inputMemPointer.length - fileOffset.longValue()));
+        encodeData(buildBinaryAddressBuffer(sizeof(loader) + inputMemPointer.length - FILE_OFFSET));
 
         encodeLoader();
 
-        for (int i = fileOffset.intValue(); i < inputMemPointer.length; i++) {
+        for (int i = FILE_OFFSET; i < inputMemPointer.length; i++) {
             writeDataByte((char) inputMemPointer[i]);
         }
     }
@@ -65,7 +57,7 @@ public class Bin extends Wav {
         char binBegin = (char) ((new DWORD(inputMemPointer[2]).getLow()).intValue() * 0x100 + (new DWORD(inputMemPointer[1]).getLow()).intValue());
         char binEnd = (char) ((new DWORD(inputMemPointer[4]).getLow()).intValue() * 0x100 + (new DWORD(inputMemPointer[3]).getLow()).intValue());
 
-        loader[9] = calculateCRC(fileOffset.intValue(), (binEnd-binBegin) + fileOffset.intValue());
+        loader[9] = calculateCRC(FILE_OFFSET, (binEnd-binBegin) + FILE_OFFSET);
     }
 
     private void initLoader() {

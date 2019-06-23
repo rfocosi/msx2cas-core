@@ -8,8 +8,6 @@ public class CasFile implements Serializable {
     private static final long serialVersionUID = 1803823303043524163L;
 
     private String name;
-    private int startOffset;
-    private int endOffset;
     private Byte[] content;
     private FileType fileType;
     private char[] header;
@@ -22,18 +20,6 @@ public class CasFile implements Serializable {
     }
     public void setName(String name) {
         this.name = name;
-    }
-    public int getStartOffset() {
-        return startOffset;
-    }
-    public void setStartOffset(int startOffset) {
-        this.startOffset = startOffset;
-    }
-    public int getEndOffset() {
-        return endOffset;
-    }
-    public void setEndOffset(int endOffset) {
-        this.endOffset = endOffset;
     }
     public Byte[] getContent() {
         return content;

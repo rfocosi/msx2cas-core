@@ -2,7 +2,6 @@ package br.com.dod.vcas.wav;
 
 import java.util.List;
 
-import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.cas.CasFile;
 import br.com.dod.vcas.cas.CasUtil;
 import br.com.dod.vcas.exception.FlowException;
@@ -10,41 +9,30 @@ import br.com.dod.vcas.model.SampleRate;
 
 public class Cas extends Wav {
 
+    private List<CasFile> casList;
+
     public Cas(String inputFileName, SampleRate sampleRate) throws FlowException {
-        super(inputFileName, sampleRate, new DWORD(7), null, null);
+        super(inputFileName, sampleRate);
+        this.casList = new CasUtil(this.inputMemPointer).list();
     }
 
-    public Cas(String inputFileName, SampleRate sampleRate, List<CasFile> casList) throws FlowException {
-        super(inputFileName, sampleRate, new DWORD(7), null, casList);
-    }
-
-    @Override
-    protected void validate() {
-        if (casList == null || casList.isEmpty()) this.casList = new CasUtil(this.inputMemPointer).list();
-    }
-
-    @Override
-    protected void setup() {
-
-        CasFile firstFile = casList.get(0);
-
-        this.fileHeader = firstFile.getHeader();
-        this.nameBuffer = firstFile.getName().toCharArray();
+    public Cas(List<CasFile> casList, SampleRate sampleRate) {
+        super(sampleRate);
+        this.casList = casList;
     }
 
     @Override
     protected void encodeFileContent() {
+        CasFile firstFile = casList.get(0);
 
         encodePause(FIRST_PAUSE_LENGTH);
 
         encodeLongHeader();
 
-        encodeData(fileHeader);
-        encodeData(nameBuffer);
+        encodeData(firstFile.getHeader());
+        encodeData(firstFile.getName().toCharArray());
 
         encodePause(DEFAULT_PAUSE_LENGTH);
-
-        CasFile firstFile = casList.get(0);
 
         encodeShortHeader();
         Byte[] content = firstFile.getContent();

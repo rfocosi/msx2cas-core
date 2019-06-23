@@ -1,7 +1,7 @@
 package br.com.dod.vcas.wav;
 
-import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.exception.FlowException;
+import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.model.SampleRate;
 import br.com.dod.vcas.util.FileCommons;
 
@@ -25,7 +25,7 @@ public class Rom32K extends Rom {
 
     @Override
     protected void validate() throws FlowException {
-        if (!matchSize(this.fileLength)) throw FlowException.error("file_size_invalid");
+        if (!matchSize(getFileSize())) throw FlowException.error("file_size_invalid");
     }
 
     @Override
@@ -33,7 +33,7 @@ public class Rom32K extends Rom {
 
         initLoader();
 
-        String fileLoaderId = String.valueOf(nameBuffer).trim();
+        String fileLoaderId = String.valueOf(getNameBuffer()).trim();
         int fileLoaderIdCutSize = (fileLoaderId.length() >= CAS_FILENAME_LENGTH ? CAS_FILENAME_LENGTH - 1 : fileLoaderId.length());
         nameBuffer1 = FileCommons.getNameBuffer(fileLoaderId.substring(0, fileLoaderIdCutSize) +"1");
         nameBuffer2 = FileCommons.getNameBuffer(fileLoaderId.substring(0, fileLoaderIdCutSize) +"2");
@@ -59,7 +59,7 @@ public class Rom32K extends Rom {
 
         encodeLongHeader();
 
-        encodeData(fileHeader);
+        encodeData(FileType.ROM.getHeader());
         encodeData(nameBuffer1);
 
         encodePause(DEFAULT_PAUSE_LENGTH);
@@ -71,7 +71,7 @@ public class Rom32K extends Rom {
         encodeLongHeader();
 
         // Encode binary header and second part of 32k ROM name
-        encodeData(fileHeader);
+        encodeData(FileType.ROM.getHeader());
         encodeData(nameBuffer2);
 
         encodePause(DEFAULT_PAUSE_LENGTH);

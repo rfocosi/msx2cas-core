@@ -5,7 +5,7 @@ public enum SampleRate {
     sr22050(22050),
     sr27563(27563),
     sr33075(33075);
-//    ,sr44100(44100), sr55125(55125), sr66150(66150);
+//    sr44100(44100), sr55125(55125), sr66150(66150);
 //    sr77175(77175), sr88200(88200), sr99225(99225),
 //    sr110250(110250), sr121275(121275), sr132300(132300);
 
@@ -32,16 +32,8 @@ public enum SampleRate {
         return inverted;
     }
 
-    public double bitEncodingLength() {
-        return BIT_ENCODING_BASE_LENGTH / ((double) (intValue() / SampleRate.sr11025.intValue()));
-    }
-
     public double headerEncodingLength(double length) {
         return (intValue() * length / BIT_ENCODING_BASE_LENGTH);
-    }
-
-    public long sampleScale() {
-        return intValue() / SampleRate.sr11025.intValue();
     }
 
     public int intValue(){

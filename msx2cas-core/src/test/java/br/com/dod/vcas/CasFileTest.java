@@ -16,7 +16,7 @@ public class CasFileTest {
 
     private static List<CasFile> casList;
 
-    private static String filename = PROJECT_FOLDER + "/resources/flapbird.cas";
+    private static String filename = PROJECT_FOLDER + "/resources/flacas-flapbird.cas";
 
     @BeforeClass
     public static void setup() {

@@ -1,7 +1,7 @@
 package br.com.dod.vcas.wav;
 
-import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.exception.FlowException;
+import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.model.SampleRate;
 import br.com.dod.vcas.util.FileCommons;
 
@@ -9,13 +9,13 @@ public class Rom extends Wav {
 
     static final long MAX_ENC_INPUT_FILE_LENGTH = 16384;
 
-    private static final char[] romFileHeader = {0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0};
-
     private char[] loader;
     boolean reset;
 
     public Rom(String inputFileName, SampleRate sampleRate) throws FlowException {
-        super(inputFileName, sampleRate, new DWORD(0), romFileHeader);
+        super(inputFileName, sampleRate);
+        validate();
+        setup();
     }
 
     public static Rom build(String inputFileName, SampleRate sampleRate) throws FlowException {
@@ -42,19 +42,13 @@ public class Rom extends Wav {
         return (fileSize > MIN_ENC_INPUT_FILE_LENGTH && fileSize <= MAX_ENC_INPUT_FILE_LENGTH);
     }
 
-    @Override
     protected void validate() throws FlowException {
-        if (!matchSize(this.fileLength)) throw FlowException.error("file_size_invalid");
+        if (!matchSize(getFileSize())) throw FlowException.error("file_size_invalid");
     }
 
-    @Override
-    protected void setup() throws FlowException {
-
+    protected void setup() {
         initLoader();
-
-        if (nameBuffer.length > 1) {
-            System.arraycopy(nameBuffer, 0, loader, 21, nameBuffer.length);
-        }
+        System.arraycopy(getNameBuffer(), 0, loader, 21, getNameBuffer().length);
     }
 
     private char getRomTypeHeader() throws FlowException {
@@ -74,8 +68,8 @@ public class Rom extends Wav {
 
         encodeLongHeader();
 
-        encodeData(fileHeader);
-        encodeData(nameBuffer);
+        encodeData(FileType.ROM.getHeader());
+        encodeData(getNameBuffer());
 
         encodePause(DEFAULT_PAUSE_LENGTH);
 
