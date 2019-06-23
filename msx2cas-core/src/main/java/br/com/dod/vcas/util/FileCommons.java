@@ -12,8 +12,12 @@ public class FileCommons {
     public static final int CAS_FILENAME_LENGTH = 6;
 
     public static String getCasName(String fileName) {
-        fileName = fileName.replaceFirst(".+/", "").replaceAll("[^\\.\\w]", "");
+        fileName = fileName.replaceFirst(".+/", "").replaceAll("[^.\\w]", "");
         return fileName.replaceFirst("(?:.*/)?(\\w{1," + CAS_FILENAME_LENGTH + "}).*", "$1");
+    }
+
+    public static char[] getNameBuffer(String fileName) {
+        return String.format("%1$-" + CAS_FILENAME_LENGTH + "s", getCasName(fileName)).toCharArray();
     }
 
     public static byte[] readFile(String inputFileName) throws FlowException {
@@ -47,15 +51,16 @@ public class FileCommons {
             fileType = FileType.BAS;
         } else if (FileType.BIN.equals(fileName)) {
             fileType = FileType.BIN;
-        } else if (FileType.ROM.equals(fileName)) {
+        } else if (fileName.toLowerCase().endsWith(".rom") ||
+                fileName.toLowerCase().endsWith(".mx1") ||
+                fileName.toLowerCase().endsWith(".mx2")) {
             fileType = FileType.ROM;
         }
-
         return fileType;
 
     }
 
-    public static FileType detectFile(byte[] inputHandler) throws IOException {
+    public static FileType detectFile(byte[] inputHandler) {
         FileType fileType = FileType.ASCII;
 
         if (FileType.CAS.equals(inputHandler)) {
@@ -64,8 +69,6 @@ public class FileCommons {
             fileType = FileType.BAS;
         } else if (FileType.BIN.equals(inputHandler)) {
             fileType = FileType.BIN;
-        } else if (FileType.ROM.equals(inputHandler)) {
-            fileType = FileType.ROM;
         }
 
         return fileType;

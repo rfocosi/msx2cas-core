@@ -3,22 +3,29 @@ package br.com.dod.vcas.wav;
 import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.SampleRate;
+import br.com.dod.vcas.util.FileCommons;
 
 public class Rom32K extends Rom {
 
-    private static final long MAX_ENC_INPUTFILE_LENGTH = 32768L;
+    static final long MAX_ENC_INPUT_FILE_LENGTH = 32768L;
 
-    private char[] loader32K1;
+    private char[] nameBuffer1;
+    private char[] nameBuffer2;
 
-    private char[] loader32K2;
+    private char[] loader1;
+    private char[] loader2;
 
     public Rom32K(String inputFileName, SampleRate sampleRate) throws FlowException {
         super(inputFileName, sampleRate);
     }
 
+    static boolean matchSize(final long fileSize) {
+        return (fileSize > Rom.MAX_ENC_INPUT_FILE_LENGTH && fileSize <= MAX_ENC_INPUT_FILE_LENGTH);
+    }
+
     @Override
     protected void validate() throws FlowException {
-        if (this.fileLength < MIN_ENC_INPUTFILE_LENGTH || this.fileLength > MAX_ENC_INPUTFILE_LENGTH) throw FlowException.error("file_size_invalid");
+        if (!matchSize(this.fileLength)) throw FlowException.error("file_size_invalid");
     }
 
     @Override
@@ -26,47 +33,18 @@ public class Rom32K extends Rom {
 
         initLoader();
 
-        setExtraBytes();
-
-        setMoreExtraBytes();
-
-        String fileLoaderId = getFileId().trim();
-        nameBuffer = new String[2];
+        String fileLoaderId = String.valueOf(nameBuffer).trim();
         int fileLoaderIdCutSize = (fileLoaderId.length() >= CAS_FILENAME_LENGTH ? CAS_FILENAME_LENGTH - 1 : fileLoaderId.length());
-        nameBuffer[0] = String.format("%1$-" + CAS_FILENAME_LENGTH + "s", fileLoaderId.substring(0, fileLoaderIdCutSize) +"1");
-        nameBuffer[1] = String.format("%1$-" + CAS_FILENAME_LENGTH + "s", fileLoaderId.substring(0, fileLoaderIdCutSize) +"2");
+        nameBuffer1 = FileCommons.getNameBuffer(fileLoaderId.substring(0, fileLoaderIdCutSize) +"1");
+        nameBuffer2 = FileCommons.getNameBuffer(fileLoaderId.substring(0, fileLoaderIdCutSize) +"2");
 
-        if (nameBuffer.length > 1) {
-            char[] nameCharArray = nameBuffer[1].trim().toCharArray();
-            System.arraycopy(nameCharArray, 0, loader32K1, 21, nameCharArray.length);
-        }
+        System.arraycopy(nameBuffer2, 0, loader1, 21, nameBuffer2.length);
     }
 
     private char getRomTypeHeader() throws FlowException {
         char ch = (char) inputMemPointer[3];
         if ((ch & 0xf0) >= 0xD0) throw FlowException.error("type_32k_not_supported");
         return ch;
-    }
-
-    private void setExtraBytes() {
-
-        DWORD extraBytes = new DWORD(6);
-
-        extraBytes = new DWORD((extraBytes.longValue() + loader32K1.length + loader32K2.length + 12));
-
-        this.extraBytes = extraBytes;
-    }
-    private void setMoreExtraBytes() {
-
-        DWORD moreExtraBytes = new DWORD(((sampleRate.intValue() * FIRST_PAUSE_LENGTH) + (sampleRate.intValue() * DEFAULT_PAUSE_LENGTH) +
-                Math.round(sampleRate.intValue() * LONG_HEADER_LENGTH + sampleRate.intValue() * SHORT_HEADER_LENGTH) +
-                (fileHeader.length + CAS_FILENAME_LENGTH) * Math.round(sampleRate.sampleScale() * SIZE_OF_BITSTREAM * sampleRate.bitEncodingLength())));
-
-        moreExtraBytes = new DWORD((moreExtraBytes.longValue() + (sampleRate.intValue() * FIRST_PAUSE_LENGTH) + (sampleRate.intValue() * DEFAULT_PAUSE_LENGTH) +
-                Math.round(sampleRate.intValue() * LONG_HEADER_LENGTH + sampleRate.intValue() * SHORT_HEADER_LENGTH) +
-                (fileHeader.length + CAS_FILENAME_LENGTH - new DWORD(0).longValue()) * Math.round(sampleRate.sampleScale() * SIZE_OF_BITSTREAM * sampleRate.bitEncodingLength())));
-
-        this.moreExtraBytes = moreExtraBytes;
     }
 
     @Override
@@ -77,7 +55,16 @@ public class Rom32K extends Rom {
         if (headId > 0x80) headId = 0x40;
         else if (headId < 0x40) headId = 0;
 
-        encodeRomBlock(headId, 0, 16384, loader32K1);
+        encodePause(FIRST_PAUSE_LENGTH);
+
+        encodeLongHeader();
+
+        encodeData(fileHeader);
+        encodeData(nameBuffer1);
+
+        encodePause(DEFAULT_PAUSE_LENGTH);
+
+        encodeRomBlock(headId, 0, 16384, loader1);
 
         encodePause(FIRST_PAUSE_LENGTH);
 
@@ -85,15 +72,15 @@ public class Rom32K extends Rom {
 
         // Encode binary header and second part of 32k ROM name
         encodeData(fileHeader);
-        encodeData(nameBuffer[1].toCharArray());
+        encodeData(nameBuffer2);
 
         encodePause(DEFAULT_PAUSE_LENGTH);
 
-        encodeRomBlock(headId, 16384, inputMemPointer.length, loader32K2);
+        encodeRomBlock(headId, 16384, inputMemPointer.length, loader2);
     }
 
     private void initLoader() {
-        this.loader32K1 = new char[]{
+        this.loader1 = new char[]{
                 0xC3, 0x76, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1E, 0x62, 0x6C, 0x6F, 0x61, 0x64,
                 0x22, 0x63, 0x61, 0x73, 0x3A, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x22, 0x2C, 0x72, 0x20, 0x20,
                 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x0D, 0x00, 0x3C, 0x20, 0x4D, 0x53, 0x58, 0x32, 0x43, 0x61,
@@ -121,7 +108,7 @@ public class Rom32K extends Rom {
         };
 
         if (reset) {
-            this.loader32K2 = new char[]{
+            this.loader2 = new char[]{
                     0xC3, 0x30, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3C, 0x4D, 0x53, 0x58, 0x32, 0x43,
                     0x61, 0x73, 0x3E, 0x20, 0x4C, 0x6F, 0x61, 0x64, 0x69, 0x6E, 0x67, 0x20, 0x66, 0x61, 0x69, 0x6C,
                     0x65, 0x64, 0x3A, 0x20, 0x43, 0x52, 0x43, 0x20, 0x45, 0x52, 0x52, 0x4F, 0x52, 0x21, 0x20, 0x00,
@@ -148,7 +135,7 @@ public class Rom32K extends Rom {
                     0x00, 0xE5, 0x3E, 0x00, 0x77, 0x23, 0x3E, 0x00, 0x77, 0x23, 0x3E, 0x00, 0x77, 0xE1, 0xE9, 0x00
             };
         } else {
-            this.loader32K2 = new char[]{
+            this.loader2 = new char[]{
                     0xC3, 0x30, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3C, 0x4D, 0x53, 0x58, 0x32, 0x43,
                     0x61, 0x73, 0x3E, 0x20, 0x4C, 0x6F, 0x61, 0x64, 0x69, 0x6E, 0x67, 0x20, 0x66, 0x61, 0x69, 0x6C,
                     0x65, 0x64, 0x3A, 0x20, 0x43, 0x52, 0x43, 0x20, 0x45, 0x52, 0x52, 0x4F, 0x52, 0x21, 0x20, 0x00,

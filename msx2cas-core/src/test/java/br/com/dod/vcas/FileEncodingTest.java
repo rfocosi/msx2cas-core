@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.Map.Entry;
 
 import br.com.dod.vcas.model.SampleRate;
+import br.com.dod.vcas.util.FileCommons;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -46,7 +47,7 @@ public class FileEncodingTest {
                         || path.toString().endsWith(".bin")
                         || path.toString().endsWith(".bas")
                         || path.toString().endsWith(".cas"))
-                .forEach( file -> files.put(file.toString(), file.getFileName().toString().substring(0,5)));
+                .forEach( file -> files.put(file.toString(), FileCommons.getCasName(file.getFileName().toString())));
 
         out.println("Generating test files...");
         for (Entry<String,String> entry : files.entrySet()) {

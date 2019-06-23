@@ -7,7 +7,7 @@ import br.com.dod.vcas.util.FileCommons;
 
 public class Rom extends Wav {
 
-    private static final long MAX_ENC_INPUTFILE_LENGTH = 16384;
+    static final long MAX_ENC_INPUT_FILE_LENGTH = 16384;
 
     private static final char[] romFileHeader = {0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0};
 
@@ -19,7 +19,18 @@ public class Rom extends Wav {
     }
 
     public static Rom build(String inputFileName, SampleRate sampleRate) throws FlowException {
-        return (FileCommons.readFile(inputFileName).length > 25000) ? new Rom32K(inputFileName, sampleRate) : new Rom(inputFileName, sampleRate);
+
+        long fileSize = FileCommons.readFile(inputFileName).length;
+
+        if (Rom.matchSize(fileSize)) {
+            return new Rom(inputFileName, sampleRate);
+        } else if (Rom32K.matchSize(fileSize)) {
+            return new Rom32K(inputFileName, sampleRate);
+        } else if (Rom49K.matchSize(fileSize)) {
+            return new Rom49K(inputFileName, sampleRate);
+        }
+
+        throw FlowException.error("file_size_invalid");
     }
 
     public Wav convert(boolean reset) throws FlowException {
@@ -27,9 +38,13 @@ public class Rom extends Wav {
         return super.convert();
     }
 
+    static boolean matchSize(final long fileSize) {
+        return (fileSize > MIN_ENC_INPUT_FILE_LENGTH && fileSize <= MAX_ENC_INPUT_FILE_LENGTH);
+    }
+
     @Override
     protected void validate() throws FlowException {
-        if (this.fileLength < MIN_ENC_INPUTFILE_LENGTH || this.fileLength > MAX_ENC_INPUTFILE_LENGTH) throw FlowException.error("file_size_invalid");
+        if (!matchSize(this.fileLength)) throw FlowException.error("file_size_invalid");
     }
 
     @Override
@@ -37,13 +52,8 @@ public class Rom extends Wav {
 
         initLoader();
 
-        setExtraBytes();
-
-        setMoreExtraBytes();
-
         if (nameBuffer.length > 1) {
-            char[] nameCharArray = nameBuffer[1].trim().toCharArray();
-            System.arraycopy(nameCharArray, 0, loader, 21, nameCharArray.length);
+            System.arraycopy(nameBuffer, 0, loader, 21, nameBuffer.length);
         }
     }
 
@@ -53,30 +63,21 @@ public class Rom extends Wav {
         return ch;
     }
 
-    private void setExtraBytes() throws FlowException {
-
-        DWORD extraBytes = new DWORD(6);
-
-        if (getRomTypeHeader() < 0x80) {
-            extraBytes = new DWORD((extraBytes.longValue() + loader.length + 6));
-        } else {
-            extraBytes = new DWORD((extraBytes.longValue() + 6));
-        }
-        this.extraBytes = extraBytes;
-    }
-
-    private void setMoreExtraBytes() {
-
-        this.moreExtraBytes = new DWORD(((sampleRate.intValue() * FIRST_PAUSE_LENGTH) + (sampleRate.intValue() * DEFAULT_PAUSE_LENGTH) +
-                Math.round(sampleRate.intValue() * LONG_HEADER_LENGTH + sampleRate.intValue() * SHORT_HEADER_LENGTH) +
-                (fileHeader.length + CAS_FILENAME_LENGTH) * Math.round(sampleRate.sampleScale() * SIZE_OF_BITSTREAM * sampleRate.bitEncodingLength())));
-    }
-
     @Override
     protected void encodeFileContent() throws FlowException {
+
         int blockSize = inputMemPointer.length;
 
         char headId = getRomTypeHeader();
+
+        encodePause(FIRST_PAUSE_LENGTH);
+
+        encodeLongHeader();
+
+        encodeData(fileHeader);
+        encodeData(nameBuffer);
+
+        encodePause(DEFAULT_PAUSE_LENGTH);
 
         if (headId < 0x80) {
             encodeRomBlock(headId, 0, blockSize, loader);
@@ -117,8 +118,16 @@ public class Rom extends Wav {
         a = (char) (a + blockEnd - blockStart);
         loader[5] = a;
         loader[6] = (char)(a >> 8);
-        loader[7] = (char)inputMemPointer[2];
-        loader[8] = (char)inputMemPointer[3];
+        if ((char) inputMemPointer[0] == 'A' && (char) inputMemPointer[1] == 'B')
+        {
+            loader[7] = (char) inputMemPointer[2];
+            loader[8] = (char) inputMemPointer[3];
+        }
+		else if ((char) inputMemPointer[0x4000] == 'A' && (char) inputMemPointer[0x4001] == 'B')
+        {
+            loader[7] = (char) inputMemPointer[0x4002];
+            loader[8] = (char) inputMemPointer[0x4003];
+        }
         loader[9] = romCRC;
 
         encodeData(loader);

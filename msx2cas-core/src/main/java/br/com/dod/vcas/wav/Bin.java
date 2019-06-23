@@ -16,23 +16,25 @@ public class Bin extends Wav {
 
     @Override
     protected void validate() throws FlowException {
-        if (this.fileLength < MIN_ENC_INPUTFILE_LENGTH) throw FlowException.error("file_size_invalid");
+        if (this.fileLength < MIN_ENC_INPUT_FILE_LENGTH) throw FlowException.error("file_size_invalid");
     }
 
     @Override
     protected void setup() {
         initLoader();
-
-        this.extraBytes = new DWORD(loader.length + 6);
-
-        this.moreExtraBytes = new DWORD(((sampleRate.intValue() * FIRST_PAUSE_LENGTH) + (sampleRate.intValue() * DEFAULT_PAUSE_LENGTH) +
-                Math.round(sampleRate.intValue() * LONG_HEADER_LENGTH + sampleRate.intValue() * SHORT_HEADER_LENGTH) +
-                (fileHeader.length + CAS_FILENAME_LENGTH) * Math.round(sampleRate.sampleScale() * SIZE_OF_BITSTREAM * sampleRate.bitEncodingLength())));
-
     }
 
     @Override
     protected void encodeFileContent() throws FlowException {
+
+        encodePause(FIRST_PAUSE_LENGTH);
+
+        encodeLongHeader();
+
+        encodeData(fileHeader);
+        encodeData(nameBuffer);
+
+        encodePause(DEFAULT_PAUSE_LENGTH);
 
         encodeShortHeader();
 
