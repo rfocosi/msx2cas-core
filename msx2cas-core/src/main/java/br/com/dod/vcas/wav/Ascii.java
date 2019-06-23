@@ -10,7 +10,7 @@ import br.com.dod.vcas.model.SampleRate;
 public class Ascii extends Wav {
 
     public Ascii(String inputFileName, SampleRate sampleRate) throws FlowException {
-        super(inputFileName, sampleRate, FileType.ASCII.getHeader());
+        super(inputFileName, sampleRate);
     }
 
     @Override
@@ -46,7 +46,7 @@ public class Ascii extends Wav {
 
         encodeLongHeader();
 
-        encodeData(fileHeader);
+        encodeData(FileType.ASCII.getHeader());
         encodeData(nameBuffer);
 
         encodePause(DEFAULT_PAUSE_LENGTH);

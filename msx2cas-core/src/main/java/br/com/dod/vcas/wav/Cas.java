@@ -12,11 +12,11 @@ public class Cas extends Wav {
     private List<CasFile> casList;
 
     public Cas(String inputFileName, SampleRate sampleRate) throws FlowException {
-        super(inputFileName, sampleRate, null);
+        super(inputFileName, sampleRate);
     }
 
     public Cas(List<CasFile> casList, SampleRate sampleRate) {
-        super(sampleRate, null);
+        super(sampleRate);
         this.casList = casList;
     }
 
@@ -27,24 +27,20 @@ public class Cas extends Wav {
 
     @Override
     protected void setup() {
-        CasFile firstFile = casList.get(0);
-        this.fileHeader = firstFile.getHeader();
-        this.nameBuffer = firstFile.getName().toCharArray();
     }
 
     @Override
     protected void encodeFileContent() {
+        CasFile firstFile = casList.get(0);
 
         encodePause(FIRST_PAUSE_LENGTH);
 
         encodeLongHeader();
 
-        encodeData(fileHeader);
-        encodeData(nameBuffer);
+        encodeData(firstFile.getHeader());
+        encodeData(firstFile.getName().toCharArray());
 
         encodePause(DEFAULT_PAUSE_LENGTH);
-
-        CasFile firstFile = casList.get(0);
 
         encodeShortHeader();
         Byte[] content = firstFile.getContent();

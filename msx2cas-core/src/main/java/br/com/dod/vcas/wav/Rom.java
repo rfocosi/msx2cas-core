@@ -13,7 +13,7 @@ public class Rom extends Wav {
     boolean reset;
 
     public Rom(String inputFileName, SampleRate sampleRate) throws FlowException {
-        super(inputFileName, sampleRate, FileType.ROM.getHeader());
+        super(inputFileName, sampleRate);
     }
 
     public static Rom build(String inputFileName, SampleRate sampleRate) throws FlowException {
@@ -72,7 +72,7 @@ public class Rom extends Wav {
 
         encodeLongHeader();
 
-        encodeData(fileHeader);
+        encodeData(FileType.ROM.getHeader());
         encodeData(nameBuffer);
 
         encodePause(DEFAULT_PAUSE_LENGTH);

@@ -7,7 +7,7 @@ import br.com.dod.vcas.model.SampleRate;
 public class Bas extends Wav {
 
     public Bas(String inputFileName, SampleRate sampleRate) throws FlowException {
-        super(inputFileName, sampleRate, FileType.BAS.getHeader());
+        super(inputFileName, sampleRate);
     }
 
     @Override
@@ -26,7 +26,7 @@ public class Bas extends Wav {
 
         encodeLongHeader();
 
-        encodeData(fileHeader);
+        encodeData(FileType.BAS.getHeader());
         encodeData(nameBuffer);
 
         encodePause(DEFAULT_PAUSE_LENGTH);

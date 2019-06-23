@@ -12,7 +12,7 @@ public class Bin extends Wav {
     private static final int FILE_OFFSET = 7;
 
     public Bin(String inputFileName, SampleRate sampleRate) throws FlowException {
-        super(inputFileName, sampleRate, FileType.BIN.getHeader());
+        super(inputFileName, sampleRate);
     }
 
     @Override
@@ -32,7 +32,7 @@ public class Bin extends Wav {
 
         encodeLongHeader();
 
-        encodeData(fileHeader);
+        encodeData(FileType.BIN.getHeader());
         encodeData(nameBuffer);
 
         encodePause(DEFAULT_PAUSE_LENGTH);

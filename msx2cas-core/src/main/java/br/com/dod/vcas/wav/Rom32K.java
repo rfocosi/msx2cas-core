@@ -1,6 +1,7 @@
 package br.com.dod.vcas.wav;
 
 import br.com.dod.vcas.exception.FlowException;
+import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.model.SampleRate;
 import br.com.dod.vcas.util.FileCommons;
 
@@ -58,7 +59,7 @@ public class Rom32K extends Rom {
 
         encodeLongHeader();
 
-        encodeData(fileHeader);
+        encodeData(FileType.ROM.getHeader());
         encodeData(nameBuffer1);
 
         encodePause(DEFAULT_PAUSE_LENGTH);
@@ -70,7 +71,7 @@ public class Rom32K extends Rom {
         encodeLongHeader();
 
         // Encode binary header and second part of 32k ROM name
-        encodeData(fileHeader);
+        encodeData(FileType.ROM.getHeader());
         encodeData(nameBuffer2);
 
         encodePause(DEFAULT_PAUSE_LENGTH);

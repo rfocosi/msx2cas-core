@@ -1,11 +1,8 @@
 package br.com.dod.vcas.wav;
 
-import java.util.List;
-
 import br.com.dod.vcas.model.SampleRate;
 import br.com.dod.vcas.util.FileCommons;
 import br.com.dod.vcas.util.WavHeader;
-import br.com.dod.vcas.cas.CasFile;
 import br.com.dod.vcas.exception.FlowException;
 
 public abstract class Wav {
@@ -29,7 +26,7 @@ public abstract class Wav {
     static final char FIRST_PAUSE_LENGTH = 2;	// Seconds
     static final char DEFAULT_PAUSE_LENGTH = 1; // Second
 
-    private static final int SIZE_OF_BITSTREAM = 11;
+    private static final int SIZE_OF_BIT_STREAM = 11;
 
     private static final char[] ZERO_BIT = {LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
     private static final char[] SET_BIT = {LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
@@ -39,22 +36,19 @@ public abstract class Wav {
 
     private SampleRate sampleRate;
 
-    char[] fileHeader;
-
     char[] nameBuffer;
 
     private StringBuilder outputBuffer;
 
     byte[] inputMemPointer;
 
-    protected Wav(SampleRate sampleRate, char[] fileHeaderId) {
+    protected Wav(SampleRate sampleRate) {
         this.outputBuffer = new StringBuilder();
-        this.fileHeader = fileHeaderId;
         this.sampleRate = sampleRate;
     }
 
-    public Wav(String inputFileName, SampleRate sampleRate, char[] fileHeaderId) throws FlowException {
-        this(sampleRate, fileHeaderId);
+    public Wav(String inputFileName, SampleRate sampleRate) throws FlowException {
+        this(sampleRate);
 
         this.inputMemPointer = FileCommons.readFile(inputFileName);
 
@@ -131,7 +125,7 @@ public abstract class Wav {
     }
 
     void writeDataByte(char ch) {
-        final char[] bitStream = new char[SIZE_OF_BITSTREAM];
+        final char[] bitStream = new char[SIZE_OF_BIT_STREAM];
 
         char bitMask = 1;
         int bitSampleLength = zeroBit().length;
