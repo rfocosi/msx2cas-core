@@ -33,7 +33,7 @@ public class Bin extends Wav {
         encodeLongHeader();
 
         encodeData(FileType.BIN.getHeader());
-        encodeData(nameBuffer);
+        encodeData(getNameBuffer());
 
         encodePause(DEFAULT_PAUSE_LENGTH);
 

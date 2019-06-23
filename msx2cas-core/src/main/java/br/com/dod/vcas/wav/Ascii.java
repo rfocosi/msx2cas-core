@@ -47,7 +47,7 @@ public class Ascii extends Wav {
         encodeLongHeader();
 
         encodeData(FileType.ASCII.getHeader());
-        encodeData(nameBuffer);
+        encodeData(getNameBuffer());
 
         encodePause(DEFAULT_PAUSE_LENGTH);
 

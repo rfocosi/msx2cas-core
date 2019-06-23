@@ -33,7 +33,7 @@ public class Rom32K extends Rom {
 
         initLoader();
 
-        String fileLoaderId = String.valueOf(nameBuffer).trim();
+        String fileLoaderId = String.valueOf(getNameBuffer()).trim();
         int fileLoaderIdCutSize = (fileLoaderId.length() >= CAS_FILENAME_LENGTH ? CAS_FILENAME_LENGTH - 1 : fileLoaderId.length());
         nameBuffer1 = FileCommons.getNameBuffer(fileLoaderId.substring(0, fileLoaderIdCutSize) +"1");
         nameBuffer2 = FileCommons.getNameBuffer(fileLoaderId.substring(0, fileLoaderIdCutSize) +"2");

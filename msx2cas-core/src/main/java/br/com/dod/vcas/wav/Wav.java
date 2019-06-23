@@ -36,10 +36,9 @@ public abstract class Wav {
 
     private SampleRate sampleRate;
 
-    char[] nameBuffer;
+    private char[] nameBuffer;
 
     private StringBuilder outputBuffer;
-
     byte[] inputMemPointer;
 
     protected Wav(SampleRate sampleRate) {
@@ -179,6 +178,10 @@ public abstract class Wav {
 
     public String getName() {
         return String.valueOf(nameBuffer);
+    }
+
+    char[] getNameBuffer() {
+        return nameBuffer;
     }
 
     int getFileSize() {

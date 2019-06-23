@@ -27,7 +27,7 @@ public class Bas extends Wav {
         encodeLongHeader();
 
         encodeData(FileType.BAS.getHeader());
-        encodeData(nameBuffer);
+        encodeData(getNameBuffer());
 
         encodePause(DEFAULT_PAUSE_LENGTH);
 

@@ -9,7 +9,7 @@ public class Rom49K extends Rom {
 
     private static final long MAX_ENC_INPUT_FILE_LENGTH = 50176;
 
-    private char[] preloader;
+    private char[] preLoader;
     private char[] loader1;
     private char[] loader2;
     private char[] loader3;
@@ -37,17 +37,16 @@ public class Rom49K extends Rom {
 
     @Override
     protected void setup() {
-
         initLoader();
 
-        nameBuffer0 = nameBuffer;
-        String fileLoaderId = String.valueOf(nameBuffer).trim();
+        nameBuffer0 = getNameBuffer();
+        String fileLoaderId = String.valueOf(nameBuffer0).trim();
         int fileLoaderIdCutSize = (fileLoaderId.length() >= CAS_FILENAME_LENGTH ? CAS_FILENAME_LENGTH - 1 : fileLoaderId.length());
         nameBuffer1 = FileCommons.getNameBuffer(fileLoaderId.substring(0, fileLoaderIdCutSize) +"1");
         nameBuffer2 = FileCommons.getNameBuffer(fileLoaderId.substring(0, fileLoaderIdCutSize) +"2");
         nameBuffer3 = FileCommons.getNameBuffer(fileLoaderId.substring(0, fileLoaderIdCutSize) +"3");
 
-        System.arraycopy(nameBuffer1, 0, preloader, 14, nameBuffer1.length);
+        System.arraycopy(nameBuffer1, 0, preLoader, 14, nameBuffer1.length);
         System.arraycopy(nameBuffer2, 0, loader1, 21, nameBuffer2.length);
         System.arraycopy(nameBuffer3, 0, loader2, 21, nameBuffer3.length);
     }
@@ -74,7 +73,7 @@ public class Rom49K extends Rom {
 
         encodePause(DEFAULT_PAUSE_LENGTH);
 
-        encodePreLoaderBLock(preloader);
+        encodePreLoaderBLock(preLoader);
 
         // 1st block
 
@@ -117,7 +116,7 @@ public class Rom49K extends Rom {
     }
 
     private void initLoader() {
-        this.preloader = new char[]{
+        this.preLoader = new char[]{
                 0xC3, 0x49, 0x90, 0x1E, 0x62, 0x6C, 0x6F, 0x61, 0x64, 0x22, 0x63, 0x61, 0x73, 0x3A, 0x20, 0x20,
                 0x20, 0x20, 0x20, 0x20, 0x22, 0x2C, 0x72, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x0D,
                 0x00, 0x3C, 0x20, 0x4D, 0x53, 0x58, 0x32, 0x43, 0x61, 0x73, 0x20, 0x3E, 0x20, 0x4C, 0x6F, 0x61,

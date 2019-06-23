@@ -47,12 +47,8 @@ public class Rom extends Wav {
 
     @Override
     protected void setup() {
-
         initLoader();
-
-        if (nameBuffer.length > 1) {
-            System.arraycopy(nameBuffer, 0, loader, 21, nameBuffer.length);
-        }
+        System.arraycopy(getNameBuffer(), 0, loader, 21, getNameBuffer().length);
     }
 
     private char getRomTypeHeader() throws FlowException {
@@ -73,7 +69,7 @@ public class Rom extends Wav {
         encodeLongHeader();
 
         encodeData(FileType.ROM.getHeader());
-        encodeData(nameBuffer);
+        encodeData(getNameBuffer());
 
         encodePause(DEFAULT_PAUSE_LENGTH);
 
