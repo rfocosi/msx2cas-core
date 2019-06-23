@@ -56,9 +56,11 @@ public class FileEncodingTest {
 
             generateFile(file, casName, SampleRate.sr11025);
             generateFile(file, casName, SampleRate.sr22050);
+            generateFile(file, casName, SampleRate.sr27563);
             generateFile(file, casName, SampleRate.sr33075);
             generateFile(file, casName, SampleRate.sr11025.invertWaveForm());
             generateFile(file, casName, SampleRate.sr22050.invertWaveForm());
+            generateFile(file, casName, SampleRate.sr27563.invertWaveForm());
             generateFile(file, casName, SampleRate.sr33075.invertWaveForm());
         }
         out.println("... done");
