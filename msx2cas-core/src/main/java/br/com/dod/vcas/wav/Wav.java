@@ -55,9 +55,11 @@ public abstract class Wav {
     }
 
     public Wav(String inputFileName, SampleRate sampleRate, char[] fileHeaderId, List<CasFile> casList) throws FlowException {
-        outputBuffer = new StringBuilder();
+        this.outputBuffer = new StringBuilder();
 
-        initVars(inputFileName, sampleRate, fileHeaderId);
+        this.fileHeader = fileHeaderId;
+        this.sampleRate = sampleRate;
+        this.nameBuffer = FileCommons.getNameBuffer(inputFileName);
 
         if (casList == null || casList.isEmpty()) {
             this.inputMemPointer = FileCommons.readFile(inputFileName);
@@ -70,15 +72,6 @@ public abstract class Wav {
             }
             this.fileLength = casFileSize;
         }
-    }
-
-    private void initVars(String inputFileName, SampleRate sampleRate, char[] fileHeaderId) {
-
-        this.fileHeader = fileHeaderId;
-
-        this.sampleRate = sampleRate;
-
-        this.nameBuffer = FileCommons.getNameBuffer(inputFileName);
     }
 
     public Wav convert() throws FlowException {
