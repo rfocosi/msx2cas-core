@@ -42,8 +42,6 @@ public class Rom49K extends Rom {
 
         initLoader();
 
-        this.lengthOfHeaders =  Math.round(sampleRate.intValue() * LONG_HEADER_LENGTH + sampleRate.intValue() * SHORT_HEADER_LENGTH);
-
         nameBuffer0 = nameBuffer;
         String fileLoaderId = String.valueOf(nameBuffer).trim();
         int fileLoaderIdCutSize = (fileLoaderId.length() >= CAS_FILENAME_LENGTH ? CAS_FILENAME_LENGTH - 1 : fileLoaderId.length());

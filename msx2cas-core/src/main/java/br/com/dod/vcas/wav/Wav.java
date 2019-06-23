@@ -22,14 +22,14 @@ public abstract class Wav {
 
     private static final long LENGTH_CORRECTION = 25;
 
-    static final double LONG_HEADER_LENGTH = 20d/3d;
-    static final double SHORT_HEADER_LENGTH = 5d/3d;
+    private static final double LONG_HEADER_LENGTH = 20d/3d;
+    private static final double SHORT_HEADER_LENGTH = 5d/3d;
 
     static final char SEPARATOR_PAUSE_LENGTH = 4;	// Seconds
     static final char FIRST_PAUSE_LENGTH = 2;	// Seconds
     static final char DEFAULT_PAUSE_LENGTH = 1; // Second
 
-    static final int SIZE_OF_BITSTREAM = 11;
+    private static final int SIZE_OF_BITSTREAM = 11;
 
     private static final char[] ZERO_BIT = {LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
     private static final char[] SET_BIT = {LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
@@ -37,9 +37,7 @@ public abstract class Wav {
     private static final char[] ZERO_BIT_I = {HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE};
     private static final char[] SET_BIT_I = {HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE};
 
-    SampleRate sampleRate;
-
-    long lengthOfHeaders;
+    private SampleRate sampleRate;
 
     DWORD fileOffset;
     char[] fileHeader;
@@ -76,8 +74,6 @@ public abstract class Wav {
     }
 
     private void initVars(String inputFileName, SampleRate sampleRate, DWORD fileOffset, char[] fileHeaderId) {
-
-        lengthOfHeaders = Math.round(sampleRate.intValue() * (LONG_HEADER_LENGTH + SHORT_HEADER_LENGTH));
 
         this.fileOffset = fileOffset;
         this.fileHeader = fileHeaderId;

@@ -32,8 +32,6 @@ public class Ascii extends Wav {
             }
         }
 
-        this.lengthOfHeaders =  Math.round(sampleRate.intValue() * (LONG_HEADER_LENGTH + SHORT_HEADER_LENGTH * b));
-
         fixFileNewLines();
 
         for (int i = 0; i < this.fileLength; i++) {
