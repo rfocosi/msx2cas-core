@@ -11,7 +11,7 @@ import br.com.dod.vcas.exception.FlowException;
 
 public abstract class Wav {
 
-    static final long MIN_ENC_INPUTFILE_LENGTH = 5L;
+    static final long MIN_ENC_INPUT_FILE_LENGTH = 5L;
     static final int CAS_FILENAME_LENGTH = FileCommons.CAS_FILENAME_LENGTH;
 
     private static final char START_BIT = 0;
@@ -20,17 +20,16 @@ public abstract class Wav {
     private static final char HIGH_AMPLITUDE = 0xFF;
     private static final char LOW_AMPLITUDE = 0;
 
-    private static final char WAV_HEADER_OFFSET_VALUE = 0x77;
     private static final long LENGTH_CORRECTION = 25;
 
-    static final double LONG_HEADER_LENGTH = 20d/3d;
-    static final double SHORT_HEADER_LENGTH = 5d/3d;
+    private static final double LONG_HEADER_LENGTH = 20d/3d;
+    private static final double SHORT_HEADER_LENGTH = 5d/3d;
 
     static final char SEPARATOR_PAUSE_LENGTH = 4;	// Seconds
     static final char FIRST_PAUSE_LENGTH = 2;	// Seconds
     static final char DEFAULT_PAUSE_LENGTH = 1; // Second
 
-    static final int SIZE_OF_BITSTREAM = 11;
+    private static final int SIZE_OF_BITSTREAM = 11;
 
     private static final char[] ZERO_BIT = {LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
     private static final char[] SET_BIT = {LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
@@ -38,18 +37,13 @@ public abstract class Wav {
     private static final char[] ZERO_BIT_I = {HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE};
     private static final char[] SET_BIT_I = {HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE};
 
-    SampleRate sampleRate;
+    private SampleRate sampleRate;
 
-    double pureSampleShortHeaderLength;
-
-    DWORD extraBytes;
     DWORD fileOffset;
-    DWORD moreExtraBytes;
     char[] fileHeader;
 
-    String[] nameBuffer;
+    char[] nameBuffer;
 
-    private WavHeader wavHeader;
     private StringBuilder outputBuffer;
 
     byte[] inputMemPointer;
@@ -81,34 +75,17 @@ public abstract class Wav {
 
     private void initVars(String inputFileName, SampleRate sampleRate, DWORD fileOffset, char[] fileHeaderId) {
 
-        nameBuffer = new String[1];
-        wavHeader = new WavHeader();
-        pureSampleShortHeaderLength = SHORT_HEADER_LENGTH;
-
         this.fileOffset = fileOffset;
         this.fileHeader = fileHeaderId;
 
         this.sampleRate = sampleRate;
 
-        this.nameBuffer[0] = String.format("%1$-" + CAS_FILENAME_LENGTH + "s", FileCommons.getCasName(inputFileName));
-    }
-
-    public String getFileId() {
-        return nameBuffer[0];
+        this.nameBuffer = FileCommons.getNameBuffer(inputFileName);
     }
 
     public Wav convert() throws FlowException {
         validate();
         setup();
-
-        setDefaultHeader();
-
-        encodePause(FIRST_PAUSE_LENGTH);
-        encodeLongHeader();
-
-        encodeData(fileHeader);
-        encodeData(nameBuffer[0].toCharArray());
-        encodePause(DEFAULT_PAUSE_LENGTH);
 
         encodeFileContent();
 
@@ -118,6 +95,8 @@ public abstract class Wav {
     }
 
     public byte[] toBytes() {
+        final WavHeader wavHeader = new WavHeader(sampleRate, outputBuffer.length());
+
         byte[] wavHeaderBytes = wavHeader.toBytes();
         int offset = wavHeaderBytes.length;
         byte[] outBytes = new byte[offset + outputBuffer.length()];
@@ -129,17 +108,6 @@ public abstract class Wav {
         }
 
         return outBytes;
-    }
-
-    private void setDefaultHeader() {
-        wavHeader.SamplesPerSec = new DWORD(sampleRate.intValue());
-
-        wavHeader.PureSampleLength = new DWORD((sampleRate.intValue() * (FIRST_PAUSE_LENGTH + DEFAULT_PAUSE_LENGTH + DEFAULT_PAUSE_LENGTH)) + // Length of pauses
-                Math.round(sampleRate.intValue() * (LONG_HEADER_LENGTH + pureSampleShortHeaderLength)) +	// Length of headers
-                ((sizeof(fileHeader) + CAS_FILENAME_LENGTH + fileLength + extraBytes.longValue() - fileOffset.longValue()) * Math.round(sampleRate.sampleScale() * SIZE_OF_BITSTREAM * sampleRate.bitEncodingLength())) + // Length of data
-                moreExtraBytes.longValue());
-
-        wavHeader.SampleLength = new DWORD(wavHeader.PureSampleLength.longValue() + WAV_HEADER_OFFSET_VALUE);
     }
 
     void encodeLongHeader() {
@@ -237,12 +205,12 @@ public abstract class Wav {
         return adressBuffer;
     }
 
-    static int sizeof(char[] charArray) {
-        return (charArray == null ? 0 : charArray.length);
+    public String getName() {
+        return String.valueOf(nameBuffer);
     }
 
-    public WavHeader getWavHeader() {
-        return this.wavHeader;
+    static int sizeof(char[] charArray) {
+        return (charArray == null ? 0 : charArray.length);
     }
 
     abstract void validate() throws FlowException;

@@ -17,7 +17,7 @@ public class Ascii extends Wav {
 
     @Override
     protected void validate() throws FlowException {
-        if (this.fileLength < MIN_ENC_INPUTFILE_LENGTH) throw FlowException.error("file_size_invalid");
+        if (this.fileLength < MIN_ENC_INPUT_FILE_LENGTH) throw FlowException.error("file_size_invalid");
     }
 
     @Override
@@ -31,11 +31,6 @@ public class Ascii extends Wav {
                 if (inputFileLengthTmp <= 256) break;
             }
         }
-
-        this.pureSampleShortHeaderLength = SHORT_HEADER_LENGTH * b;
-
-        this.extraBytes = new DWORD(256);
-        this.moreExtraBytes = new DWORD(0);
 
         fixFileNewLines();
 
@@ -57,6 +52,15 @@ public class Ascii extends Wav {
 
     @Override
     protected void encodeFileContent() {
+
+        encodePause(FIRST_PAUSE_LENGTH);
+
+        encodeLongHeader();
+
+        encodeData(fileHeader);
+        encodeData(nameBuffer);
+
+        encodePause(DEFAULT_PAUSE_LENGTH);
 
         long fileLength = inputMemPointer.length;
 
