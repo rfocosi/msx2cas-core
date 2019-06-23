@@ -87,6 +87,11 @@ public class FileEncodingTest {
     }
 
     @Test
+    public void test27563Files() {
+        testFiles(SampleRate.sr27563);
+    }
+
+    @Test
     public void test33075Files() {
         testFiles(SampleRate.sr33075);
     }
@@ -99,6 +104,11 @@ public class FileEncodingTest {
     @Test
     public void test22050iFiles() {
         testFiles(SampleRate.sr22050.invertWaveForm());
+    }
+
+    @Test
+    public void test27563iFiles() {
+        testFiles(SampleRate.sr27563.invertWaveForm());
     }
 
     @Test

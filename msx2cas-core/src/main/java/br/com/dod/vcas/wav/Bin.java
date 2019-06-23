@@ -9,8 +9,10 @@ public class Bin extends Wav {
 
     private char[] loader;
 
+    private static final int FILE_OFFSET = 7;
+
     public Bin(String inputFileName, SampleRate sampleRate) throws FlowException {
-        super(inputFileName, sampleRate, new DWORD(7), FileType.BIN.getHeader());
+        super(inputFileName, sampleRate, FileType.BIN.getHeader());
     }
 
     @Override
@@ -37,11 +39,11 @@ public class Bin extends Wav {
 
         encodeShortHeader();
 
-        encodeData(buildBinaryAddressBuffer(sizeof(loader) + inputMemPointer.length - fileOffset.longValue()));
+        encodeData(buildBinaryAddressBuffer(sizeof(loader) + inputMemPointer.length - FILE_OFFSET));
 
         encodeLoader();
 
-        for (int i = fileOffset.intValue(); i < inputMemPointer.length; i++) {
+        for (int i = FILE_OFFSET; i < inputMemPointer.length; i++) {
             writeDataByte((char) inputMemPointer[i]);
         }
     }
@@ -64,7 +66,7 @@ public class Bin extends Wav {
         char binBegin = (char) ((new DWORD(inputMemPointer[2]).getLow()).intValue() * 0x100 + (new DWORD(inputMemPointer[1]).getLow()).intValue());
         char binEnd = (char) ((new DWORD(inputMemPointer[4]).getLow()).intValue() * 0x100 + (new DWORD(inputMemPointer[3]).getLow()).intValue());
 
-        loader[9] = calculateCRC(fileOffset.intValue(), (binEnd-binBegin) + fileOffset.intValue());
+        loader[9] = calculateCRC(FILE_OFFSET, (binEnd-binBegin) + FILE_OFFSET);
     }
 
     private void initLoader() {

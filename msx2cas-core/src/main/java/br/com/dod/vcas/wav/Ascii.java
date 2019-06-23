@@ -11,7 +11,7 @@ import br.com.dod.vcas.model.SampleRate;
 public class Ascii extends Wav {
 
     public Ascii(String inputFileName, SampleRate sampleRate) throws FlowException {
-        super(inputFileName, sampleRate, new DWORD(0), FileType.ASCII.getHeader());
+        super(inputFileName, sampleRate, FileType.ASCII.getHeader());
     }
 
     @Override
@@ -58,7 +58,7 @@ public class Ascii extends Wav {
         if (fileLength <= b) b = fileLength;
 
         // Encode 256 bytes + header chunks of data
-        for (int i = fileOffset.intValue(); ; i += 256) {
+        for (int i = 0; ; i += 256) {
             encodeShortHeader();
 
             // Encode 256 (or less) bytes

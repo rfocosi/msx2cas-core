@@ -2,7 +2,6 @@ package br.com.dod.vcas.wav;
 
 import java.util.List;
 
-import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.cas.CasFile;
 import br.com.dod.vcas.cas.CasUtil;
 import br.com.dod.vcas.exception.FlowException;
@@ -11,11 +10,11 @@ import br.com.dod.vcas.model.SampleRate;
 public class Cas extends Wav {
 
     public Cas(String inputFileName, SampleRate sampleRate) throws FlowException {
-        super(inputFileName, sampleRate, new DWORD(7), null, null);
+        super(inputFileName, sampleRate, null, null);
     }
 
     public Cas(String inputFileName, SampleRate sampleRate, List<CasFile> casList) throws FlowException {
-        super(inputFileName, sampleRate, new DWORD(7), null, casList);
+        super(inputFileName, sampleRate, null, casList);
     }
 
     @Override

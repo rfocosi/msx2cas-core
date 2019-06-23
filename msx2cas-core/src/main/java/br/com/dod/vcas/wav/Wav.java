@@ -2,7 +2,6 @@ package br.com.dod.vcas.wav;
 
 import java.util.List;
 
-import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.model.SampleRate;
 import br.com.dod.vcas.util.FileCommons;
 import br.com.dod.vcas.util.WavHeader;
@@ -12,7 +11,8 @@ import br.com.dod.vcas.exception.FlowException;
 public abstract class Wav {
 
     static final long MIN_ENC_INPUT_FILE_LENGTH = 5L;
-    static final int CAS_FILENAME_LENGTH = FileCommons.CAS_FILENAME_LENGTH;
+
+    public static final int CAS_FILENAME_LENGTH = 6;
 
     private static final char START_BIT = 0;
     private static final char STOP_BIT = 1;
@@ -39,7 +39,6 @@ public abstract class Wav {
 
     private SampleRate sampleRate;
 
-    DWORD fileOffset;
     char[] fileHeader;
 
     char[] nameBuffer;
@@ -51,14 +50,14 @@ public abstract class Wav {
     int fileLength;
     List<CasFile> casList;
 
-    public Wav(String inputFileName, SampleRate sampleRate, DWORD fileOffset, char[] fileHeaderId) throws FlowException {
-        this(inputFileName, sampleRate, fileOffset, fileHeaderId, null);
+    public Wav(String inputFileName, SampleRate sampleRate, char[] fileHeaderId) throws FlowException {
+        this(inputFileName, sampleRate, fileHeaderId, null);
     }
 
-    public Wav(String inputFileName, SampleRate sampleRate, DWORD fileOffset, char[] fileHeaderId, List<CasFile> casList) throws FlowException {
+    public Wav(String inputFileName, SampleRate sampleRate, char[] fileHeaderId, List<CasFile> casList) throws FlowException {
         outputBuffer = new StringBuilder();
 
-        initVars(inputFileName, sampleRate, fileOffset, fileHeaderId);
+        initVars(inputFileName, sampleRate, fileHeaderId);
 
         if (casList == null || casList.isEmpty()) {
             this.inputMemPointer = FileCommons.readFile(inputFileName);
@@ -73,9 +72,8 @@ public abstract class Wav {
         }
     }
 
-    private void initVars(String inputFileName, SampleRate sampleRate, DWORD fileOffset, char[] fileHeaderId) {
+    private void initVars(String inputFileName, SampleRate sampleRate, char[] fileHeaderId) {
 
-        this.fileOffset = fileOffset;
         this.fileHeader = fileHeaderId;
 
         this.sampleRate = sampleRate;

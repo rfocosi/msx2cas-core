@@ -9,6 +9,8 @@ import br.com.dod.vcas.util.FileCommons;
 import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.exception.FlowException;
 
+import static br.com.dod.vcas.wav.Wav.CAS_FILENAME_LENGTH;
+
 public class CasUtil {
     private static final char[] HEADER = FileType.CAS.getId();
 
@@ -51,7 +53,7 @@ public class CasUtil {
 
             String itemName = "";
             if (!FileType.DATA.equals(casFile.getFileType())) {
-                for (int n=i; n < i+FileCommons.CAS_FILENAME_LENGTH; n++) {
+                for (int n=i; n < i+CAS_FILENAME_LENGTH; n++) {
                     itemName += (char) inputHandler[n];
                 }
                 i = nextHeader(i, inputHandler) + HEADER.length;
