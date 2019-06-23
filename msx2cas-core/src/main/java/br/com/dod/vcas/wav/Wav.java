@@ -209,6 +209,10 @@ public abstract class Wav {
         return adressBuffer;
     }
 
+    public String getName() {
+        return String.valueOf(nameBuffer);
+    }
+
     static int sizeof(char[] charArray) {
         return (charArray == null ? 0 : charArray.length);
     }
