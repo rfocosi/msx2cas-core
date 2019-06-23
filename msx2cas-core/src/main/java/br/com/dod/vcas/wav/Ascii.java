@@ -34,9 +34,6 @@ public class Ascii extends Wav {
 
         this.lengthOfHeaders =  Math.round(sampleRate.intValue() * (LONG_HEADER_LENGTH + SHORT_HEADER_LENGTH * b));
 
-        this.extraBytes = new DWORD(256);
-        this.moreExtraBytes = new DWORD(0);
-
         fixFileNewLines();
 
         for (int i = 0; i < this.fileLength; i++) {

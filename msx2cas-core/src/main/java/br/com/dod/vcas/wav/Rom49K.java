@@ -1,6 +1,5 @@
 package br.com.dod.vcas.wav;
 
-import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.SampleRate;
 import br.com.dod.vcas.util.FileCommons;
@@ -45,10 +44,6 @@ public class Rom49K extends Rom {
 
         this.lengthOfHeaders =  Math.round(sampleRate.intValue() * LONG_HEADER_LENGTH + sampleRate.intValue() * SHORT_HEADER_LENGTH);
 
-        setExtraBytes();
-
-        setMoreExtraBytes();
-
         nameBuffer0 = nameBuffer;
         String fileLoaderId = String.valueOf(nameBuffer).trim();
         int fileLoaderIdCutSize = (fileLoaderId.length() >= CAS_FILENAME_LENGTH ? CAS_FILENAME_LENGTH - 1 : fileLoaderId.length());
@@ -59,23 +54,6 @@ public class Rom49K extends Rom {
         System.arraycopy(nameBuffer1, 0, preloader, 14, nameBuffer1.length);
         System.arraycopy(nameBuffer2, 0, loader1, 21, nameBuffer2.length);
         System.arraycopy(nameBuffer3, 0, loader2, 21, nameBuffer3.length);
-    }
-
-    private void setExtraBytes() {
-        this.extraBytes = new DWORD((sizeof(preloader) + sizeof(loader1) + sizeof(loader2) + sizeof(loader3) + 18));
-    }
-
-    private void setMoreExtraBytes() {
-
-        DWORD moreExtraBytes = new DWORD(((sampleRate.intValue() * FIRST_PAUSE_LENGTH) + (sampleRate.intValue() * DEFAULT_PAUSE_LENGTH) +
-                Math.round(sampleRate.intValue() * LONG_HEADER_LENGTH + sampleRate.intValue() * SHORT_HEADER_LENGTH) +
-                (sizeof(fileHeader) + CAS_FILENAME_LENGTH) * Math.round(sampleRate.sampleScale() * SIZE_OF_BITSTREAM * sampleRate.bitEncodingLength())));
-
-        moreExtraBytes = new DWORD(moreExtraBytes.longValue() + (sampleRate.intValue() * FIRST_PAUSE_LENGTH) + (sampleRate.intValue() * DEFAULT_PAUSE_LENGTH) +
-                Math.round(sampleRate.intValue() * LONG_HEADER_LENGTH + sampleRate.intValue() * SHORT_HEADER_LENGTH) +
-                (sizeof(fileHeader) + CAS_FILENAME_LENGTH) * Math.round(sampleRate.sampleScale() * SIZE_OF_BITSTREAM * sampleRate.bitEncodingLength()) * 2 );
-
-        this.moreExtraBytes = moreExtraBytes;
     }
 
     private void encodePreLoaderBLock(char[] preloader) {

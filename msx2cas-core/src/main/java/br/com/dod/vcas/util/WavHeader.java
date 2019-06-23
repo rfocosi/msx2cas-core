@@ -6,6 +6,7 @@ import java.util.List;
 import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.dotnet.types.WORD;
 import br.com.dod.types.IntegerType;
+import br.com.dod.vcas.model.SampleRate;
 
 public class WavHeader {
 
@@ -18,28 +19,40 @@ public class WavHeader {
     private static final WORD NUM_CHANNELS = new WORD(1); // Mono
     private static final WORD BITS_PER_SAMPLE = new WORD(8);
 
-    public DWORD SampleLength;
-    public DWORD SamplesPerSec;
-    public DWORD PureSampleLength;
+    private DWORD sampleRate;
+    private long dataSize;
+
+    public WavHeader(SampleRate sampleRate, long dataSize) {
+        this.sampleRate = new DWORD(sampleRate.intValue());
+        this.dataSize = dataSize;
+    }
 
     private List<IntegerType> getHeader() {
         final List<IntegerType> charList = new LinkedList<>();
 
         charList.add(WAV_HEADER_ID);
-        charList.add(SampleLength);
+        charList.add(getFileSize());
         charList.add(MM_FILE_TYPE);
         charList.add(FORMAT_ID);
         charList.add(FORMAT_SIZE);
         charList.add(FORMAT_TAG);
         charList.add(NUM_CHANNELS);
-        charList.add(SamplesPerSec);
+        charList.add(sampleRate);
         charList.add(getBytesPerSec());
         charList.add(getBlkAllign());
         charList.add(BITS_PER_SAMPLE);
         charList.add(DATA_ID);
-        charList.add(PureSampleLength);
+        charList.add(getDataSize());
 
         return charList;
+    }
+
+    private DWORD getFileSize() {
+        return new DWORD(dataSize + 36);
+    }
+
+    private DWORD getDataSize() {
+        return new DWORD(dataSize);
     }
 
     private WORD getBlkAllign() {
@@ -47,7 +60,7 @@ public class WavHeader {
     }
 
     private DWORD getBytesPerSec() {
-        return new DWORD((SamplesPerSec.longValue() * BITS_PER_SAMPLE.longValue() * NUM_CHANNELS.longValue()) / 8);
+        return new DWORD((sampleRate.longValue() * BITS_PER_SAMPLE.longValue() * NUM_CHANNELS.longValue()) / 8);
     }
 
     public byte[] toBytes() {

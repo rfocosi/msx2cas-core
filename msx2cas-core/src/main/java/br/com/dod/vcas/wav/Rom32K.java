@@ -33,10 +33,6 @@ public class Rom32K extends Rom {
 
         initLoader();
 
-        setExtraBytes();
-
-        setMoreExtraBytes();
-
         String fileLoaderId = String.valueOf(nameBuffer).trim();
         int fileLoaderIdCutSize = (fileLoaderId.length() >= CAS_FILENAME_LENGTH ? CAS_FILENAME_LENGTH - 1 : fileLoaderId.length());
         nameBuffer1 = FileCommons.getNameBuffer(fileLoaderId.substring(0, fileLoaderIdCutSize) +"1");
@@ -49,27 +45,6 @@ public class Rom32K extends Rom {
         char ch = (char) inputMemPointer[3];
         if ((ch & 0xf0) >= 0xD0) throw FlowException.error("type_32k_not_supported");
         return ch;
-    }
-
-    private void setExtraBytes() {
-
-        DWORD extraBytes = new DWORD(6);
-
-        extraBytes = new DWORD((extraBytes.longValue() + loader1.length + loader2.length + 12));
-
-        this.extraBytes = extraBytes;
-    }
-    private void setMoreExtraBytes() {
-
-        DWORD moreExtraBytes = new DWORD(((sampleRate.intValue() * FIRST_PAUSE_LENGTH) + (sampleRate.intValue() * DEFAULT_PAUSE_LENGTH) +
-                Math.round(sampleRate.intValue() * LONG_HEADER_LENGTH + sampleRate.intValue() * SHORT_HEADER_LENGTH) +
-                (fileHeader.length + CAS_FILENAME_LENGTH) * Math.round(sampleRate.sampleScale() * SIZE_OF_BITSTREAM * sampleRate.bitEncodingLength())));
-
-        moreExtraBytes = new DWORD((moreExtraBytes.longValue() + (sampleRate.intValue() * FIRST_PAUSE_LENGTH) + (sampleRate.intValue() * DEFAULT_PAUSE_LENGTH) +
-                Math.round(sampleRate.intValue() * LONG_HEADER_LENGTH + sampleRate.intValue() * SHORT_HEADER_LENGTH) +
-                (fileHeader.length + CAS_FILENAME_LENGTH - new DWORD(0).longValue()) * Math.round(sampleRate.sampleScale() * SIZE_OF_BITSTREAM * sampleRate.bitEncodingLength())));
-
-        this.moreExtraBytes = moreExtraBytes;
     }
 
     @Override

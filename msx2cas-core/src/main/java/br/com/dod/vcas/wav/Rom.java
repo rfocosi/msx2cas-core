@@ -52,10 +52,6 @@ public class Rom extends Wav {
 
         initLoader();
 
-        setExtraBytes();
-
-        setMoreExtraBytes();
-
         if (nameBuffer.length > 1) {
             System.arraycopy(nameBuffer, 0, loader, 21, nameBuffer.length);
         }
@@ -65,25 +61,6 @@ public class Rom extends Wav {
         char ch = (char) inputMemPointer[3];
         if ((ch & 0xf0) >= 0xD0) throw FlowException.error("type_32k_not_supported");
         return ch;
-    }
-
-    private void setExtraBytes() throws FlowException {
-
-        DWORD extraBytes = new DWORD(6);
-
-        if (getRomTypeHeader() < 0x80) {
-            extraBytes = new DWORD((extraBytes.longValue() + loader.length + 6));
-        } else {
-            extraBytes = new DWORD((extraBytes.longValue() + 6));
-        }
-        this.extraBytes = extraBytes;
-    }
-
-    private void setMoreExtraBytes() {
-
-        this.moreExtraBytes = new DWORD(((sampleRate.intValue() * FIRST_PAUSE_LENGTH) + (sampleRate.intValue() * DEFAULT_PAUSE_LENGTH) +
-                Math.round(sampleRate.intValue() * LONG_HEADER_LENGTH + sampleRate.intValue() * SHORT_HEADER_LENGTH) +
-                (fileHeader.length + CAS_FILENAME_LENGTH) * Math.round(sampleRate.sampleScale() * SIZE_OF_BITSTREAM * sampleRate.bitEncodingLength())));
     }
 
     @Override

@@ -20,7 +20,6 @@ public abstract class Wav {
     private static final char HIGH_AMPLITUDE = 0xFF;
     private static final char LOW_AMPLITUDE = 0;
 
-    private static final char WAV_HEADER_OFFSET_VALUE = 0x77;
     private static final long LENGTH_CORRECTION = 25;
 
     static final double LONG_HEADER_LENGTH = 20d/3d;
@@ -42,14 +41,11 @@ public abstract class Wav {
 
     long lengthOfHeaders;
 
-    DWORD extraBytes;
     DWORD fileOffset;
-    DWORD moreExtraBytes;
     char[] fileHeader;
 
     char[] nameBuffer;
 
-    private WavHeader wavHeader;
     private StringBuilder outputBuffer;
 
     byte[] inputMemPointer;
@@ -81,7 +77,6 @@ public abstract class Wav {
 
     private void initVars(String inputFileName, SampleRate sampleRate, DWORD fileOffset, char[] fileHeaderId) {
 
-        wavHeader = new WavHeader();
         lengthOfHeaders = Math.round(sampleRate.intValue() * (LONG_HEADER_LENGTH + SHORT_HEADER_LENGTH));
 
         this.fileOffset = fileOffset;
@@ -96,8 +91,6 @@ public abstract class Wav {
         validate();
         setup();
 
-        setDefaultHeader();
-
         encodeFileContent();
 
         encodePause(DEFAULT_PAUSE_LENGTH, LENGTH_CORRECTION);
@@ -106,6 +99,8 @@ public abstract class Wav {
     }
 
     public byte[] toBytes() {
+        final WavHeader wavHeader = new WavHeader(sampleRate, outputBuffer.length());
+
         byte[] wavHeaderBytes = wavHeader.toBytes();
         int offset = wavHeaderBytes.length;
         byte[] outBytes = new byte[offset + outputBuffer.length()];
@@ -117,17 +112,6 @@ public abstract class Wav {
         }
 
         return outBytes;
-    }
-
-    private void setDefaultHeader() {
-        wavHeader.SamplesPerSec = new DWORD(sampleRate.intValue());
-
-        wavHeader.PureSampleLength = new DWORD((sampleRate.intValue() * (FIRST_PAUSE_LENGTH + DEFAULT_PAUSE_LENGTH + DEFAULT_PAUSE_LENGTH)) + // Length of pauses
-                lengthOfHeaders +
-                ((sizeof(fileHeader) + CAS_FILENAME_LENGTH + fileLength + extraBytes.longValue() - fileOffset.longValue()) * Math.round(sampleRate.sampleScale() * SIZE_OF_BITSTREAM * sampleRate.bitEncodingLength())) + // Length of data
-                moreExtraBytes.longValue());
-
-        wavHeader.SampleLength = new DWORD(wavHeader.PureSampleLength.longValue() + WAV_HEADER_OFFSET_VALUE);
     }
 
     void encodeLongHeader() {
@@ -227,10 +211,6 @@ public abstract class Wav {
 
     static int sizeof(char[] charArray) {
         return (charArray == null ? 0 : charArray.length);
-    }
-
-    public WavHeader getWavHeader() {
-        return this.wavHeader;
     }
 
     abstract void validate() throws FlowException;

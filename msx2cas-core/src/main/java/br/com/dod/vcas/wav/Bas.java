@@ -18,9 +18,7 @@ public class Bas extends Wav {
     }
 
     @Override
-    protected void setup() {
-        this.extraBytes = new DWORD(7);
-        this.moreExtraBytes = new DWORD(0);
+    void setup() throws FlowException {
     }
 
     @Override
