@@ -9,12 +9,15 @@ import br.com.dod.vcas.model.SampleRate;
 
 public class Cas extends Wav {
 
+    private List<CasFile> casList;
+
     public Cas(String inputFileName, SampleRate sampleRate) throws FlowException {
-        super(inputFileName, sampleRate, null, null);
+        super(inputFileName, sampleRate, null);
     }
 
-    public Cas(String inputFileName, SampleRate sampleRate, List<CasFile> casList) throws FlowException {
-        super(inputFileName, sampleRate, null, casList);
+    public Cas(List<CasFile> casList, SampleRate sampleRate) {
+        super(sampleRate, null);
+        this.casList = casList;
     }
 
     @Override
@@ -24,9 +27,7 @@ public class Cas extends Wav {
 
     @Override
     protected void setup() {
-
         CasFile firstFile = casList.get(0);
-
         this.fileHeader = firstFile.getHeader();
         this.nameBuffer = firstFile.getName().toCharArray();
     }

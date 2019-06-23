@@ -47,31 +47,18 @@ public abstract class Wav {
 
     byte[] inputMemPointer;
 
-    int fileLength;
-    List<CasFile> casList;
-
-    public Wav(String inputFileName, SampleRate sampleRate, char[] fileHeaderId) throws FlowException {
-        this(inputFileName, sampleRate, fileHeaderId, null);
-    }
-
-    public Wav(String inputFileName, SampleRate sampleRate, char[] fileHeaderId, List<CasFile> casList) throws FlowException {
+    protected Wav(SampleRate sampleRate, char[] fileHeaderId) {
         this.outputBuffer = new StringBuilder();
-
         this.fileHeader = fileHeaderId;
         this.sampleRate = sampleRate;
-        this.nameBuffer = FileCommons.getNameBuffer(inputFileName);
+    }
 
-        if (casList == null || casList.isEmpty()) {
-            this.inputMemPointer = FileCommons.readFile(inputFileName);
-            this.fileLength = inputMemPointer.length;
-        } else {
-            this.casList = casList;
-            int casFileSize = 0;
-            for (CasFile casFile : casList) {
-                casFileSize += casFile.getSize();
-            }
-            this.fileLength = casFileSize;
-        }
+    public Wav(String inputFileName, SampleRate sampleRate, char[] fileHeaderId) throws FlowException {
+        this(sampleRate, fileHeaderId);
+
+        this.inputMemPointer = FileCommons.readFile(inputFileName);
+
+        this.nameBuffer = FileCommons.getNameBuffer(inputFileName);
     }
 
     public Wav convert() throws FlowException {
@@ -198,6 +185,10 @@ public abstract class Wav {
 
     public String getName() {
         return String.valueOf(nameBuffer);
+    }
+
+    int getFileSize() {
+        return inputMemPointer.length;
     }
 
     static int sizeof(char[] charArray) {

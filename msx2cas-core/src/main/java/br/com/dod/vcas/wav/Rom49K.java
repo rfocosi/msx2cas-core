@@ -6,7 +6,7 @@ import br.com.dod.vcas.util.FileCommons;
 
 public class Rom49K extends Rom {
 
-    static final long MAX_ENC_INPUT_FILE_LENGTH = 50176;
+    private static final long MAX_ENC_INPUT_FILE_LENGTH = 50176;
 
     private char[] preloader;
     private char[] loader1;
@@ -31,7 +31,7 @@ public class Rom49K extends Rom {
         if ((char) inputMemPointer[3] >= 0x40 && (char) inputMemPointer[0x4000] != 'A'
                 && (char) inputMemPointer[0x4001] != 'B') throw FlowException.error("mappers_not_supported");
 
-        if (!matchSize(this.fileLength)) throw FlowException.error("file_size_invalid");
+        if (!matchSize(getFileSize())) throw FlowException.error("file_size_invalid");
     }
 
     @Override

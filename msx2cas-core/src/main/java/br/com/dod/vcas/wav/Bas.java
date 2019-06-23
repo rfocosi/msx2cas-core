@@ -12,7 +12,7 @@ public class Bas extends Wav {
 
     @Override
     protected void validate() throws FlowException {
-        if (this.fileLength < MIN_ENC_INPUT_FILE_LENGTH) throw FlowException.error("file_size_invalid");
+        if (getFileSize() < MIN_ENC_INPUT_FILE_LENGTH) throw FlowException.error("file_size_invalid");
     }
 
     @Override

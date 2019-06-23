@@ -3,7 +3,6 @@ package br.com.dod.vcas.wav;
 import java.util.LinkedList;
 import java.util.List;
 
-import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.model.SampleRate;
@@ -16,7 +15,7 @@ public class Ascii extends Wav {
 
     @Override
     protected void validate() throws FlowException {
-        if (this.fileLength < MIN_ENC_INPUT_FILE_LENGTH) throw FlowException.error("file_size_invalid");
+        if (getFileSize() < MIN_ENC_INPUT_FILE_LENGTH) throw FlowException.error("file_size_invalid");
     }
 
     @Override
@@ -24,7 +23,7 @@ public class Ascii extends Wav {
 
         fixFileNewLines();
 
-        for (int i = 0; i < this.fileLength; i++) {
+        for (int i = 0; i < getFileSize(); i++) {
             if (inputMemPointer[i] == 0xa && inputMemPointer[i-1] != 0xd) {
                 throw FlowException.error("wrong_char_sequence");
             }

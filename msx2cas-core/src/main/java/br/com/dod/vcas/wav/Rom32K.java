@@ -24,7 +24,7 @@ public class Rom32K extends Rom {
 
     @Override
     protected void validate() throws FlowException {
-        if (!matchSize(this.fileLength)) throw FlowException.error("file_size_invalid");
+        if (!matchSize(getFileSize())) throw FlowException.error("file_size_invalid");
     }
 
     @Override
