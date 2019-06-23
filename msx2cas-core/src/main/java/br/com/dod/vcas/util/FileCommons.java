@@ -51,10 +51,7 @@ public class FileCommons {
             fileType = FileType.BAS;
         } else if (FileType.BIN.equals(fileName)) {
             fileType = FileType.BIN;
-        } else if (FileType.ROM.equals(fileName)||
-                fileName.toLowerCase().endsWith(".rom") ||
-                fileName.toLowerCase().endsWith(".mx1") ||
-                fileName.toLowerCase().endsWith(".mx2")) {
+        } else if (FileType.ROM.equals(fileName)) {
             fileType = FileType.ROM;
         }
         return fileType;

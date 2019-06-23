@@ -1,5 +1,6 @@
 package br.com.dod.vcas.model;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 
@@ -9,7 +10,6 @@ public enum FileType {
     BIN(new char[]{ 0xfe }, "BINARY", new char[]{ 0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0 }),
     CAS(new char[]{ 0x1F,0xA6,0xDE,0xBA,0xCC,0x13,0x7D,0x74 }, "CAS", new char[]{}),
     ROM(new char[]{ 0x41, 0x42 }, "ROM", new char[]{ 0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0 }),
-    ROM49k(new char[]{}, "ROM", new char[]{ 0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0 }),
     DATA(new char[]{}, "DATA", new char[]{ 0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0 }),
     NONE(new char[]{}, "NONE", new char[]{});
 
@@ -23,12 +23,22 @@ public enum FileType {
         this.header = header;
     }
 
-    public boolean equals(String fileName) throws IOException {
+    private boolean equals(String fileName, int offset) throws IOException {
         byte[] fileHeader = new byte[id.length];
         try (FileInputStream fileInputStream = new FileInputStream(fileName)) {
-            if (fileInputStream.read(fileHeader, 0, fileHeader.length) <= 0) throw new IOException("File empty!");
+            fileInputStream.skip(offset);
+            if (fileInputStream.read(fileHeader) <= 0) throw new IOException("File empty!");
         }
         return equals(fileHeader);
+    }
+
+    private boolean equalsRom49k(String fileName) throws IOException {
+        if ( 16384 > new File(fileName).length() ) return false;
+        return equals(fileName, 16384);
+    }
+
+    public boolean equals(String fileName) throws IOException {
+        return equals(fileName, 0) || equalsRom49k(fileName);
     }
 
     public boolean equals(byte[] inputHandler) {
