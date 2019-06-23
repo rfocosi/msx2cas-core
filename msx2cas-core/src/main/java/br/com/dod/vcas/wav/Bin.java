@@ -13,15 +13,6 @@ public class Bin extends Wav {
 
     public Bin(String inputFileName, SampleRate sampleRate) throws FlowException {
         super(inputFileName, sampleRate);
-    }
-
-    @Override
-    protected void validate() throws FlowException {
-        if (getFileSize() < MIN_ENC_INPUT_FILE_LENGTH) throw FlowException.error("file_size_invalid");
-    }
-
-    @Override
-    protected void setup() {
         initLoader();
     }
 

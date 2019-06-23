@@ -55,8 +55,7 @@ public abstract class Wav {
     }
 
     public Wav convert() throws FlowException {
-        validate();
-        setup();
+        validateMinFileSize();
 
         encodeFileContent();
 
@@ -164,16 +163,16 @@ public abstract class Wav {
     char[] buildBinaryAddressBuffer(final long binarySize) {
         char a = (char) (binarySize + 0x9000 - 1);
 
-        char[] adressBuffer = new char[6];
+        char[] addressBuffer = new char[6];
 
-        adressBuffer[0] = 0;
-        adressBuffer[1] = 0x90;
-        adressBuffer[2] = a;
-        adressBuffer[3] = (char)(a >> 8);
-        adressBuffer[4] = 0;
-        adressBuffer[5] = 0x90;
+        addressBuffer[0] = 0;
+        addressBuffer[1] = 0x90;
+        addressBuffer[2] = a;
+        addressBuffer[3] = (char)(a >> 8);
+        addressBuffer[4] = 0;
+        addressBuffer[5] = 0x90;
 
-        return adressBuffer;
+        return addressBuffer;
     }
 
     public String getName() {
@@ -188,11 +187,13 @@ public abstract class Wav {
         return inputMemPointer.length;
     }
 
+    private void validateMinFileSize() throws FlowException {
+        if (getFileSize() < MIN_ENC_INPUT_FILE_LENGTH) throw FlowException.error("file_size_invalid");
+    }
+
     static int sizeof(char[] charArray) {
         return (charArray == null ? 0 : charArray.length);
     }
 
-    abstract void validate() throws FlowException;
-    abstract void setup() throws FlowException;
     abstract void encodeFileContent() throws FlowException;
 }

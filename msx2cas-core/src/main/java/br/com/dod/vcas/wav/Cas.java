@@ -13,20 +13,12 @@ public class Cas extends Wav {
 
     public Cas(String inputFileName, SampleRate sampleRate) throws FlowException {
         super(inputFileName, sampleRate);
+        this.casList = new CasUtil(this.inputMemPointer).list();
     }
 
     public Cas(List<CasFile> casList, SampleRate sampleRate) {
         super(sampleRate);
         this.casList = casList;
-    }
-
-    @Override
-    protected void validate() {
-        if (casList == null || casList.isEmpty()) this.casList = new CasUtil(this.inputMemPointer).list();
-    }
-
-    @Override
-    protected void setup() {
     }
 
     @Override

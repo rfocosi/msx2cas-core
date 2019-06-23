@@ -11,15 +11,10 @@ public class Ascii extends Wav {
 
     public Ascii(String inputFileName, SampleRate sampleRate) throws FlowException {
         super(inputFileName, sampleRate);
+        setup();
     }
 
-    @Override
-    protected void validate() throws FlowException {
-        if (getFileSize() < MIN_ENC_INPUT_FILE_LENGTH) throw FlowException.error("file_size_invalid");
-    }
-
-    @Override
-    protected void setup() throws FlowException {
+    private void setup() throws FlowException {
 
         fixFileNewLines();
 

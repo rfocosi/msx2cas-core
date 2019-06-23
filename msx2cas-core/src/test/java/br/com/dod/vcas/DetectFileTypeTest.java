@@ -18,10 +18,10 @@ public class DetectFileTypeTest {
             assertEquals(FileType.ASCII, detectFile(PROJECT_FOLDER + "/resources/asciib.bas"));
             assertEquals(FileType.ASCII, detectFile(PROJECT_FOLDER + "/resources/ascunix.bas"));
             assertEquals(FileType.BAS, detectFile(PROJECT_FOLDER + "/resources/token.bas"));
-            assertEquals(FileType.BIN, detectFile(PROJECT_FOLDER + "/resources/flapbird.bin"));
-            assertEquals(FileType.CAS, detectFile(PROJECT_FOLDER + "/resources/flapbird.cas"));
-            assertEquals(FileType.ROM, detectFile(PROJECT_FOLDER + "/resources/flapbird (rev.A).rom"));
-            assertEquals(FileType.ROM, detectFile(PROJECT_FOLDER + "/resources/flapbird (rev.B).rom"));
+            assertEquals(FileType.BIN, detectFile(PROJECT_FOLDER + "/resources/flabin-flapbird.bin"));
+            assertEquals(FileType.CAS, detectFile(PROJECT_FOLDER + "/resources/flacas-flapbird.cas"));
+            assertEquals(FileType.ROM, detectFile(PROJECT_FOLDER + "/resources/flaroA-Flapbird.rom"));
+            assertEquals(FileType.ROM, detectFile(PROJECT_FOLDER + "/resources/flaroB-Flapbird.rom"));
         } catch (IOException e) {
             e.printStackTrace();
         }

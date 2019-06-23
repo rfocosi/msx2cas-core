@@ -14,6 +14,8 @@ public class Rom extends Wav {
 
     public Rom(String inputFileName, SampleRate sampleRate) throws FlowException {
         super(inputFileName, sampleRate);
+        validate();
+        setup();
     }
 
     public static Rom build(String inputFileName, SampleRate sampleRate) throws FlowException {
@@ -40,12 +42,10 @@ public class Rom extends Wav {
         return (fileSize > MIN_ENC_INPUT_FILE_LENGTH && fileSize <= MAX_ENC_INPUT_FILE_LENGTH);
     }
 
-    @Override
     protected void validate() throws FlowException {
         if (!matchSize(getFileSize())) throw FlowException.error("file_size_invalid");
     }
 
-    @Override
     protected void setup() {
         initLoader();
         System.arraycopy(getNameBuffer(), 0, loader, 21, getNameBuffer().length);
