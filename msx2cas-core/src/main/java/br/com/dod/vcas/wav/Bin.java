@@ -2,16 +2,15 @@ package br.com.dod.vcas.wav;
 
 import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.exception.FlowException;
+import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.model.SampleRate;
 
 public class Bin extends Wav {
 
-    private static final char[] binFileHeader = {0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0};
-
     private char[] loader;
 
     public Bin(String inputFileName, SampleRate sampleRate) throws FlowException {
-        super(inputFileName, sampleRate, new DWORD(7), binFileHeader);
+        super(inputFileName, sampleRate, new DWORD(7), FileType.BIN.getHeader());
     }
 
     @Override

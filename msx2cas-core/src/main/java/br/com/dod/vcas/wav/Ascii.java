@@ -5,14 +5,13 @@ import java.util.List;
 
 import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.exception.FlowException;
+import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.model.SampleRate;
 
 public class Ascii extends Wav {
 
-    private static final char[] asciiFileHeader = {0xea, 0xea, 0xea, 0xea, 0xea, 0xea, 0xea, 0xea, 0xea, 0xea};
-
     public Ascii(String inputFileName, SampleRate sampleRate) throws FlowException {
-        super(inputFileName, sampleRate, new DWORD(0), asciiFileHeader);
+        super(inputFileName, sampleRate, new DWORD(0), FileType.ASCII.getHeader());
     }
 
     @Override
@@ -22,15 +21,6 @@ public class Ascii extends Wav {
 
     @Override
     protected void setup() throws FlowException {
-
-        int b = 1;
-        if (this.fileLength > 256) {
-            long inputFileLengthTmp = this.fileLength;
-            for (b = 2; ; b++) {
-                inputFileLengthTmp = inputFileLengthTmp - 256;
-                if (inputFileLengthTmp <= 256) break;
-            }
-        }
 
         fixFileNewLines();
 
