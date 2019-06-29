@@ -36,8 +36,8 @@ public class Rom49K extends Rom {
     }
 
     @Override
-    protected void setup() {
-        initLoader();
+    protected void setup(boolean reset) {
+        initLoader(reset);
 
         nameBuffer0 = getNameBuffer();
         String fileLoaderId = String.valueOf(nameBuffer0).trim();
@@ -61,7 +61,6 @@ public class Rom49K extends Rom {
 
     @Override
     protected void encodeFileContent() throws FlowException {
-
         char headId = 0;
 
         encodePause(FIRST_PAUSE_LENGTH);
@@ -115,7 +114,7 @@ public class Rom49K extends Rom {
         encodeRomBlock(headId, (int) Rom32K.MAX_ENC_INPUT_FILE_LENGTH, inputMemPointer.length, loader3);
     }
 
-    private void initLoader() {
+    private void initLoader(boolean reset) {
         this.preLoader = new char[]{
                 0xC3, 0x49, 0x90, 0x1E, 0x62, 0x6C, 0x6F, 0x61, 0x64, 0x22, 0x63, 0x61, 0x73, 0x3A, 0x20, 0x20,
                 0x20, 0x20, 0x20, 0x20, 0x22, 0x2C, 0x72, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x0D,

@@ -29,9 +29,9 @@ public class Rom32K extends Rom {
     }
 
     @Override
-    protected void setup() {
+    protected void setup(boolean reset) {
 
-        initLoader();
+        initLoader(reset);
 
         String fileLoaderId = String.valueOf(getNameBuffer()).trim();
         int fileLoaderIdCutSize = (fileLoaderId.length() >= CAS_FILENAME_LENGTH ? CAS_FILENAME_LENGTH - 1 : fileLoaderId.length());
@@ -79,7 +79,7 @@ public class Rom32K extends Rom {
         encodeRomBlock(headId, 16384, inputMemPointer.length, loader2);
     }
 
-    private void initLoader() {
+    private void initLoader(boolean reset) {
         this.loader1 = new char[]{
                 0xC3, 0x76, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1E, 0x62, 0x6C, 0x6F, 0x61, 0x64,
                 0x22, 0x63, 0x61, 0x73, 0x3A, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x22, 0x2C, 0x72, 0x20, 0x20,

@@ -10,12 +10,10 @@ public class Rom extends Wav {
     static final long MAX_ENC_INPUT_FILE_LENGTH = 16384;
 
     private char[] loader;
-    boolean reset;
 
     public Rom(String inputFileName, SampleRate sampleRate) throws FlowException {
         super(inputFileName, sampleRate);
         validate();
-        setup();
     }
 
     public static Rom build(String inputFileName, SampleRate sampleRate) throws FlowException {
@@ -34,7 +32,7 @@ public class Rom extends Wav {
     }
 
     public Wav convert(boolean reset) throws FlowException {
-        this.reset = reset;
+        setup(reset);
         return super.convert();
     }
 
@@ -46,8 +44,8 @@ public class Rom extends Wav {
         if (!matchSize(getFileSize())) throw FlowException.error("file_size_invalid");
     }
 
-    protected void setup() {
-        initLoader();
+    protected void setup(boolean reset) {
+        initLoader(reset);
         System.arraycopy(getNameBuffer(), 0, loader, 21, getNameBuffer().length);
     }
 
@@ -131,7 +129,7 @@ public class Rom extends Wav {
         }
     }
 
-    private void initLoader() {
+    private void initLoader(boolean reset) {
 
         if (reset) {
             this.loader = new char[]{
