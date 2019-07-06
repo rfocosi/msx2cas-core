@@ -51,12 +51,12 @@ public abstract class Wav {
 
         this.inputMemPointer = FileCommons.readFile(inputFileName);
 
+        validateMinFileSize();
+
         this.nameBuffer = FileCommons.getNameBuffer(inputFileName);
     }
 
     public Wav convert() throws FlowException {
-        validateMinFileSize();
-
         encodeFileContent();
 
         encodePause(DEFAULT_PAUSE_LENGTH, LENGTH_CORRECTION);
