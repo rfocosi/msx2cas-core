@@ -30,7 +30,6 @@ public class CasUtil {
 
     public List<CasFile> list() {
         List<CasFile> casFileList = new LinkedList<>();
-        new DWORD(0);
 
         int i = 0;
         while ((i = nextHeader(i, inputHandler)) > -1) {
@@ -51,15 +50,15 @@ public class CasUtil {
                 casFile.setFileType(FileType.DATA);
             }
 
-            String itemName = "";
+            StringBuilder itemName = new StringBuilder();
             if (!FileType.DATA.equals(casFile.getFileType())) {
                 for (int n=i; n < i+CAS_FILENAME_LENGTH; n++) {
-                    itemName += (char) inputHandler[n];
+                    itemName.append((char) inputHandler[n]);
                 }
                 i = nextHeader(i, inputHandler) + HEADER.length;
                 i = (i == -1 ? inputHandler.length : i);
             }
-            casFile.setName(itemName);
+            casFile.setName(itemName.toString());
 
             List<Byte> content = new LinkedList<>();
 
