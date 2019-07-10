@@ -20,6 +20,16 @@ public class FileCommons {
         return String.format("%1$-" + CAS_FILENAME_LENGTH + "s", getCasName(fileName)).toCharArray();
     }
 
+    public static char[] readFileChar(String inputFileName) throws FlowException {
+        final byte[] fileBytes = readFile(new File(inputFileName));
+        final char[] fileChar = new char[fileBytes.length];
+
+        for (int i = 0; i < fileChar.length; i++) {
+            fileChar[i] = (char) fileBytes[i];
+        }
+        return fileChar;
+    }
+
     public static byte[] readFile(String inputFileName) throws FlowException {
         return readFile(new File(inputFileName));
     }
