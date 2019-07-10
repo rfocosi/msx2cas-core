@@ -7,7 +7,8 @@ target/
 *.wav
 *.iml
 msx2cas-core/resources/lib/*.jar
-msx2cas-core/resources/local/
+msx2cas-core/resources/local/*
+!msx2cas-core/resources/local/.gitkeep
 .gradle/
 build/
 .idea
