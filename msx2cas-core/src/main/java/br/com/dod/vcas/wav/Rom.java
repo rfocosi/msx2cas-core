@@ -46,7 +46,6 @@ public class Rom extends Wav {
 
     protected void setup(boolean reset) {
         initLoader(reset);
-        System.arraycopy(getNameBuffer(), 0, loader, 21, getNameBuffer().length);
     }
 
     private char getRomTypeHeader() throws FlowException {
