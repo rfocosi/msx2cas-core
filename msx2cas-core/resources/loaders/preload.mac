@@ -13,7 +13,7 @@ START:	JP	START1
 LOADCMD:DB	01EH
 	DB	"bload"
 	DB	34
-	DB	"cas:      "
+	DB	"cas:"
 	DB	34
 	DB	",r"
 	DB	13,0
