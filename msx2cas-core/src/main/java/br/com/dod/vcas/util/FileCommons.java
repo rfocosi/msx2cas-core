@@ -3,6 +3,7 @@ package br.com.dod.vcas.util;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Objects;
 
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.FileType;
@@ -62,7 +63,8 @@ public class FileCommons {
     }
 
     public static char[] getLoader(final String loaderName) {
-        File inputFile = new File(FileCommons.class.getClassLoader().getResource(loaderName).getPath());
+
+        File inputFile = new File(Objects.requireNonNull(FileCommons.class.getClassLoader().getResource(loaderName)).getPath());
 
         char[] inputMemPointer = new char[(int) inputFile.length()];
 
