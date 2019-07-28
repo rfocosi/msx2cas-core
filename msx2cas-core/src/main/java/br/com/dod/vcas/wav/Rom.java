@@ -5,10 +5,6 @@ import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.model.SampleRate;
 import br.com.dod.vcas.util.FileCommons;
 
-import java.io.ByteArrayInputStream;
-import java.io.CharArrayReader;
-import java.io.IOException;
-
 public class Rom extends Wav {
 
     static final long MAX_ENC_INPUT_FILE_LENGTH = 16384;
@@ -134,17 +130,10 @@ public class Rom extends Wav {
     }
 
     private void initLoader(boolean reset) {
-
-        try {
-
-            if (reset) {
-                this.loader = FileCommons.readFileChar(getClass().getClassLoader().getResource("ROM16KR.bin").getPath());
-            } else {
-                this.loader = FileCommons.readFileChar(getClass().getClassLoader().getResource("ROM16K.bin").getPath());
-            }
-        } catch (FlowException e) {
-            e.printStackTrace();
+        if (reset) {
+            this.loader = FileCommons.getLoader("ROM16KR.bin");
+        } else {
+            this.loader = FileCommons.getLoader("ROM16K.bin");
         }
-
     }
 }
