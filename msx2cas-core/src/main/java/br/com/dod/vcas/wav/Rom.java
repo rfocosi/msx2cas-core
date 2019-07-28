@@ -9,7 +9,7 @@ public class Rom extends Wav {
 
     static final long MAX_ENC_INPUT_FILE_LENGTH = 16384;
 
-    private char[] loader;
+    protected boolean reset;
 
     public Rom(String inputFileName, SampleRate sampleRate) throws FlowException {
         super(inputFileName, sampleRate);
@@ -32,7 +32,7 @@ public class Rom extends Wav {
     }
 
     public Wav convert(boolean reset) throws FlowException {
-        setup(reset);
+        this.reset = reset;
         return super.convert();
     }
 
@@ -42,11 +42,6 @@ public class Rom extends Wav {
 
     protected void validate() throws FlowException {
         if (!matchSize(getFileSize())) throw FlowException.error("file_size_invalid");
-    }
-
-    protected void setup(boolean reset) {
-        initLoader(reset);
-        System.arraycopy(getNameBuffer(), 0, loader, 21, getNameBuffer().length);
     }
 
     private char getRomTypeHeader() throws FlowException {
@@ -72,7 +67,7 @@ public class Rom extends Wav {
         encodePause(DEFAULT_PAUSE_LENGTH);
 
         if (headId < 0x80) {
-            encodeRomBlock(headId, 0, blockSize, loader);
+            encodeRomBlock(headId, 0, blockSize, getLoader());
         } else {
             encodeShortHeader();
 
@@ -129,11 +124,7 @@ public class Rom extends Wav {
         }
     }
 
-    private void initLoader(boolean reset) {
-        if (reset) {
-            this.loader = FileCommons.getLoader("ROM16KR.bin");
-        } else {
-            this.loader = FileCommons.getLoader("ROM16K.bin");
-        }
+    private char[] getLoader() {
+        return FileCommons.getLoader(reset ? "ROM16KR.bin" : "ROM16K.bin");
     }
 }

@@ -17,7 +17,11 @@ public class FileCommons {
     }
 
     public static char[] getNameBuffer(String fileName) {
-        return String.format("%1$-" + CAS_FILENAME_LENGTH + "s", getCasName(fileName)).toCharArray();
+        return getNameBuffer(fileName, 0);
+    }
+
+    public static char[] getNameBuffer(String fileName, int number) {
+        return String.format("%." + (CAS_FILENAME_LENGTH - (number < 1 ? 0 : 1)) + "s%s", getCasName(fileName), (number < 1 ? "" : String.valueOf(number))).toCharArray();
     }
 
     public static byte[] readFile(String inputFileName) throws FlowException {
