@@ -25,28 +25,9 @@ public class Rom49K extends Rom {
         if (!matchSize(getFileSize())) throw FlowException.error("file_size_invalid");
     }
 
-    private void encodePreLoaderBLock(char[] preloader) {
-        encodeShortHeader();
-
-        encodeData(buildBinaryAddressBuffer(sizeof(preloader)));
-
-        encodeData(preloader);
-    }
-
     @Override
     protected void encodeFileContent() throws FlowException {
         char headId = 0;
-
-        encodePause(FIRST_PAUSE_LENGTH);
-
-        encodeLongHeader();
-
-        encodeData(FileType.ROM.getHeader());
-        encodeData(getNameBuffer());
-
-        encodePause(DEFAULT_PAUSE_LENGTH);
-
-        encodePreLoaderBLock(getPreLoader());
 
         // 1st block
 
@@ -55,7 +36,7 @@ public class Rom49K extends Rom {
         encodeLongHeader();
 
         encodeData(FileType.ROM.getHeader());
-        encodeData(getNameBuffer(2));
+        encodeData(getNameBuffer());
 
         encodePause(DEFAULT_PAUSE_LENGTH);
 
@@ -68,7 +49,7 @@ public class Rom49K extends Rom {
         encodeLongHeader();
 
         encodeData(FileType.ROM.getHeader());
-        encodeData(getNameBuffer(3));
+        encodeData(getNameBuffer(2));
 
         encodePause(DEFAULT_PAUSE_LENGTH);
 
@@ -81,15 +62,11 @@ public class Rom49K extends Rom {
         encodeLongHeader();
 
         encodeData(FileType.ROM.getHeader());
-        encodeData(getNameBuffer(4));
+        encodeData(getNameBuffer(3));
 
         encodePause(DEFAULT_PAUSE_LENGTH);
 
         encodeRomBlock(headId, (int) Rom32K.MAX_ENC_INPUT_FILE_LENGTH, inputMemPointer.length, getLoader());
-    }
-
-    private char[] getPreLoader() {
-        return FileCommons.getLoader("PRELOAD.bin");
     }
 
     private char[] getLoaderBlock() {
