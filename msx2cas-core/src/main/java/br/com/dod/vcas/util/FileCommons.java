@@ -17,14 +17,6 @@ public class FileCommons {
         return fileName.replaceFirst("(?:.*/)?(\\w{1," + CAS_FILENAME_LENGTH + "}).*", "$1");
     }
 
-    public static char[] getNameBuffer(String fileName) {
-        return getNameBuffer(fileName, 0);
-    }
-
-    public static char[] getNameBuffer(String fileName, int number) {
-        return String.format("%." + (CAS_FILENAME_LENGTH - (number < 1 ? 0 : 1)) + "s%s", getCasName(fileName), (number < 1 ? "" : String.valueOf(number))).toCharArray();
-    }
-
     public static byte[] readFile(String inputFileName) throws FlowException {
         return readFile(new File(inputFileName));
     }
@@ -60,23 +52,5 @@ public class FileCommons {
             fileType = FileType.ROM;
         }
         return fileType;
-    }
-
-    public static char[] getLoader(final String loaderName) {
-
-        File inputFile = new File(Objects.requireNonNull(FileCommons.class.getClassLoader().getResource(loaderName)).getPath());
-
-        char[] inputMemPointer = new char[(int) inputFile.length()];
-
-        try (final FileInputStream fis = new FileInputStream(inputFile)) {
-
-            for (int i = 0; i < inputMemPointer.length; i++) {
-                inputMemPointer[i] = (char) fis.read();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return inputMemPointer;
     }
 }

@@ -178,7 +178,7 @@ public abstract class Wav {
     }
 
     char[] getNameBuffer(final int number) {
-        return FileCommons.getNameBuffer(inputFileName, number);
+        return String.format("%." + (CAS_FILENAME_LENGTH - (number < 1 ? 0 : 1)) + "s%s", FileCommons.getCasName(inputFileName), (number < 1 ? "" : String.valueOf(number))).toCharArray();
     }
 
     int getFileSize() {
