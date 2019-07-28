@@ -33,10 +33,9 @@ public abstract class Wav {
 
     private static final char[] ZERO_BIT_I = {HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE};
     private static final char[] SET_BIT_I = {HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE};
+    private String inputFileName;
 
     private SampleRate sampleRate;
-
-    private char[] nameBuffer;
 
     private StringBuilder outputBuffer;
     byte[] inputMemPointer;
@@ -50,10 +49,9 @@ public abstract class Wav {
         this(sampleRate);
 
         this.inputMemPointer = FileCommons.readFile(inputFileName);
+        this.inputFileName = inputFileName;
 
         validateMinFileSize();
-
-        this.nameBuffer = FileCommons.getNameBuffer(inputFileName);
     }
 
     public Wav convert() throws FlowException {
@@ -175,12 +173,12 @@ public abstract class Wav {
         return addressBuffer;
     }
 
-    public String getName() {
-        return String.valueOf(nameBuffer);
+    public char[] getNameBuffer() {
+        return getNameBuffer(0);
     }
 
-    char[] getNameBuffer() {
-        return nameBuffer;
+    char[] getNameBuffer(final int number) {
+        return FileCommons.getNameBuffer(inputFileName, number);
     }
 
     int getFileSize() {

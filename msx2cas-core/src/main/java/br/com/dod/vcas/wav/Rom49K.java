@@ -42,7 +42,7 @@ public class Rom49K extends Rom {
         encodeLongHeader();
 
         encodeData(FileType.ROM.getHeader());
-        encodeData(FileCommons.getNameBuffer(getName()));
+        encodeData(getNameBuffer());
 
         encodePause(DEFAULT_PAUSE_LENGTH);
 
@@ -55,7 +55,7 @@ public class Rom49K extends Rom {
         encodeLongHeader();
 
         encodeData(FileType.ROM.getHeader());
-        encodeData(FileCommons.getNameBuffer(getName(), 1));
+        encodeData(getNameBuffer(2));
 
         encodePause(DEFAULT_PAUSE_LENGTH);
 
@@ -68,7 +68,7 @@ public class Rom49K extends Rom {
         encodeLongHeader();
 
         encodeData(FileType.ROM.getHeader());
-        encodeData(FileCommons.getNameBuffer(getName(), 2));
+        encodeData(getNameBuffer(3));
 
         encodePause(DEFAULT_PAUSE_LENGTH);
 
@@ -81,7 +81,7 @@ public class Rom49K extends Rom {
         encodeLongHeader();
 
         encodeData(FileType.ROM.getHeader());
-        encodeData(FileCommons.getNameBuffer(getName(), 3));
+        encodeData(getNameBuffer(4));
 
         encodePause(DEFAULT_PAUSE_LENGTH);
 

@@ -41,7 +41,7 @@ public class Rom32K extends Rom {
         encodeLongHeader();
 
         encodeData(FileType.ROM.getHeader());
-        encodeData(FileCommons.getNameBuffer(getName(),1));
+        encodeData(getNameBuffer());
 
         encodePause(DEFAULT_PAUSE_LENGTH);
 
@@ -53,7 +53,7 @@ public class Rom32K extends Rom {
 
         // Encode binary header and second part of 32k ROM name
         encodeData(FileType.ROM.getHeader());
-        encodeData(FileCommons.getNameBuffer(getName(), 2));
+        encodeData(getNameBuffer(2));
 
         encodePause(DEFAULT_PAUSE_LENGTH);
 
