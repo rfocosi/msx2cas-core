@@ -173,12 +173,20 @@ public abstract class Wav {
         return addressBuffer;
     }
 
+    public String casName() {
+        return FileCommons.getCasName(inputFileName);
+    }
+
     public char[] getNameBuffer() {
-        return getNameBuffer(0);
+        return formatNameBuffer("", CAS_FILENAME_LENGTH);
     }
 
     char[] getNameBuffer(final int number) {
-        return String.format("%." + (CAS_FILENAME_LENGTH - (number < 1 ? 0 : 1)) + "s%s", FileCommons.getCasName(inputFileName), (number < 1 ? "" : String.valueOf(number))).toCharArray();
+        return formatNameBuffer(String.valueOf(number), CAS_FILENAME_LENGTH - (String.valueOf(number).length()));
+    }
+
+    private char[] formatNameBuffer(final String number, final int nameSize) {
+        return String.format("%." + nameSize + "s%s", casName(), number).toCharArray();
     }
 
     int getFileSize() {
