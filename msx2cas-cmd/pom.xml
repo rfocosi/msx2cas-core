@@ -8,13 +8,13 @@
     <groupId>br.com.dod.msx2cas</groupId>
     <artifactId>cmd</artifactId>
     <packaging>jar</packaging>
-    <version>2.3</version>
+    <version>3.0</version>
 
     <dependencies>
         <dependency>
             <groupId>br.com.dod.msx2cas</groupId>
             <artifactId>core</artifactId>
-            <version>2.3</version>
+            <version>3.0</version>
         </dependency>
 
         <dependency>

@@ -3,6 +3,7 @@ package br.com.dod.vcas.util;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Objects;
 
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.FileType;
@@ -14,10 +15,6 @@ public class FileCommons {
     public static String getCasName(String fileName) {
         fileName = fileName.replaceFirst(".+/", "").replaceAll("[^.\\w]", "");
         return fileName.replaceFirst("(?:.*/)?(\\w{1," + CAS_FILENAME_LENGTH + "}).*", "$1");
-    }
-
-    public static char[] getNameBuffer(String fileName) {
-        return String.format("%1$-" + CAS_FILENAME_LENGTH + "s", getCasName(fileName)).toCharArray();
     }
 
     public static byte[] readFile(String inputFileName) throws FlowException {
@@ -55,6 +52,5 @@ public class FileCommons {
             fileType = FileType.ROM;
         }
         return fileType;
-
     }
 }

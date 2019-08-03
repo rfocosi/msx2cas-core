@@ -4,16 +4,14 @@ import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.model.SampleRate;
+import br.com.dod.vcas.util.FileCommons;
 
 public class Bin extends Wav {
-
-    private char[] loader;
 
     private static final int FILE_OFFSET = 7;
 
     public Bin(String inputFileName, SampleRate sampleRate) throws FlowException {
         super(inputFileName, sampleRate);
-        initLoader();
     }
 
     @Override
@@ -30,39 +28,38 @@ public class Bin extends Wav {
 
         encodeShortHeader();
 
-        encodeData(buildBinaryAddressBuffer(sizeof(loader) + inputMemPointer.length - FILE_OFFSET));
-
-        encodeLoader();
+        encodeLoader(getLoader());
 
         for (int i = FILE_OFFSET; i < inputMemPointer.length; i++) {
             writeDataByte((char) inputMemPointer[i]);
         }
     }
 
-    private void encodeLoader() throws FlowException {
-        calculateBinCRC();
+    private void encodeLoader(char[] loader) throws FlowException {
+        encodeData(buildBinaryAddressBuffer(sizeof(loader) + inputMemPointer.length - FILE_OFFSET));
 
-        addStartAddressToLoader();
+        calculateBinCRC(loader);
+
+        addStartAddressToLoader(loader);
 
         encodeData(loader);
     }
 
-    private void addStartAddressToLoader() {
+    private void addStartAddressToLoader(char[] loader) {
         for (int j = 0; j < 6; j++) {
             loader[j + 3] = (char) inputMemPointer[j + 1];
         }
     }
 
-    private void calculateBinCRC() throws FlowException {
+    private void calculateBinCRC(char[] loader) throws FlowException {
         char binBegin = (char) ((new DWORD(inputMemPointer[2]).getLow()).intValue() * 0x100 + (new DWORD(inputMemPointer[1]).getLow()).intValue());
         char binEnd = (char) ((new DWORD(inputMemPointer[4]).getLow()).intValue() * 0x100 + (new DWORD(inputMemPointer[3]).getLow()).intValue());
 
         loader[9] = calculateCRC(FILE_OFFSET, (binEnd-binBegin) + FILE_OFFSET);
     }
 
-    private void initLoader() {
-
-        this.loader = new char[]{
+    private char[] getLoader() {
+        return new char[] {
                 0xC3, 0x30, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3C, 0x20, 0x4D,
                 0x53, 0x58, 0x32, 0x43, 0x61, 0x73, 0x20, 0x3E, 0x4C, 0x6F, 0x61, 0x64, 0x69,
                 0x6E, 0x67, 0x20, 0x66, 0x61, 0x69, 0x6C, 0x65, 0x64, 0x3A, 0x20, 0x43, 0x52,
