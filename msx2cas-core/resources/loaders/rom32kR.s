@@ -1,34 +1,37 @@
-.Z80
-
 ; BLOAD MODULE FOR 32KB ROMS PART 2 WITH RESET (FOR CASLINK3 PROJECT)
 ; COPYRIGHT (C) 1999-2016 ALEXEY PODREZOV
 ; Modified by Roberto Focosi for MSX2Cas Project
 
-	ASEG
-	ORG	9000h
+START:
+	JP	START1
 
-START:	JP	START1
+STARTA:
+	.DW	00
+ENDA:
+	.DW	00
+EXECA:
+	.DW	00
+CRC:
+	.DB	00
 
-STARTA:	DW	00
-ENDA:	DW	00
-EXECA:	DW	00
-CRC:	DB	00
+CASERR:
+	.str	"< MSX2Cas > Fail: CRC ERROR!"
 
-CASERR:	DB	"< MSX2Cas > Fail: CRC ERROR!",0
-
-START1:	DI
+START1:
+	DI
 	LD	HL,(STARTA)
-      	LD	DE,(ENDA)
+	LD	DE,(ENDA)
 	EX	DE,HL
 	SCF
 	CCF
 	SBC	HL,DE
 	PUSH	HL
 	POP	BC
-	LD	HL,ROMCODE
-        XOR	A
+	LD	HL,#ROMCODE
+	XOR	A
 	PUSH	AF
-START2:	POP	AF
+START2:
+	POP	AF
 	ADD	A,(HL)
 	INC	HL
 	DEC	BC
@@ -41,107 +44,111 @@ START2:	POP	AF
 	JR	NZ,START2
 	POP	AF
 	LD	B,A
-	LD	HL,CRC
+	LD	HL,#CRC
 	LD	A,(HL)
-	CP	B
+	CP  B
 	JP	Z,START5
 
-CRCERR:	EI
-	CALL	006CH		; set screen 0
-	LD	A,0FH
-	LD	HL,0F3E9H
+CRCERR:
+	EI
+	CALL	0x006C		; set screen 0
+	LD	A,#0x0F
+	LD	HL,#0x0F3E9
 	LD	(HL),A
-	LD	A,8
+	LD	A,#8
 	INC	HL
 	LD	(HL),A
 	INC	HL
 	LD	(HL),A
-	CALL	0062H		; set color 15,8,8
+	CALL	0x0062		; set color 15,8,8
 	XOR	A
-	CALL	00C3H		; clear screen
-	CALL	00CFH		; unhide functional keys
-	LD	HL,0101H
-	CALL	00C6H		; set cursor position to 1:1
-	LD	DE,CASERR
-START3:	LD	A,(DE)
+	CALL	0x00C3		; clear screen
+	CALL	0x00CF		; unhide functional keys
+	LD	HL,#0x0101
+	CALL	0x00C6		; set cursor position to 1:1
+	LD	DE,#CASERR
+START3:
+	LD	A,(DE)
 	OR	A
 	JR	Z,START4
 	INC	DE
-	CALL	00A2H		; display character
+	CALL	0x00A2		; display character
 	INC	H
-	CALL	00C6H		; set next position
+	CALL	0x00C6		; set next position
 	JR	START3
 
-START4:	LD	HL,0103H
-	CALL	00C6H		; set cursor position to 1:3
-	CALL	00C0H		; beep
-	CALL	0156H		; clears keyboard buffer
+START4:
+	LD	HL,#0x0103
+	CALL	0x00C6		; set cursor position to 1:3
+	CALL	0x00C0		; beep
+	CALL	0x0156		; clears keyboard buffer
 	RET
 
-START5:	DI
-	LD	A,(0FFFFH)
+START5:
+	DI
+	LD	A,(0x0FFFF)
 	CPL
 	LD	C,A
-	AND	0F0H
+	AND #0x0F0
 	LD	B,A
 	LD	A,C
 	RRCA
 	RRCA
 	RRCA
 	RRCA
-	AND	15
+	AND #15
 	OR	B
-	LD	(0FFFFH),A
-	IN	A,(0A8h)
-	AND	0F0H
+	LD	(0x0FFFF),A
+	IN	A,(0x0A8)
+	AND #0x0F0
 	LD	B,A
 	RRCA
 	RRCA
 	RRCA
 	RRCA
-	AND	15
+	AND #15
 	OR	B
 	PUSH	AF
-	OUT	(0A8h),A
+	OUT	(0x0A8),A
 
-START6:	LD	HL,(STARTA)
+START6:
+	LD	HL,(STARTA)
 	LD	A,H
-	CP	80H
+	CP #0x80
 	JR	C,START7
-
-	LD	HL,ROMCODE
-	LD	DE,START8+5
+	LD	HL,#ROMCODE
+	LD	DE,#START8+5
 	LD	A,(HL)
-	LD	(DE),A		; transfer byte from 8000H to patcher
+	LD	(DE),A		; transfer byte from 0x8000 to patcher
 	INC	HL
-	LD	DE,START8+9
+	LD	DE,#START8+9
 	LD	A,(HL)
-	LD	(DE),A		; transfer byte from 8001H to patcher
+	LD	(DE),A		; transfer byte from 0x8001 to patcher
 	INC	HL
-	LD	DE,START8+13
+	LD	DE,#START8+13
 	LD	A,(HL)
-	LD	(DE),A		; transfer byte from 8002H to patcher
+	LD	(DE),A		; transfer byte from 0x8002 to patcher
 	LD	HL,(EXECA)
 	PUSH	HL
 	LD	(START8+16),HL	; transfer start address to patcher
 	LD	A,(HL)
-	LD	DE,START8+20
+	LD	DE,#START8+20
 	LD	(DE),A		; transfer 1st byte from EPA
 	INC	HL
 	LD	A,(HL)
-	LD	DE,START8+24
+	LD	DE,#START8+24
 	LD	(DE),A		; transfer 2nd byte from EPA
 	INC	HL
 	LD	A,(HL)
-	LD	DE,START8+28
+	LD	DE,#START8+28
 	LD	(DE),A		; transfer 3rd byte from EPA
 	POP	HL
-	LD	A,0CDH
+	LD	A,#0x0CD
 	LD	(HL),A		; place call opcode at EPA
 	INC	HL
 	PUSH	HL
-	LD	HL,ROMCODE+4
-	LD	DE,8000H
+	LD	HL,#ROMCODE+4
+	LD	DE,#0x8000
 	SCF
 	CCF
 	SBC	HL,DE		; offset for finding the end of ROM+4
@@ -151,11 +158,11 @@ START6:	LD	HL,(STARTA)
 	ADC	HL,DE
 	EX	DE,HL
 	PUSH	DE
-	LD	HL,START8
-	LD	BC,33
+	LD	HL,#START8
+	LD	BC,#33
 	LDIR			; transfer patcher to the end of ROM+4
 	LD	HL,(ENDA)
-	LD	DE,37
+	LD	DE,#37
 	SCF
 	CCF
 	ADC	HL,DE
@@ -167,64 +174,63 @@ START6:	LD	HL,(STARTA)
 	INC	HL
 	LD	A,D
 	LD	(HL),A		; save the high byte of call address
-
-	LD	HL,START7
-      	LD	DE,START8+1
+	LD	HL,#START7
+	LD	DE,#START8+1
 	EX	DE,HL
 	SCF
 	CCF
 	SBC	HL,DE
 	LD	B,H
 	LD	C,L
-	LD	HL,START7
-	LD	DE,0F560H
+	LD	HL,#START7
+	LD	DE,#0x0F560
 	PUSH	DE
 	LDIR
 	RET
 
-START7:	LD	HL,(STARTA)
-      	LD	DE,(ENDA)
+START7:
+	LD	HL,(STARTA)
+	LD	DE,(ENDA)
 	EX	DE,HL
 	SCF
 	CCF
 	SBC	HL,DE
 	LD	B,H
 	LD	C,L
-	LD	HL,ROMCODE
+	LD	HL,#ROMCODE
 	LD	DE,(STARTA)
 	LDIR
 	POP	AF
-	AND	0FCH
-	OUT	(0A8H),A
-	RST	30H
-	DW	0
-	DW	0
+	AND #0x0FC
+	OUT	(0x0A8),A
+	RST	0x30
+	.DW	0
+	.DW	0
 	NOP
 
-START8:	DI
-	LD	HL,8000H
-	LD	A,00		; +5 bytes
+START8:
+	DI
+	LD	HL,#0x8000
+	LD	A,#00		; +5 bytes
 	LD	(HL),A
 	INC	HL
-	LD	A,00 		; +9 bytes
+	LD	A,#00 		; +9 bytes
 	LD	(HL),A
 	INC	HL
-	LD	A,00		; +13 bytes
+	LD	A,#00		; +13 bytes
 	LD	(HL),A
-	LD	HL,0000H	; +16 bytes
+	LD	HL,#0x0000	; +16 bytes
 	PUSH	HL
-	LD	A,00		; +20 bytes
+	LD	A,#00		; +20 bytes
 	LD	(HL),A
 	INC	HL
-	LD	A,00		; +24 bytes
+	LD	A,#00		; +24 bytes
 	LD	(HL),A
 	INC	HL
-	LD	A,00  		; +28 bytes
+	LD	A,#00  		; +28 bytes
 	LD	(HL),A
 	POP	HL
 	JP	(HL)
 	NOP
 
 ROMCODE:
-
-END
