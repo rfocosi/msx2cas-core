@@ -25,10 +25,10 @@ LOADCMD:
     .DB	13,0
 
 CASLSTR:
-    .str	"< MSX2Cas > Loading, please wait..."
+    .str	"< MSX2Cas > Loading, please wait...\0"
 
 CASERR:
-    .str	"< MSX2Cas > Fail: CRC ERROR!"
+    .str	"< MSX2Cas > Fail: CRC ERROR!\0"
 
 START1:
     DI

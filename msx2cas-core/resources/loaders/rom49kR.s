@@ -15,7 +15,7 @@ CRC:
 	.DB	00
 
 CASERR:
-	.str	"< MSX2Cas > Fail: CRC ERROR!"
+	.str	"< MSX2Cas > Fail: CRC ERROR!\0"
 
 START1:
 	DI
