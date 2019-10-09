@@ -1,0 +1,2 @@
+SDCC_ARGS="--code-loc 0x9000 --data-loc 0 -mz80 --disable-warning 196 --no-std-crt0"
+TARGET_BIN_FILE="$FILE_NAME.bin"
