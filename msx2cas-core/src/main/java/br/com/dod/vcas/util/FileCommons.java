@@ -3,7 +3,6 @@ package br.com.dod.vcas.util;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.Objects;
 
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.FileType;

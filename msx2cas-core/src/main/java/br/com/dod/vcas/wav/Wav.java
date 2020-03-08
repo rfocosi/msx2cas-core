@@ -110,11 +110,11 @@ public abstract class Wav {
         encodePause(pauseLength, 0);
     }
 
-    private void encodePause(int pauseLength, long lenghtCorrection) {
-        int charLenght = (int) (sampleRate.intValue() * pauseLength + lenghtCorrection);
-        char[] chars = new char[charLenght];
+    private void encodePause(int pauseLength, long lengthCorrection) {
+        int charLength = (int) (sampleRate.intValue() * pauseLength + lengthCorrection);
+        char[] chars = new char[charLength];
 
-        for (int j = 0; j < charLenght; j++) {
+        for (int j = 0; j < charLength; j++) {
             chars[j] = SILENCE;
         }
         writeByteChars(chars);

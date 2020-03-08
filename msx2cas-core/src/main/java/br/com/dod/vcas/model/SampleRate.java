@@ -45,9 +45,9 @@ public enum SampleRate {
     }
 
     public static SampleRate fromBps(final Object bps) {
-        int bpsi = Integer.parseInt(bps.toString());
+        int bpsInt = Integer.parseInt(bps.toString());
         for (SampleRate sampleRate : SampleRate.values()) {
-            if (sampleRate.bps() == bpsi) return sampleRate;
+            if (sampleRate.bps() == bpsInt) return sampleRate;
         }
         return null;
     }

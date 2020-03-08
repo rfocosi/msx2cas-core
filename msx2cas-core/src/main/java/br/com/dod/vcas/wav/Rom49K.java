@@ -3,7 +3,6 @@ package br.com.dod.vcas.wav;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.model.SampleRate;
-import br.com.dod.vcas.util.FileCommons;
 
 public class Rom49K extends Rom {
 
