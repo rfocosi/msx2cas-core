@@ -5,14 +5,17 @@ import br.com.dod.vcas.util.FileCommons;
 import br.com.dod.vcas.util.WavHeader;
 import br.com.dod.vcas.exception.FlowException;
 
+import java.util.LinkedList;
+import java.util.List;
+
 public abstract class Wav {
 
     static final long MIN_ENC_INPUT_FILE_LENGTH = 5L;
 
     public static final int CAS_FILENAME_LENGTH = 6;
 
-    private static final char START_BIT = 0;
-    private static final char STOP_BIT = 1;
+    private static final int START_BIT = 0;
+    private static final int STOP_BIT = 1;
     private static final char SILENCE = 0x80;
     private static final char HIGH_AMPLITUDE = 0xFF;
     private static final char LOW_AMPLITUDE = 0;
@@ -25,8 +28,6 @@ public abstract class Wav {
     static final char SEPARATOR_PAUSE_LENGTH = 4;	// Seconds
     static final char FIRST_PAUSE_LENGTH = 2;	// Seconds
     static final char DEFAULT_PAUSE_LENGTH = 1; // Second
-
-    private static final int SIZE_OF_BIT_STREAM = 11;
 
     private static final char[] ZERO_BIT = {LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
     private static final char[] SET_BIT = {LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
@@ -95,9 +96,14 @@ public abstract class Wav {
     }
 
     private void encodeHeader(double length) {
+        final List<Character> chars = new LinkedList<>();
+
         for (int j = 0; j < sampleRate.headerEncodingLength(length); j++)	{
-            writeByteChars(setBit());
+            for (char b : setBit()) {
+                chars.add(b);
+            }
         }
+        writeByteChars(chars);
     }
 
     void encodeData(char[] data) {
@@ -112,40 +118,47 @@ public abstract class Wav {
 
     private void encodePause(int pauseLength, long lengthCorrection) {
         int charLength = (int) (sampleRate.intValue() * pauseLength + lengthCorrection);
-        char[] chars = new char[charLength];
+        final List<Character> chars = new LinkedList<>();
 
         for (int j = 0; j < charLength; j++) {
-            chars[j] = SILENCE;
+            chars.add(SILENCE);
         }
         writeByteChars(chars);
     }
 
     void writeDataByte(char ch) {
-        final char[] bitStream = new char[SIZE_OF_BIT_STREAM];
+        final List<Integer> bitStream = fillBitStream(ch);
+        final List<Character> dataByte = new LinkedList<>();
 
-        char bitMask = 1;
-        int bitSampleLength = zeroBit().length;
-        char[] dataByte = new char[bitSampleLength * sizeof(bitStream)];
-
-        bitStream[0] =	START_BIT;
-        bitStream[9] =	STOP_BIT;
-        bitStream[10] =	STOP_BIT;
-
-        // Fill bitStream
-        for (int i = 1; i < 9; i++) {
-            if ((ch & bitMask) != 0) bitStream[i] = 1;
-            else bitStream[i] = 0;
-            bitMask = (char) (bitMask << 1);
+        for (Integer b : bitStream) {
+            char[] bit = (b == 0 ? zeroBit() : setBit());
+            for (char c : bit) {
+                dataByte.add(c);
+            }
         }
 
-        for (int i = 0; i < sizeof(bitStream); i++) {
-            char[] bit = (bitStream[i] == 0 ? zeroBit() : setBit());
-            System.arraycopy(bit, 0, dataByte, i * bitSampleLength, bitSampleLength);
-        }
         writeByteChars(dataByte);
     }
 
-    private void writeByteChars(char[] ch) {
+    private List<Integer> fillBitStream(char ch) {
+        final List<Integer> bitStream = new LinkedList<>();
+
+        bitStream.add(START_BIT);
+
+        char bitMask = 1;
+        for (int i = 1; i < 9; i++) {
+            if ((ch & bitMask) != 0) bitStream.add(1);
+            else bitStream.add(0);
+            bitMask = (char) (bitMask << 1);
+        }
+
+        bitStream.add(STOP_BIT);
+        bitStream.add(STOP_BIT);
+
+        return bitStream;
+    }
+
+    private void writeByteChars(List<Character> ch) {
         for (char c : ch) {
             outputBuffer.append(c);
         }
