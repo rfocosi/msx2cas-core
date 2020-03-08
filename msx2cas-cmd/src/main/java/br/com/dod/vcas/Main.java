@@ -131,16 +131,14 @@ public class Main extends JFrame implements NativeKeyListener {
             sleep();
         }
 
+        System.out.println();
         if (clip.isOpen()) {
             clip.close();
-            System.out.println();
             System.out.println("Playback complete.");
-            System.out.println();
         } else {
-            System.out.println();
             System.out.println("Interrupted!");
-            System.out.println();
         }
+        System.out.println();
     }
 
     private static void sleep() {
