@@ -8,7 +8,7 @@
     <groupId>br.com.dod.msx2cas</groupId>
     <artifactId>core</artifactId>
     <packaging>jar</packaging>
-    <version>3.1</version>
+    <version>3.1.1</version>
 
     <dependencies>
         <dependency>

@@ -4,8 +4,10 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -31,7 +33,7 @@ public class Main extends JFrame implements NativeKeyListener {
     private static int frameCheck;
 
     public static void main(String[] args) throws Exception {
-        Logger.getLogger(GlobalScreen.class.getPackage().getName()).setLevel(Level.OFF);
+        disableLogging();
 
         try {
             Params params = new Params(args);
@@ -63,6 +65,10 @@ public class Main extends JFrame implements NativeKeyListener {
             }
         }
         System.exit(0);
+    }
+
+    private static void disableLogging() {
+        Arrays.stream(Logger.getLogger("").getHandlers()).forEach( h -> h.setLevel(Level.OFF));
     }
 
     private static void writeWav(Wav wavFile, ConvertFile file) throws Exception {
@@ -131,16 +137,14 @@ public class Main extends JFrame implements NativeKeyListener {
             sleep();
         }
 
+        System.out.println();
         if (clip.isOpen()) {
             clip.close();
-            System.out.println();
             System.out.println("Playback complete.");
-            System.out.println();
         } else {
-            System.out.println();
             System.out.println("Interrupted!");
-            System.out.println();
         }
+        System.out.println();
     }
 
     private static void sleep() {

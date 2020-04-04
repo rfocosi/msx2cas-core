@@ -39,7 +39,7 @@ public class WavHeader {
         charList.add(NUM_CHANNELS);
         charList.add(sampleRate);
         charList.add(getBytesPerSec());
-        charList.add(getBlkAllign());
+        charList.add(getBlkAlign());
         charList.add(BITS_PER_SAMPLE);
         charList.add(DATA_ID);
         charList.add(getDataSize());
@@ -55,7 +55,7 @@ public class WavHeader {
         return new DWORD(dataSize);
     }
 
-    private WORD getBlkAllign() {
+    private WORD getBlkAlign() {
         return new WORD((BITS_PER_SAMPLE.longValue() * NUM_CHANNELS.longValue()) / 8);
     }
 

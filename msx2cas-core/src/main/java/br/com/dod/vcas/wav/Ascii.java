@@ -77,14 +77,14 @@ public class Ascii extends Wav {
 
     private void fixFileNewLines() {
         final List<Byte> convertedContent = new LinkedList<>();
-        final byte[] filec = inputMemPointer.clone();
+        final byte[] inputClone = inputMemPointer.clone();
 
-        for (int i =0 ; i < filec.length; i++) {
+        for (int i =0 ; i < inputClone.length; i++) {
             if (inputMemPointer[i] == 0xa && inputMemPointer[i-1] != 0xd) {
                 convertedContent.add(new Byte("13"));
                 convertedContent.add(new Byte("10"));
             } else {
-                convertedContent.add(filec[i]);
+                convertedContent.add(inputClone[i]);
             }
         }
 

@@ -68,7 +68,7 @@ public class CasUtil {
             for (int p=i; p < nextHeader ; p++) {
                 content.add(inputHandler[p]);
             }
-            casFile.setContent(content.toArray(new Byte[content.size()]));
+            casFile.setContent(content.toArray(new Byte[0]));
 
             casFileList.add(casFile);
         }

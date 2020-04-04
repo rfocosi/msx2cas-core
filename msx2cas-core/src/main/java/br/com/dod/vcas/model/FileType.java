@@ -23,6 +23,7 @@ public enum FileType {
         this.header = header;
     }
 
+    @SuppressWarnings("ResultOfMethodCallIgnored")
     private boolean equals(String fileName, int offset) throws IOException {
         byte[] fileHeader = new byte[id.length];
         try (FileInputStream fileInputStream = new FileInputStream(fileName)) {
