@@ -34,7 +34,7 @@ public enum FileType {
     }
 
     private boolean equalsRom49k(String fileName) throws IOException {
-        return (16385 < new File(fileName).length()) && equals(fileName, 16384);
+        return (new File(fileName).length() > 32768) && equals(fileName, 16384);
     }
 
     public boolean equals(String fileName) throws IOException {
