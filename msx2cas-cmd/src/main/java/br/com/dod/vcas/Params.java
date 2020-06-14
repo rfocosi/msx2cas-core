@@ -16,7 +16,65 @@ class Params {
     private static final String SPEEDS = "1200|2400|3000|3600";
     private boolean resetRom;
 
-    private List<ConvertFile> files;
+    private final List<ConvertFile> files = new LinkedList<>();
+
+    Params(String[] args) {
+        printVersion();
+
+        try {
+            if (args.length < 2) {
+                displayUsage();
+            } else {
+                LinkedHashSet<String> arguments = getArguments(args);
+                LinkedHashSet<String> fileList = getFileList(args);
+
+                String bps = getBps(arguments);
+                SampleRate sampleRate = SampleRate.fromBps(bps);
+
+                boolean inverted = arguments.remove("-i");
+                this.resetRom = arguments.remove("-r");
+
+                boolean write = arguments.remove("-w");
+                String outputFileName = "";
+                if (fileList.size() == 1 && write && arguments.size() == 1) {
+                    outputFileName = arguments.iterator().next();
+                    arguments.remove(outputFileName);
+                }
+
+                setFileList(fileList, outputFileName, sampleRate.invertWaveForm(inverted), write);
+            }
+        } catch (Throwable e) {
+            displayUsage();
+        }
+    }
+
+    private LinkedHashSet<String> getFileList(String[] args) {
+        final LinkedHashSet<String> returnArgs = new LinkedHashSet<>();
+        final LinkedHashSet<String> arguments = new LinkedHashSet<>(asList(args));
+
+        boolean afterBps = false;
+
+        for (String arg : arguments) {
+            if (afterBps) returnArgs.add(arg);
+            if (arg.matches("\\d{4}")) {
+                afterBps = true;
+            }
+        }
+        return returnArgs;
+    }
+
+    private LinkedHashSet<String> getArguments(String[] args) {
+        final LinkedHashSet<String> returnArgs = new LinkedHashSet<>();
+        final LinkedHashSet<String> arguments = new LinkedHashSet<>(asList(args));
+
+        for (String arg : arguments) {
+            returnArgs.add(arg);
+            if (arg.matches("\\d{4}")) {
+                break;
+            }
+        }
+        return returnArgs;
+    }
 
     private String getVersion() {
         try {
@@ -36,43 +94,17 @@ class Params {
         System.out.println("MSX2Cas v" + getVersion());
     }
 
-    Params(String[] args) {
-        printVersion();
-
-        if (args.length < 2) {
-            displayUsage();
-        } else {
-
-            LinkedHashSet<String> arguments = new LinkedHashSet<>(asList(args));
-
-            boolean inverted = arguments.remove("-i");
-            boolean write = arguments.remove("-w");
-            this.resetRom = arguments.remove("-r");
-
-            String outputFileName = "";
-            if (write) {
-                outputFileName = arguments.iterator().next();
-                if (outputFileName.matches("\\d{4}")) {
-                    outputFileName = "";
-                } else {
-                    arguments.remove(outputFileName);
-                }
-            }
-
-            String bps = arguments.iterator().next();
-            arguments.remove(bps);
-
-            SampleRate sampleRate = SampleRate.fromBps(bps);
-            if (sampleRate == null){
-                displayUsage();
-            } else {
-                setFileList(arguments, outputFileName, sampleRate.invertWaveForm(inverted), write);
+    private String getBps(LinkedHashSet<String> arguments) {
+        for (String arg : arguments) {
+            if (arg.matches("\\d{4}")) {
+                arguments.remove(arg);
+                return arg;
             }
         }
+        return null;
     }
 
     private void setFileList(LinkedHashSet<String> args, String outputFilename, SampleRate sampleRate, boolean write) {
-        files = new LinkedList<>();
         args.stream()
                 .filter(file -> file.matches(".+\\..{3}$"))
                 .forEachOrdered(file -> files.add(new ConvertFile(file, getOutputFilename(file, outputFilename), sampleRate, write)));
@@ -100,7 +132,6 @@ class Params {
         System.out.println("<input-file>: A ROM, BIN, LDR, MX1, MX2, CAS, BAS(tokenize or not) file");
         System.out.println();
         System.out.println("If you do not use -w, MSX2Cas will play to default sound interface");
-        System.exit(0);
     }
 
     List<ConvertFile> getFiles() {

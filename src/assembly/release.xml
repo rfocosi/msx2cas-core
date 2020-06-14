@@ -22,15 +22,10 @@
             <outputDirectory>/</outputDirectory>
             <includes>
                 <include>msx2cas.jar</include>
+                <include>msx2cas</include>
+                <include>msx2cas.exe</include>
             </includes>
-        </fileSet>
-        <fileSet>
-            <directory>${project.basedir}/msx2cas-cmd/resources/cmd</directory>
-            <outputDirectory>/</outputDirectory>
-            <includes>
-                <include>*</include>
-            </includes>
+            <fileMode>0755</fileMode>
         </fileSet>
     </fileSets>
-
 </assembly>

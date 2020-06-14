@@ -8,13 +8,13 @@
     <groupId>br.com.dod.msx2cas</groupId>
     <artifactId>cmd</artifactId>
     <packaging>jar</packaging>
-    <version>3.1.1</version>
+    <version>3.2.0</version>
 
     <dependencies>
         <dependency>
             <groupId>br.com.dod.msx2cas</groupId>
             <artifactId>core</artifactId>
-            <version>3.1.1</version>
+            <version>3.2.0</version>
         </dependency>
 
         <dependency>
@@ -28,6 +28,12 @@
             <artifactId>junit</artifactId>
             <version>4.12</version>
             <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.akathist.maven.plugins.launch4j</groupId>
+            <artifactId>launch4j-maven-plugin</artifactId>
+            <version>1.7.25</version>
         </dependency>
     </dependencies>
 
@@ -69,6 +75,69 @@
                             <descriptorRefs>
                                 <descriptorRef>jar-with-dependencies</descriptorRef>
                             </descriptorRefs>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>1.8</version>
+                <executions>
+                    <execution>
+                        <id>default-cli</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <!--Provide the destination file-->
+                                <concat destfile="${project.build.directory}/msx2cas" overwrite="yes" binary="yes">
+                                    <fileset file="${project.basedir}/resources/cmd/linux-header" />
+                                    <fileset file="${project.build.directory}/${artifactId}-${version}-jar-with-dependencies.jar" />
+                                </concat>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.akathist.maven.plugins.launch4j</groupId>
+                <artifactId>launch4j-maven-plugin</artifactId>
+                <version>1.7.25</version>
+                <executions>
+                    <execution>
+                        <id>l4j-clui</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>launch4j</goal>
+                        </goals>
+                        <configuration>
+                            <headerType>console</headerType>
+                            <jar>${project.build.directory}/${artifactId}-${version}-jar-with-dependencies.jar</jar>
+                            <outfile>${project.build.directory}/msx2cas.exe</outfile>
+                            <downloadUrl>http://java.com/download</downloadUrl>
+                            <classPath>
+                                <mainClass>br.com.dod.vcas.Main</mainClass>
+                                <preCp>anything</preCp>
+                            </classPath>
+                            <icon>${project.basedir}/resources/icons/msx2cas.ico</icon>
+                            <jre>
+                                <minVersion>1.8.0</minVersion>
+                                <jdkPreference>preferJre</jdkPreference>
+                            </jre>
+                            <versionInfo>
+                                <fileVersion>1.0.0.0</fileVersion>
+                                <txtFileVersion>${project.version}</txtFileVersion>
+                                <fileDescription>${project.name}</fileDescription>
+                                <copyright>2020 Roberto Focosi</copyright>
+                                <productVersion>${version}.0</productVersion>
+                                <txtProductVersion>${version}.0</txtProductVersion>
+                                <productName>${project.name}</productName>
+                                <companyName>Msx2Cas</companyName>
+                                <internalName>msx2cas</internalName>
+                                <originalFilename>msx2cas.exe</originalFilename>
+                            </versionInfo>
                         </configuration>
                     </execution>
                 </executions>
