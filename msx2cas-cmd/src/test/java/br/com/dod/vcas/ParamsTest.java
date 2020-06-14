@@ -34,7 +34,7 @@ public class ParamsTest {
 
         Params params = new Params(args);
 
-        assertNull(params.getFiles());
+        assertEquals(0, params.getFiles().size());
     }
 
     @Test

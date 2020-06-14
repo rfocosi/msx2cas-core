@@ -16,7 +16,7 @@ class Params {
     private static final String SPEEDS = "1200|2400|3000|3600";
     private boolean resetRom;
 
-    private List<ConvertFile> files;
+    private final List<ConvertFile> files = new LinkedList<>();
 
     Params(String[] args) {
         printVersion();
@@ -105,7 +105,6 @@ class Params {
     }
 
     private void setFileList(LinkedHashSet<String> args, String outputFilename, SampleRate sampleRate, boolean write) {
-        files = new LinkedList<>();
         args.stream()
                 .filter(file -> file.matches(".+\\..{3}$"))
                 .forEachOrdered(file -> files.add(new ConvertFile(file, getOutputFilename(file, outputFilename), sampleRate, write)));
