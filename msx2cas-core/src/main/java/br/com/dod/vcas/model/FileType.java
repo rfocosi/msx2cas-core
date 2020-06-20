@@ -38,7 +38,7 @@ public enum FileType {
     }
 
     public boolean equals(String fileName) throws IOException {
-        return equals(fileName, 0) || equalsRom49k(fileName);
+        return equals(fileName, 0) || (this == ROM && equalsRom49k(fileName));
     }
 
     public boolean equals(byte[] inputHandler) {
