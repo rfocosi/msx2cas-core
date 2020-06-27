@@ -16,14 +16,12 @@ import br.com.dod.vcas.wav.Wav;
 
 public class VirtualCas {
 
-    private List<String> fileList;
+    final private List<String> fileList = new LinkedList<>();
 
-    private SampleRate sampleRate;
+    final private SampleRate sampleRate;
     private boolean reset;
 
     public VirtualCas(SampleRate sampleRate) {
-        this.fileList = new LinkedList<>();
-
         this.sampleRate = sampleRate;
     }
 

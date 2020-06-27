@@ -36,13 +36,12 @@ public abstract class Wav {
     private static final char[] SET_BIT_I = {HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE};
     private String inputFileName;
 
-    private SampleRate sampleRate;
+    final private SampleRate sampleRate;
 
-    private StringBuilder outputBuffer;
+    final private StringBuilder outputBuffer = new StringBuilder();
     byte[] inputMemPointer;
 
     protected Wav(SampleRate sampleRate) {
-        this.outputBuffer = new StringBuilder();
         this.sampleRate = sampleRate;
     }
 
