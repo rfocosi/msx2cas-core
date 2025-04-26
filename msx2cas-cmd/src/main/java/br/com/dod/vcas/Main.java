@@ -22,7 +22,7 @@ import org.jnativehook.keyboard.NativeKeyEvent;
 import org.jnativehook.keyboard.NativeKeyListener;
 
 import br.com.dod.vcas.exception.FlowException;
-import br.com.dod.vcas.wav.Wav;
+import br.com.dod.vcas.wav.WavOutput;
 
 public class Main extends JFrame implements NativeKeyListener {
 
@@ -40,7 +40,7 @@ public class Main extends JFrame implements NativeKeyListener {
             for (ConvertFile file : params.getFiles()) {
                 try {
                     VirtualCas vcas = new VirtualCas(file.getSampleRate()).resetRom(params.resetRom());
-                    Wav wavFile = vcas.convert(file.getInputName());
+                    WavOutput wavFile = vcas.convert(file.getInputName());
 
                     if (file.isWrite()) {
                         writeWav(wavFile, file);
@@ -70,7 +70,7 @@ public class Main extends JFrame implements NativeKeyListener {
         Arrays.stream(Logger.getLogger("").getHandlers()).forEach( h -> h.setLevel(Level.OFF));
     }
 
-    private static void writeWav(Wav wavFile, ConvertFile file) throws Exception {
+    private static void writeWav(WavOutput wavFile, ConvertFile file) throws Exception {
         Date start = Calendar.getInstance().getTime();
         System.out.println("Input file: " + file.getInputName());
 
@@ -92,7 +92,7 @@ public class Main extends JFrame implements NativeKeyListener {
                 "Generated in " + ((double) (end.getTime() - start.getTime()) / 1000) + " seconds");
     }
 
-    private static void play(Wav file, SampleRate sampleRate) throws Exception {
+    private static void play(WavOutput file, SampleRate sampleRate) throws Exception {
         clip = AudioSystem.getClip();
 
         boolean keyListener = true;

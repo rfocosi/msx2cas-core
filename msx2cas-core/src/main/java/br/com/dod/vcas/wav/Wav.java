@@ -8,7 +8,7 @@ import br.com.dod.vcas.exception.FlowException;
 import java.util.LinkedList;
 import java.util.List;
 
-public abstract class Wav {
+public abstract class Wav implements WavOutput {
 
     static final long MIN_ENC_INPUT_FILE_LENGTH = 5L;
 

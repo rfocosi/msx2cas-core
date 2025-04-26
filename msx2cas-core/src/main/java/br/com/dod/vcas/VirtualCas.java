@@ -1,70 +1,113 @@
 package br.com.dod.vcas;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
 import br.com.dod.vcas.cas.CasFile;
+import br.com.dod.vcas.converter.Converter;
+import br.com.dod.vcas.converter.DefaultFileConverterFactory;
+import br.com.dod.vcas.converter.FileConverterFactory;
+import br.com.dod.vcas.converter.impl.CasConverter;
+import br.com.dod.vcas.converter.impl.RomConverter;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.SampleRate;
-import br.com.dod.vcas.util.FileCommons;
-import br.com.dod.vcas.wav.Ascii;
-import br.com.dod.vcas.wav.Bas;
-import br.com.dod.vcas.wav.Bin;
-import br.com.dod.vcas.wav.Cas;
-import br.com.dod.vcas.wav.Rom;
-import br.com.dod.vcas.wav.Wav;
+import br.com.dod.vcas.wav.WavOutput;
 
+/**
+ * Main class for the MSX2CAS core library
+ * Provides functionality to convert MSX files to WAV format
+ */
 public class VirtualCas {
 
-    final private List<String> fileList = new LinkedList<>();
-
-    final private SampleRate sampleRate;
+    private final List<String> fileList = new ArrayList<>();
+    private final SampleRate sampleRate;
+    private final FileConverterFactory converterFactory;
     private boolean reset;
 
+    /**
+     * Constructor for VirtualCas
+     * 
+     * @param sampleRate Sample rate to use for conversion
+     */
     public VirtualCas(SampleRate sampleRate) {
+        this(sampleRate, new DefaultFileConverterFactory());
+    }
+    
+    /**
+     * Constructor for VirtualCas with a custom converter factory
+     * 
+     * @param sampleRate Sample rate to use for conversion
+     * @param converterFactory Factory to create file converters
+     */
+    public VirtualCas(SampleRate sampleRate, FileConverterFactory converterFactory) {
         this.sampleRate = sampleRate;
+        this.converterFactory = converterFactory;
     }
 
+    /**
+     * Add a file to the conversion list
+     * 
+     * @param filePath Path to the file
+     * @return This VirtualCas instance
+     */
     public VirtualCas addFile(String filePath) {
         this.fileList.add(filePath);
         return this;
     }
 
+    /**
+     * Set whether to reset ROMs during conversion
+     * 
+     * @param reset True to reset ROMs, false otherwise
+     * @return This VirtualCas instance
+     */
     public VirtualCas resetRom(boolean reset) {
         this.reset = reset;
         return this;
     }
 
-    public Wav convert(String filePath) throws FlowException, Exception {
+    /**
+     * Convert a single file to WAV format
+     * 
+     * @param filePath Path to the file
+     * @return WAV output
+     * @throws FlowException If there's an error during conversion
+     */
+    public WavOutput convert(String filePath) throws FlowException {
         return addFile(filePath).convert().get(0);
     }
 
-    public Wav convert(List<CasFile> casList) throws FlowException {
-        if (casList == null || casList.size() < 1) throw FlowException.error("cas_list_empty");
-        Wav wav = new Cas(casList, sampleRate);
-        return wav.convert();
+    /**
+     * Convert a list of CAS files to WAV format
+     * 
+     * @param casList List of CAS files
+     * @return WAV output
+     * @throws FlowException If there's an error during conversion
+     */
+    public WavOutput convert(List<CasFile> casList) throws FlowException {
+        Converter converter = new CasConverter(casList, sampleRate);
+        return converter.convert();
     }
 
-    public List<Wav> convert() throws FlowException, Exception {
-        final List<Wav> wavList = new LinkedList<>();
+    /**
+     * Convert all added files to WAV format
+     * 
+     * @return List of WAV outputs
+     * @throws FlowException If there's an error during conversion
+     */
+    public List<WavOutput> convert() throws FlowException {
+        final List<WavOutput> wavList = new LinkedList<>();
 
         for (String fileName : fileList) {
-            switch (FileCommons.detectFile(fileName)) {
-                case BAS:
-                    wavList.add(new Bas(fileName, sampleRate).convert());
-                    break;
-                case BIN:
-                    wavList.add(new Bin(fileName, sampleRate).convert());
-                    break;
-                case CAS:
-                    wavList.add(new Cas(fileName, sampleRate).convert());
-                    break;
-                case ROM:
-                    wavList.add(Rom.build(fileName, sampleRate).convert(reset));
-                    break;
-                default:
-                    wavList.add(new Ascii(fileName, sampleRate).convert());
+            Converter converter = converterFactory.createConverter(fileName, sampleRate);
+            
+            // Apply ROM reset if this is a ROM converter
+            if (converter instanceof RomConverter) {
+                ((RomConverter) converter).resetRom(reset);
             }
+            
+            wavList.add(converter.convert());
         }
         return wavList;
     }
