@@ -81,8 +81,8 @@ public class Ascii extends Wav {
 
         for (int i =0 ; i < inputClone.length; i++) {
             if (inputMemPointer[i] == 0xa && inputMemPointer[i-1] != 0xd) {
-                convertedContent.add(new Byte("13"));
-                convertedContent.add(new Byte("10"));
+                convertedContent.add(Byte.valueOf("13"));
+                convertedContent.add(Byte.valueOf("10"));
             } else {
                 convertedContent.add(inputClone[i]);
             }

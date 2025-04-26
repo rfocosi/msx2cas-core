@@ -1,6 +1,7 @@
 .metadata
 .classpath
 .project
+.vscode
 .settings
 .orig
 target/

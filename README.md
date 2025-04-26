@@ -1,7 +1,7 @@
 # msx2cas-core
 Converts MSX files to cassette audio to play on MSX hardware.
 
-It was developed in Java to make possible to run it on Windows/MacOS/Linux.
+It was developed in Java (now requires Java 17+) to make possible to run it on Windows/MacOS/Linux.
 
 This core is used on Android app MSX2Cas:
 [MSX2Cas on Google Play](https://play.google.com/store/apps/details?id=br.com.dod.msx2cas)
@@ -12,16 +12,17 @@ http://www.finnov.net/~wierzbowsky/caslink2.htm
 
 ## Binary files
 
-You can just download the compiled files for use (to run its required Java 8):
+You can just download the compiled files for use (to run it requires Java 17):
 
 [Binary Releases](https://github.com/rfocosi/msx2cas-core/releases/)
 
 ## Source requirements
 
+- Java 17 or higher
 - [dotnet-types](https://github.com/rfocosi/dotnet-types)
 
 ## Before run
 
 Execute `FileEncodingTest.java` a first time, before editing source, to generate comparable WAV's
 
-Compile with `mvn clean initialize && mvn package` at sources root
+Compile with `mvn clean initialize && mvn package` at sources root (requires Java 17+)
