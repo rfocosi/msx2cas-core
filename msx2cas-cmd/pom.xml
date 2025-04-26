@@ -6,9 +6,17 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>br.com.dod.msx2cas</groupId>
-    <artifactId>cmd</artifactId>
+    <artifactId>msx2cas-cmd</artifactId>
     <packaging>jar</packaging>
     <version>4.0.0</version>
+    
+    <description>MSX2CAS command-line tool that converts MSX files to cassette audio WAV files</description>
+    <inceptionYear>2020</inceptionYear>
+    
+    <organization>
+        <name>MSX2Cas</name>
+        <url>https://github.com/rfocosi/msx2cas-core</url>
+    </organization>
 
     <dependencies>
         <dependency>
@@ -96,6 +104,8 @@
                                     <fileset file="${project.basedir}/resources/cmd/linux-header" />
                                     <fileset file="${project.build.directory}/${project.artifactId}-${project.version}-jar-with-dependencies.jar" />
                                 </concat>
+                                <!-- Make the file executable -->
+                                <chmod file="${project.build.directory}/msx2cas" perm="755"/>
                             </target>
                         </configuration>
                     </execution>
