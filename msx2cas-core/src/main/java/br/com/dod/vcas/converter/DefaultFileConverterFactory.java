@@ -20,19 +20,13 @@ public class DefaultFileConverterFactory implements FileConverterFactory {
     @Override
     public Converter createConverter(String filePath, SampleRate sampleRate) throws FlowException {
         FileType fileType = detectFileType(filePath);
-        
-        switch (fileType) {
-            case BAS:
-                return new BasConverter(filePath, sampleRate);
-            case BIN:
-                return new BinConverter(filePath, sampleRate);
-            case CAS:
-                return new CasConverter(filePath, sampleRate);
-            case ROM:
-                return new RomConverter(filePath, sampleRate);
-            default:
-                return new AsciiConverter(filePath, sampleRate);
-        }
+        return switch (fileType) {
+            case BAS -> new BasConverter(filePath, sampleRate);
+            case BIN -> new BinConverter(filePath, sampleRate);
+            case CAS -> new CasConverter(filePath, sampleRate);
+            case ROM -> new RomConverter(filePath, sampleRate);
+            default -> new AsciiConverter(filePath, sampleRate);
+        };
     }
 
     @Override

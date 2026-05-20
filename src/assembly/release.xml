@@ -10,7 +10,7 @@
 
     <files>
         <file>
-            <source>${project.basedir}/msx2cas-cmd/target/cmd-${version}-jar-with-dependencies.jar</source>
+            <source>${project.basedir}/msx2cas-cmd/target/msx2cas-cmd-${version}-jar-with-dependencies.jar</source>
             <outputDirectory>/</outputDirectory>
             <destName>msx2cas.jar</destName>
         </file>

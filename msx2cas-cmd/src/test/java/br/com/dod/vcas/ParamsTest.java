@@ -13,8 +13,8 @@ public class ParamsTest {
         Params params = new Params(args);
 
         assertTrue(params.resetRom());
-        assertEquals("my.rom", params.getFiles().get(0).getInputName());
-        assertEquals("out.wav", params.getFiles().get(0).getOutputName());
+        assertEquals("my.rom", params.getFiles().get(0).inputName());
+        assertEquals("out.wav", params.getFiles().get(0).outputName());
     }
 
     @Test
@@ -24,8 +24,8 @@ public class ParamsTest {
         Params params = new Params(args);
 
         assertTrue(params.resetRom());
-        assertEquals("my.rom", params.getFiles().get(0).getInputName());
-        assertEquals("my.wav", params.getFiles().get(0).getOutputName());
+        assertEquals("my.rom", params.getFiles().get(0).inputName());
+        assertEquals("my.wav", params.getFiles().get(0).outputName());
     }
 
     @Test
@@ -44,12 +44,12 @@ public class ParamsTest {
         Params params = new Params(args);
 
         assertTrue(params.resetRom());
-        assertEquals("my.rom", params.getFiles().get(0).getInputName());
-        assertEquals("another.rom", params.getFiles().get(1).getInputName());
-        assertEquals("more.rom", params.getFiles().get(2).getInputName());
-        assertEquals("my.wav", params.getFiles().get(0).getOutputName());
-        assertEquals("anothe.wav", params.getFiles().get(1).getOutputName());
-        assertEquals("more.wav", params.getFiles().get(2).getOutputName());
+        assertEquals("my.rom", params.getFiles().get(0).inputName());
+        assertEquals("another.rom", params.getFiles().get(1).inputName());
+        assertEquals("more.rom", params.getFiles().get(2).inputName());
+        assertEquals("my.wav", params.getFiles().get(0).outputName());
+        assertEquals("anothe.wav", params.getFiles().get(1).outputName());
+        assertEquals("more.wav", params.getFiles().get(2).outputName());
     }
 
     @Test
@@ -59,12 +59,12 @@ public class ParamsTest {
         Params params = new Params(args);
 
         assertTrue(params.resetRom());
-        assertEquals("my.rom", params.getFiles().get(0).getInputName());
-        assertEquals("another.rom", params.getFiles().get(1).getInputName());
-        assertEquals("more.rom", params.getFiles().get(2).getInputName());
-        assertEquals("my.wav", params.getFiles().get(0).getOutputName());
-        assertEquals("anothe.wav", params.getFiles().get(1).getOutputName());
-        assertEquals("more.wav", params.getFiles().get(2).getOutputName());
+        assertEquals("my.rom", params.getFiles().get(0).inputName());
+        assertEquals("another.rom", params.getFiles().get(1).inputName());
+        assertEquals("more.rom", params.getFiles().get(2).inputName());
+        assertEquals("my.wav", params.getFiles().get(0).outputName());
+        assertEquals("anothe.wav", params.getFiles().get(1).outputName());
+        assertEquals("more.wav", params.getFiles().get(2).outputName());
     }
 
 }

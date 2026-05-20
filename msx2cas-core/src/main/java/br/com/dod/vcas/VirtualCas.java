@@ -103,8 +103,8 @@ public class VirtualCas {
             Converter converter = converterFactory.createConverter(fileName, sampleRate);
             
             // Apply ROM reset if this is a ROM converter
-            if (converter instanceof RomConverter) {
-                ((RomConverter) converter).resetRom(reset);
+            if (converter instanceof RomConverter romConverter) {
+                romConverter.resetRom(reset);
             }
             
             wavList.add(converter.convert());
