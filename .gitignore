@@ -10,7 +10,9 @@ target/
 msx2cas-core/resources/lib/*.jar
 msx2cas-core/resources/local/*
 !msx2cas-core/resources/local/.gitkeep
+msx2cas-core/resources/generated/*
 .gradle/
 build/
 .idea
 !dotnet-types.jar
+bin/
