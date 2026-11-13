@@ -5,11 +5,10 @@ import java.util.LinkedList;
 import java.util.List;
 
 import br.com.dod.vcas.cas.CasFile;
+import br.com.dod.vcas.converter.ConversionOptions;
 import br.com.dod.vcas.converter.Converter;
 import br.com.dod.vcas.converter.DefaultFileConverterFactory;
 import br.com.dod.vcas.converter.FileConverterFactory;
-import br.com.dod.vcas.converter.impl.CasConverter;
-import br.com.dod.vcas.converter.impl.RomConverter;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.SampleRate;
 import br.com.dod.vcas.wav.WavOutput;
@@ -27,16 +26,16 @@ public class VirtualCas {
 
     /**
      * Constructor for VirtualCas
-     * 
+     *
      * @param sampleRate Sample rate to use for conversion
      */
     public VirtualCas(SampleRate sampleRate) {
         this(sampleRate, new DefaultFileConverterFactory());
     }
-    
+
     /**
      * Constructor for VirtualCas with a custom converter factory
-     * 
+     *
      * @param sampleRate Sample rate to use for conversion
      * @param converterFactory Factory to create file converters
      */
@@ -47,7 +46,7 @@ public class VirtualCas {
 
     /**
      * Add a file to the conversion list
-     * 
+     *
      * @param filePath Path to the file
      * @return This VirtualCas instance
      */
@@ -58,7 +57,7 @@ public class VirtualCas {
 
     /**
      * Set whether to reset ROMs during conversion
-     * 
+     *
      * @param reset True to reset ROMs, false otherwise
      * @return This VirtualCas instance
      */
@@ -69,44 +68,41 @@ public class VirtualCas {
 
     /**
      * Convert a single file to WAV format
-     * 
+     *
      * @param filePath Path to the file
      * @return WAV output
      * @throws FlowException If there's an error during conversion
      */
     public WavOutput convert(String filePath) throws FlowException {
-        return addFile(filePath).convert().get(0);
+        Converter converter = converterFactory.createConverter(
+                filePath, sampleRate, new ConversionOptions(reset));
+        return converter.convert();
     }
 
     /**
      * Convert a list of CAS files to WAV format
-     * 
+     *
      * @param casList List of CAS files
      * @return WAV output
      * @throws FlowException If there's an error during conversion
      */
     public WavOutput convert(List<CasFile> casList) throws FlowException {
-        Converter converter = new CasConverter(casList, sampleRate);
+        Converter converter = converterFactory.createConverter(casList, sampleRate);
         return converter.convert();
     }
 
     /**
      * Convert all added files to WAV format
-     * 
+     *
      * @return List of WAV outputs
      * @throws FlowException If there's an error during conversion
      */
     public List<WavOutput> convert() throws FlowException {
         final List<WavOutput> wavList = new LinkedList<>();
+        ConversionOptions options = new ConversionOptions(reset);
 
         for (String fileName : fileList) {
-            Converter converter = converterFactory.createConverter(fileName, sampleRate);
-            
-            // Apply ROM reset if this is a ROM converter
-            if (converter instanceof RomConverter romConverter) {
-                romConverter.resetRom(reset);
-            }
-            
+            Converter converter = converterFactory.createConverter(fileName, sampleRate, options);
             wavList.add(converter.convert());
         }
         return wavList;

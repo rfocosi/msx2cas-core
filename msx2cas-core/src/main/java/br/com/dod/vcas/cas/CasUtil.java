@@ -9,7 +9,7 @@ import br.com.dod.vcas.util.FileCommons;
 import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.exception.FlowException;
 
-import static br.com.dod.vcas.wav.Wav.CAS_FILENAME_LENGTH;
+import static br.com.dod.vcas.util.FileCommons.CAS_FILENAME_LENGTH;
 
 public class CasUtil {
     private static final char[] HEADER = FileType.CAS.getId();

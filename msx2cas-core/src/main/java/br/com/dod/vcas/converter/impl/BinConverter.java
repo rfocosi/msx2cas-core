@@ -14,7 +14,6 @@ import br.com.dod.vcas.wav.WavOutput;
 public class BinConverter extends AbstractFileConverter {
     
     private static final int FILE_OFFSET = 7;
-    public static final int CAS_FILENAME_LENGTH = 6;
     
     /**
      * Constructor for BinConverter
@@ -36,7 +35,7 @@ public class BinConverter extends AbstractFileConverter {
         
         // Write header and filename
         encoder.encodeData(FileType.BIN.getHeader());
-        encoder.encodeData(getNameBuffer(CAS_FILENAME_LENGTH));
+        encoder.encodeData(getNameBuffer());
         
         encoder.encodePause(WavEncoder.DEFAULT_PAUSE_LENGTH);
         encoder.encodeShortHeader();
@@ -49,8 +48,8 @@ public class BinConverter extends AbstractFileConverter {
             encoder.writeDataByte((char) inputMemPointer[i]);
         }
         
-        // Finalize the WAV encoding
-        encoder.finalize();
+        // Finish the WAV encoding
+        encoder.finish();
         
         return encoder;
     }
@@ -95,43 +94,7 @@ public class BinConverter extends AbstractFileConverter {
         char binEnd = (char) ((new DWORD(inputMemPointer[4]).getLow()).intValue() * 0x100 + 
                              (new DWORD(inputMemPointer[3]).getLow()).intValue());
         
-        loader[9] = calculateCRC(FILE_OFFSET, (binEnd-binBegin) + FILE_OFFSET);
-    }
-    
-    /**
-     * Calculate the CRC for a block of data
-     * 
-     * @param blockStart Start of the block
-     * @param blockEnd End of the block
-     * @return Calculated CRC
-     * @throws FlowException If there's an error calculating the CRC
-     */
-    private char calculateCRC(int blockStart, int blockEnd) throws FlowException {
-        if (blockStart > blockEnd) throw FlowException.error("header_conflicting_information");
-        char crc = 0;
-        for (int i = blockStart; i < blockEnd; i++) crc += (char) inputMemPointer[i];
-        return crc;
-    }
-    
-    /**
-     * Build a binary address buffer
-     * 
-     * @param binarySize Size of the binary data
-     * @return Address buffer
-     */
-    private char[] buildBinaryAddressBuffer(final long binarySize) {
-        char a = (char) (binarySize + 0x9000 - 1);
-        
-        char[] addressBuffer = new char[6];
-        
-        addressBuffer[0] = 0;
-        addressBuffer[1] = 0x90;
-        addressBuffer[2] = a;
-        addressBuffer[3] = (char)(a >> 8);
-        addressBuffer[4] = 0;
-        addressBuffer[5] = 0x90;
-        
-        return addressBuffer;
+        loader[9] = calculateCRC(FILE_OFFSET, (binEnd - binBegin) + FILE_OFFSET);
     }
     
     /**

@@ -2,35 +2,50 @@ package br.com.dod.vcas.converter.impl;
 
 import br.com.dod.vcas.converter.AbstractFileConverter;
 import br.com.dod.vcas.exception.FlowException;
+import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.model.SampleRate;
 import br.com.dod.vcas.wav.WavEncoder;
 import br.com.dod.vcas.wav.WavOutput;
 
 /**
- * Converter for ROM files
+ * Converter for MSX ROM files (16K, 32K, and 49K)
  */
 public class RomConverter extends AbstractFileConverter {
-    
-    private static final int ROM_32K_SIZE = 32768;
-    private static final int ROM_49K_OFFSET = 16384;
-    
+
+    private static final int ROM_16K_MAX_SIZE = 16384;
+    private static final int ROM_32K_MAX_SIZE = 32768;
+    private static final int ROM_49K_MAX_SIZE = 50176;
+
     private boolean resetRom;
-    
+
     /**
      * Constructor for RomConverter
-     * 
+     *
      * @param inputFileName Name of the input file
      * @param sampleRate Sample rate to use for conversion
-     * @throws FlowException If there's an error reading the file
+     * @throws FlowException If reading or validating the ROM fails
      */
     public RomConverter(String inputFileName, SampleRate sampleRate) throws FlowException {
-        super(inputFileName, sampleRate);
-        this.resetRom = false;
+        this(inputFileName, sampleRate, false);
     }
-    
+
+    /**
+     * Constructor for RomConverter with ROM reset option
+     *
+     * @param inputFileName Name of the input file
+     * @param sampleRate Sample rate to use for conversion
+     * @param resetRom True to reset the MSX after loading the ROM
+     * @throws FlowException If reading or validating the ROM fails
+     */
+    public RomConverter(String inputFileName, SampleRate sampleRate, boolean resetRom) throws FlowException {
+        super(inputFileName, sampleRate);
+        this.resetRom = resetRom;
+        validate();
+    }
+
     /**
      * Set whether to reset the ROM during conversion
-     * 
+     *
      * @param resetRom True to reset the ROM, false otherwise
      * @return This RomConverter instance
      */
@@ -38,171 +53,136 @@ public class RomConverter extends AbstractFileConverter {
         this.resetRom = resetRom;
         return this;
     }
-    
+
+    private void validate() throws FlowException {
+        int fileSize = getFileSize();
+        if (fileSize <= MIN_ENC_INPUT_FILE_LENGTH || fileSize > ROM_49K_MAX_SIZE) {
+            throw FlowException.error("file_size_invalid");
+        }
+        if (fileSize > ROM_32K_MAX_SIZE
+                && (char) inputMemPointer[3] >= 0x40
+                && (char) inputMemPointer[0x4000] != 'A'
+                && (char) inputMemPointer[0x4001] != 'B') {
+            throw FlowException.error("mappers_not_supported");
+        }
+    }
+
     @Override
     public WavOutput convert() throws FlowException {
-        // Determine if this is a 32K or 49K ROM
-        if (isRom49K()) {
-            return convertRom49K();
+        WavEncoder encoder = new WavEncoder(sampleRate, inputFileName);
+        int fileSize = getFileSize();
+
+        if (fileSize <= ROM_16K_MAX_SIZE) {
+            convertRom16K(encoder);
+        } else if (fileSize <= ROM_32K_MAX_SIZE) {
+            convertRom32K(encoder);
         } else {
-            return convertRom32K();
+            convertRom49K(encoder);
+        }
+
+        encoder.finish();
+        return encoder;
+    }
+
+    private char getRomTypeHeader() throws FlowException {
+        char ch = (char) inputMemPointer[3];
+        if ((ch & 0xF0) >= 0xD0) {
+            throw FlowException.error("type_32k_not_supported");
+        }
+        return ch;
+    }
+
+    private void convertRom16K(WavEncoder encoder) throws FlowException {
+        char headId = getRomTypeHeader();
+        encodeBlockHeader(encoder, getNameBuffer());
+
+        if (headId < 0x80) {
+            encodeRomBlock(encoder, headId, 0, inputMemPointer.length, RomLoaders.rom16K(resetRom));
+        } else {
+            encoder.encodeShortHeader();
+            char startAddr = (char) ((headId & 0xF0) << 8);
+            char endAddr = (char) (startAddr + inputMemPointer.length - 1);
+            char[] addressBuffer = {
+                    0,
+                    (char) (startAddr >> 8),
+                    endAddr,
+                    (char) (endAddr >> 8),
+                    (char) inputMemPointer[2],
+                    (char) inputMemPointer[3]
+            };
+            encoder.encodeData(addressBuffer);
+            for (byte b : inputMemPointer) {
+                encoder.writeDataByte((char) b);
+            }
         }
     }
-    
-    /**
-     * Check if this is a 49K ROM
-     * 
-     * @return True if this is a 49K ROM, false otherwise
-     */
-    private boolean isRom49K() {
-        return getFileSize() > ROM_32K_SIZE;
+
+    private void convertRom32K(WavEncoder encoder) throws FlowException {
+        char headId = getRomTypeHeader();
+        if (headId > 0x80) {
+            headId = 0x40;
+        } else if (headId < 0x40) {
+            headId = 0;
+        }
+
+        encodeBlockHeader(encoder, getNameBuffer());
+        encodeRomBlock(encoder, headId, 0, ROM_16K_MAX_SIZE, RomLoaders.blockLoader());
+
+        encodeBlockHeader(encoder, getNumberedNameBuffer(2));
+        encodeRomBlock(encoder, headId, ROM_16K_MAX_SIZE, inputMemPointer.length, RomLoaders.rom32K(resetRom));
     }
-    
-    /**
-     * Convert a 32K ROM
-     * 
-     * @return WAV output
-     * @throws FlowException If there's an error during conversion
-     */
-    private WavOutput convertRom32K() throws FlowException {
-        WavEncoder encoder = new WavEncoder(sampleRate, inputFileName);
-        
+
+    private void convertRom49K(WavEncoder encoder) throws FlowException {
+        char headId = 0;
+
+        encodeBlockHeader(encoder, getNameBuffer());
+        encodeRomBlock(encoder, headId, 0, ROM_16K_MAX_SIZE, RomLoaders.blockLoader());
+
+        encodeBlockHeader(encoder, getNumberedNameBuffer(2));
+        encodeRomBlock(encoder, headId, ROM_16K_MAX_SIZE, ROM_32K_MAX_SIZE, RomLoaders.blockLoader());
+
+        encodeBlockHeader(encoder, getNumberedNameBuffer(3));
+        encodeRomBlock(encoder, headId, ROM_32K_MAX_SIZE, inputMemPointer.length, RomLoaders.rom49K(resetRom));
+    }
+
+    private void encodeBlockHeader(WavEncoder encoder, char[] nameBuffer) {
         encoder.encodePause(WavEncoder.FIRST_PAUSE_LENGTH);
-        
-        // Encode ROM header and content
-        encodeRomHeader(encoder);
-        encodeRom32KContent(encoder);
-        
-        // Finalize the WAV encoding
-        encoder.finalize();
-        
-        return encoder;
-    }
-    
-    /**
-     * Convert a 49K ROM
-     * 
-     * @return WAV output
-     * @throws FlowException If there's an error during conversion
-     */
-    private WavOutput convertRom49K() throws FlowException {
-        WavEncoder encoder = new WavEncoder(sampleRate, inputFileName);
-        
-        encoder.encodePause(WavEncoder.FIRST_PAUSE_LENGTH);
-        
-        // Encode ROM header and content
-        encodeRomHeader(encoder);
-        encodeRom49KContent(encoder);
-        
-        // Finalize the WAV encoding
-        encoder.finalize();
-        
-        return encoder;
-    }
-    
-    /**
-     * Encode the ROM header
-     * 
-     * @param encoder WAV encoder to use
-     */
-    private void encodeRomHeader(WavEncoder encoder) {
         encoder.encodeLongHeader();
-        
-        // Write ROM loader
-        char[] loader = getRomLoader();
-        encoder.encodeData(loader);
-        
+        encoder.encodeData(FileType.ROM.getHeader());
+        encoder.encodeData(nameBuffer);
         encoder.encodePause(WavEncoder.DEFAULT_PAUSE_LENGTH);
     }
-    
-    /**
-     * Encode a 32K ROM's content
-     * 
-     * @param encoder WAV encoder to use
-     */
-    private void encodeRom32KContent(WavEncoder encoder) {
+
+    private void encodeRomBlock(WavEncoder encoder, char headId, int blockStart, int blockEnd, char[] loader)
+            throws FlowException {
+        char romCRC = calculateCRC(blockStart, blockEnd);
+
         encoder.encodeShortHeader();
-        
-        // Write ROM content
-        for (int i = 0; i < Math.min(ROM_32K_SIZE, inputMemPointer.length); i++) {
+        encoder.encodeData(buildBinaryAddressBuffer(sizeof(loader) + blockEnd - blockStart));
+
+        char addr = (char) (((headId & 0xF0) << 8) + blockStart);
+        loader[3] = 0;
+        loader[4] = (char) (addr >> 8);
+
+        addr = (char) (addr + blockEnd - blockStart);
+        loader[5] = addr;
+        loader[6] = (char) (addr >> 8);
+
+        if ((char) inputMemPointer[0] == 'A' && (char) inputMemPointer[1] == 'B') {
+            loader[7] = (char) inputMemPointer[2];
+            loader[8] = (char) inputMemPointer[3];
+        } else if (inputMemPointer.length > 0x4003
+                && (char) inputMemPointer[0x4000] == 'A'
+                && (char) inputMemPointer[0x4001] == 'B') {
+            loader[7] = (char) inputMemPointer[0x4002];
+            loader[8] = (char) inputMemPointer[0x4003];
+        }
+        loader[9] = romCRC;
+
+        encoder.encodeData(loader);
+
+        for (int i = blockStart; i < blockEnd; i++) {
             encoder.writeDataByte((char) inputMemPointer[i]);
         }
-        
-        // Write reset code if needed
-        if (resetRom) {
-            encoder.encodePause(WavEncoder.DEFAULT_PAUSE_LENGTH);
-            encoder.encodeShortHeader();
-            encoder.encodeData(getRomResetCode());
-        }
-    }
-    
-    /**
-     * Encode a 49K ROM's content
-     * 
-     * @param encoder WAV encoder to use
-     */
-    private void encodeRom49KContent(WavEncoder encoder) {
-        // First part (32K)
-        encoder.encodeShortHeader();
-        
-        for (int i = 0; i < ROM_32K_SIZE; i++) {
-            encoder.writeDataByte((char) inputMemPointer[i]);
-        }
-        
-        // Second part (remaining data)
-        encoder.encodePause(WavEncoder.SEPARATOR_PAUSE_LENGTH);
-        encoder.encodeShortHeader();
-        
-        for (int i = ROM_49K_OFFSET; i < inputMemPointer.length; i++) {
-            encoder.writeDataByte((char) inputMemPointer[i]);
-        }
-        
-        // Write reset code if needed
-        if (resetRom) {
-            encoder.encodePause(WavEncoder.DEFAULT_PAUSE_LENGTH);
-            encoder.encodeShortHeader();
-            encoder.encodeData(getRomResetCode());
-        }
-    }
-    
-    /**
-     * Get the ROM loader code
-     * 
-     * @return ROM loader code
-     */
-    private char[] getRomLoader() {
-        return new char[] {
-            // ROM loader code would go here
-            // This is a placeholder - the actual code would be copied from the original implementation
-            0xC3, 0x10, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0xF3, 0x3E, 0x00, 0x32, 0x00, 0x40, 0x21, 0x01, 0x40, 0x11,
-            0x00, 0x80, 0x01, 0xFF, 0x7F, 0xED, 0xB0, 0x21, 0x00, 0x40, 0x11, 0x00, 0x00,
-            0x01, 0x00, 0x40, 0xED, 0xB0, 0xC3, 0x00, 0x00
-        };
-    }
-    
-    /**
-     * Get the ROM reset code
-     * 
-     * @return ROM reset code
-     */
-    private char[] getRomResetCode() {
-        return new char[] {
-            // ROM reset code would go here
-            // This is a placeholder - the actual code would be copied from the original implementation
-            0xF3, 0x3E, 0x00, 0x32, 0x00, 0x40, 0xC3, 0x00, 0x00
-        };
-    }
-    
-    /**
-     * Factory method to create a RomConverter instance
-     * 
-     * @param inputFileName Name of the input file
-     * @param sampleRate Sample rate to use for conversion
-     * @return RomConverter instance
-     * @throws FlowException If there's an error creating the converter
-     */
-    public static RomConverter build(String inputFileName, SampleRate sampleRate) throws FlowException {
-        return new RomConverter(inputFileName, sampleRate);
     }
 }

@@ -35,10 +35,10 @@ After building, you can find the artifacts in `msx2cas-cmd/target/`:
 - **Windows EXE**: `msx2cas-cmd/target/msx2cas.exe`
 
 ### CLI Options
-- `-w`: Write to WAV file instead of playing audio.
-- `-r`: Reset ROM (applicable for ROM files).
+- `-w [<output-file>]`: Write to WAV file instead of playing audio.
+- `-r`: Reset MSX after loading a ROM.
 - `-i`: Inverted waveform (default is normal).
-- Sample Rate options: `-11` (11025Hz), `-22` (22050Hz), `-44` (44100Hz, default), `-48` (48000Hz), `-96` (96000Hz).
+- `<1200|2400|3000|3600>`: Playback speed in bps (required).
 
 ### Playback Controls (when streaming)
 - `SPACE`: Start/Pause playback.
@@ -51,7 +51,7 @@ After building, you can find the artifacts in `msx2cas-cmd/target/`:
 - **Indentation**: 4 spaces.
 - **Encoding**: UTF-8.
 - **Naming**: `PascalCase` for classes, `camelCase` for methods/fields, `UPPER_SNAKE_CASE` for constants.
-- **Architecture**: Logic is encapsulated in the `br.com.dod.vcas.wav` package for format-specific conversion. The `VirtualCas` class acts as the main orchestrator.
+- **Architecture**: Format-specific conversion logic lives in `br.com.dod.vcas.converter.impl` (created via `FileConverterFactory`), waveform generation lives in `br.com.dod.vcas.wav.WavEncoder`, and `VirtualCas` acts as the main orchestrator.
 
 ### Testing Practices
 - **Standard Tests**: Run `mvn test` (or `mvn -pl msx2cas-core test` for the core module).

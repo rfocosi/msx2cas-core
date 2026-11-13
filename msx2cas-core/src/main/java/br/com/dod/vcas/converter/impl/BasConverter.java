@@ -12,8 +12,6 @@ import br.com.dod.vcas.wav.WavOutput;
  */
 public class BasConverter extends AbstractFileConverter {
     
-    public static final int CAS_FILENAME_LENGTH = 6;
-    
     /**
      * Constructor for BasConverter
      * 
@@ -35,18 +33,23 @@ public class BasConverter extends AbstractFileConverter {
         
         // Write header and filename
         encoder.encodeData(FileType.BAS.getHeader());
-        encoder.encodeData(getNameBuffer(CAS_FILENAME_LENGTH));
+        encoder.encodeData(getNameBuffer());
         
         encoder.encodePause(WavEncoder.DEFAULT_PAUSE_LENGTH);
         encoder.encodeShortHeader();
         
-        // Write file content
-        for (int i = 0; i < inputMemPointer.length; i++) {
+        // Write file content (skip leading 0xFF token marker)
+        for (int i = 1; i < inputMemPointer.length; i++) {
             encoder.writeDataByte((char) inputMemPointer[i]);
         }
+
+        // Write 7-byte BASIC EOF trailer
+        for (int i = 0; i < 7; i++) {
+            encoder.writeDataByte((char) 0x00);
+        }
         
-        // Finalize the WAV encoding
-        encoder.finalize();
+        // Finish the WAV encoding
+        encoder.finish();
         
         return encoder;
     }

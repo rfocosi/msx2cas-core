@@ -10,10 +10,21 @@ import br.com.dod.vcas.util.FileCommons;
 public abstract class AbstractFileConverter implements Converter {
     
     protected static final long MIN_ENC_INPUT_FILE_LENGTH = 5L;
+    public static final int CAS_FILENAME_LENGTH = FileCommons.CAS_FILENAME_LENGTH;
     
     protected final String inputFileName;
     protected final SampleRate sampleRate;
     protected byte[] inputMemPointer;
+
+    /**
+     * Constructor for converters backed by in-memory data rather than a file path.
+     *
+     * @param sampleRate Sample rate to use for conversion
+     */
+    protected AbstractFileConverter(SampleRate sampleRate) {
+        this.inputFileName = null;
+        this.sampleRate = sampleRate;
+    }
     
     /**
      * Constructor for AbstractFileConverter
@@ -55,28 +66,27 @@ public abstract class AbstractFileConverter implements Converter {
      * @return CAS format name
      */
     public String casName() {
-        return FileCommons.getCasName(inputFileName);
+        return inputFileName != null ? FileCommons.getCasName(inputFileName) : "";
     }
     
     /**
-     * Get a formatted name buffer with the specified length
+     * Get a formatted name buffer with the default CAS filename length
      * 
-     * @param length Length of the name buffer
      * @return Formatted name buffer as a char array
      */
-    protected char[] getNameBuffer(int length) {
-        return formatNameBuffer("", length);
+    protected char[] getNameBuffer() {
+        return formatNameBuffer("", CAS_FILENAME_LENGTH);
     }
-    
+
     /**
-     * Get a formatted name buffer with the specified number and length
+     * Get a formatted name buffer with the specified suffix number and default CAS length
      * 
      * @param number Number to append to the name
-     * @param length Length of the name buffer
      * @return Formatted name buffer as a char array
      */
-    protected char[] getNameBuffer(final String number, final int length) {
-        return formatNameBuffer(number, length - number.length());
+    protected char[] getNumberedNameBuffer(final int number) {
+        String numStr = String.valueOf(number);
+        return formatNameBuffer(numStr, CAS_FILENAME_LENGTH - numStr.length());
     }
     
     /**
@@ -88,6 +98,43 @@ public abstract class AbstractFileConverter implements Converter {
      */
     private char[] formatNameBuffer(final String number, final int nameSize) {
         return String.format("%." + nameSize + "s%s", casName(), number).toCharArray();
+    }
+
+    /**
+     * Calculate the CRC for a block of data
+     * 
+     * @param blockStart Start of the block
+     * @param blockEnd End of the block
+     * @return Calculated CRC
+     * @throws FlowException If block bounds are invalid
+     */
+    protected char calculateCRC(int blockStart, int blockEnd) throws FlowException {
+        if (blockStart > blockEnd) {
+            throw FlowException.error("header_conflicting_information");
+        }
+        char crc = 0;
+        for (int i = blockStart; i < blockEnd; i++) {
+            crc += (char) inputMemPointer[i];
+        }
+        return crc;
+    }
+
+    /**
+     * Build a binary address buffer starting at 0x9000
+     * 
+     * @param binarySize Size of the binary data
+     * @return Address buffer
+     */
+    protected char[] buildBinaryAddressBuffer(final long binarySize) {
+        char endAddr = (char) (binarySize + 0x9000 - 1);
+        return new char[] {
+                0,
+                0x90,
+                endAddr,
+                (char) (endAddr >> 8),
+                0,
+                0x90
+        };
     }
     
     /**

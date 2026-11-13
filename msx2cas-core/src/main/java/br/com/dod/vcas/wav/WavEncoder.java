@@ -4,6 +4,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import br.com.dod.vcas.model.SampleRate;
+import br.com.dod.vcas.util.FileCommons;
 import br.com.dod.vcas.util.WavHeader;
 
 /**
@@ -105,8 +106,11 @@ public class WavEncoder implements WavOutput {
      * @param data Data to encode
      */
     public void encodeData(char[] data) {
-        for (int i = 0; i < data.length; i++) {
-            writeDataByte(data[i]);
+        if (data == null) {
+            return;
+        }
+        for (char datum : data) {
+            writeDataByte(datum);
         }
     }
     
@@ -190,9 +194,9 @@ public class WavEncoder implements WavOutput {
     }
     
     /**
-     * Finalize the WAV encoding by adding a default pause
+     * Finish the WAV encoding by adding a default pause
      */
-    public void finalize() {
+    public void finish() {
         encodePause(DEFAULT_PAUSE_LENGTH, LENGTH_CORRECTION);
     }
     
@@ -215,6 +219,6 @@ public class WavEncoder implements WavOutput {
     
     @Override
     public String casName() {
-        return inputFileName != null ? inputFileName.replaceFirst(".+/", "").replaceAll("[^.\\w]", "") : "";
+        return inputFileName != null ? FileCommons.getCasName(inputFileName) : "";
     }
 }

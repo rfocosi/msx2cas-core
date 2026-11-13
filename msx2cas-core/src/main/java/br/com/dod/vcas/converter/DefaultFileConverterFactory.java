@@ -1,7 +1,9 @@
 package br.com.dod.vcas.converter;
 
 import java.io.IOException;
+import java.util.List;
 
+import br.com.dod.vcas.cas.CasFile;
 import br.com.dod.vcas.converter.impl.AsciiConverter;
 import br.com.dod.vcas.converter.impl.BasConverter;
 import br.com.dod.vcas.converter.impl.BinConverter;
@@ -18,15 +20,22 @@ import br.com.dod.vcas.util.FileCommons;
 public class DefaultFileConverterFactory implements FileConverterFactory {
 
     @Override
-    public Converter createConverter(String filePath, SampleRate sampleRate) throws FlowException {
+    public Converter createConverter(String filePath, SampleRate sampleRate, ConversionOptions options)
+            throws FlowException {
+        boolean resetRom = options != null && options.resetRom();
         FileType fileType = detectFileType(filePath);
         return switch (fileType) {
             case BAS -> new BasConverter(filePath, sampleRate);
             case BIN -> new BinConverter(filePath, sampleRate);
             case CAS -> new CasConverter(filePath, sampleRate);
-            case ROM -> new RomConverter(filePath, sampleRate);
+            case ROM -> new RomConverter(filePath, sampleRate, resetRom);
             default -> new AsciiConverter(filePath, sampleRate);
         };
+    }
+
+    @Override
+    public Converter createConverter(List<CasFile> casFiles, SampleRate sampleRate) throws FlowException {
+        return new CasConverter(casFiles, sampleRate);
     }
 
     @Override
