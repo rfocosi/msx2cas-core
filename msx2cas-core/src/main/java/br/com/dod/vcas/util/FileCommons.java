@@ -7,9 +7,9 @@ import java.io.IOException;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.FileType;
 
-import static br.com.dod.vcas.wav.Wav.CAS_FILENAME_LENGTH;
-
 public class FileCommons {
+
+    public static final int CAS_FILENAME_LENGTH = 6;
 
     public static String getCasName(String fileName) {
         fileName = fileName.replaceFirst(".+/", "").replaceAll("[^.\\w]", "");

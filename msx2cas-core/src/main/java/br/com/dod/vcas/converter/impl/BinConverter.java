@@ -1,62 +1,107 @@
-package br.com.dod.vcas.wav;
+package br.com.dod.vcas.converter.impl;
 
 import br.com.dod.dotnet.types.DWORD;
+import br.com.dod.vcas.converter.AbstractFileConverter;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.model.SampleRate;
+import br.com.dod.vcas.wav.WavEncoder;
+import br.com.dod.vcas.wav.WavOutput;
 
-public class Bin extends Wav {
-
+/**
+ * Converter for binary files
+ */
+public class BinConverter extends AbstractFileConverter {
+    
     private static final int FILE_OFFSET = 7;
-
-    public Bin(String inputFileName, SampleRate sampleRate) throws FlowException {
+    
+    /**
+     * Constructor for BinConverter
+     * 
+     * @param inputFileName Name of the input file
+     * @param sampleRate Sample rate to use for conversion
+     * @throws FlowException If there's an error reading the file
+     */
+    public BinConverter(String inputFileName, SampleRate sampleRate) throws FlowException {
         super(inputFileName, sampleRate);
     }
-
+    
     @Override
-    protected void encodeFileContent() throws FlowException {
-
-        encodePause(FIRST_PAUSE_LENGTH);
-
-        encodeLongHeader();
-
-        encodeData(FileType.BIN.getHeader());
-        encodeData(getNameBuffer());
-
-        encodePause(DEFAULT_PAUSE_LENGTH);
-
-        encodeShortHeader();
-
-        encodeLoader(getLoader());
-
+    public WavOutput convert() throws FlowException {
+        WavEncoder encoder = new WavEncoder(sampleRate, inputFileName);
+        
+        encoder.encodePause(WavEncoder.FIRST_PAUSE_LENGTH);
+        encoder.encodeLongHeader();
+        
+        // Write header and filename
+        encoder.encodeData(FileType.BIN.getHeader());
+        encoder.encodeData(getNameBuffer());
+        
+        encoder.encodePause(WavEncoder.DEFAULT_PAUSE_LENGTH);
+        encoder.encodeShortHeader();
+        
+        // Encode the loader
+        encodeLoader(encoder, getLoader());
+        
+        // Write file content
         for (int i = FILE_OFFSET; i < inputMemPointer.length; i++) {
-            writeDataByte((char) inputMemPointer[i]);
+            encoder.writeDataByte((char) inputMemPointer[i]);
         }
+        
+        // Finish the WAV encoding
+        encoder.finish();
+        
+        return encoder;
     }
-
-    private void encodeLoader(char[] loader) throws FlowException {
-        encodeData(buildBinaryAddressBuffer(sizeof(loader) + inputMemPointer.length - FILE_OFFSET));
-
+    
+    /**
+     * Encode the loader for the binary file
+     * 
+     * @param encoder WAV encoder to use
+     * @param loader Loader code
+     * @throws FlowException If there's an error calculating the CRC
+     */
+    private void encodeLoader(WavEncoder encoder, char[] loader) throws FlowException {
+        encoder.encodeData(buildBinaryAddressBuffer(sizeof(loader) + inputMemPointer.length - FILE_OFFSET));
+        
         calculateBinCRC(loader);
-
+        
         addStartAddressToLoader(loader);
-
-        encodeData(loader);
+        
+        encoder.encodeData(loader);
     }
-
+    
+    /**
+     * Add the start address to the loader
+     * 
+     * @param loader Loader code
+     */
     private void addStartAddressToLoader(char[] loader) {
         for (int j = 0; j < 6; j++) {
             loader[j + 3] = (char) inputMemPointer[j + 1];
         }
     }
-
+    
+    /**
+     * Calculate the CRC for the binary file
+     * 
+     * @param loader Loader code
+     * @throws FlowException If there's an error calculating the CRC
+     */
     private void calculateBinCRC(char[] loader) throws FlowException {
-        char binBegin = (char) ((new DWORD(inputMemPointer[2]).getLow()).intValue() * 0x100 + (new DWORD(inputMemPointer[1]).getLow()).intValue());
-        char binEnd = (char) ((new DWORD(inputMemPointer[4]).getLow()).intValue() * 0x100 + (new DWORD(inputMemPointer[3]).getLow()).intValue());
-
-        loader[9] = calculateCRC(FILE_OFFSET, (binEnd-binBegin) + FILE_OFFSET);
+        char binBegin = (char) ((new DWORD(inputMemPointer[2]).getLow()).intValue() * 0x100 + 
+                               (new DWORD(inputMemPointer[1]).getLow()).intValue());
+        char binEnd = (char) ((new DWORD(inputMemPointer[4]).getLow()).intValue() * 0x100 + 
+                             (new DWORD(inputMemPointer[3]).getLow()).intValue());
+        
+        loader[9] = calculateCRC(FILE_OFFSET, (binEnd - binBegin) + FILE_OFFSET);
     }
-
+    
+    /**
+     * Get the loader code for binary files
+     * 
+     * @return Loader code
+     */
     private char[] getLoader() {
         return new char[] {
                 0xC3, 0x27, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3C, 0x20, 0x4D,

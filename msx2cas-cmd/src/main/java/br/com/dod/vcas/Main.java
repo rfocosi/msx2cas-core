@@ -22,7 +22,7 @@ import org.jnativehook.keyboard.NativeKeyEvent;
 import org.jnativehook.keyboard.NativeKeyListener;
 
 import br.com.dod.vcas.exception.FlowException;
-import br.com.dod.vcas.wav.Wav;
+import br.com.dod.vcas.wav.WavOutput;
 
 public class Main extends JFrame implements NativeKeyListener {
 
@@ -39,13 +39,13 @@ public class Main extends JFrame implements NativeKeyListener {
 
             for (ConvertFile file : params.getFiles()) {
                 try {
-                    VirtualCas vcas = new VirtualCas(file.getSampleRate()).resetRom(params.resetRom());
-                    Wav wavFile = vcas.convert(file.getInputName());
+                    VirtualCas vcas = new VirtualCas(file.sampleRate()).resetRom(params.resetRom());
+                    WavOutput wavFile = vcas.convert(file.inputName());
 
-                    if (file.isWrite()) {
+                    if (file.write()) {
                         writeWav(wavFile, file);
                     } else {
-                        play(wavFile, file.getSampleRate());
+                        play(wavFile, file.sampleRate());
                     }
                 } catch (FlowException|IOException e) {
                     System.out.println("Error: "+e.getMessage());
@@ -70,16 +70,16 @@ public class Main extends JFrame implements NativeKeyListener {
         Arrays.stream(Logger.getLogger("").getHandlers()).forEach( h -> h.setLevel(Level.OFF));
     }
 
-    private static void writeWav(Wav wavFile, ConvertFile file) throws Exception {
+    private static void writeWav(WavOutput wavFile, ConvertFile file) throws Exception {
         Date start = Calendar.getInstance().getTime();
-        System.out.println("Input file: " + file.getInputName());
+        System.out.println("Input file: " + file.inputName());
 
         byte[] wavBytes = wavFile.toBytes();
 
-        File outputFile = new File(file.getOutputName());
+        File outputFile = new File(file.outputName());
         int count = 1;
         while (outputFile.exists() || count == 1000) {
-            outputFile = new File(file.getOutputName().replaceAll("(.+)(\\..{3})$", "$1" + (count++) + "$2"));
+            outputFile = new File(file.outputName().replaceAll("(.+)(\\..{3})$", "$1" + (count++) + "$2"));
         }
 
         FileOutputStream outputStream = new FileOutputStream(outputFile);
@@ -92,7 +92,7 @@ public class Main extends JFrame implements NativeKeyListener {
                 "Generated in " + ((double) (end.getTime() - start.getTime()) / 1000) + " seconds");
     }
 
-    private static void play(Wav file, SampleRate sampleRate) throws Exception {
+    private static void play(WavOutput file, SampleRate sampleRate) throws Exception {
         clip = AudioSystem.getClip();
 
         boolean keyListener = true;

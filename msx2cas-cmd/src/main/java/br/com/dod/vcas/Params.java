@@ -121,17 +121,15 @@ class Params {
     }
 
     private static void displayUsage() {
-        System.out.println("Usage: msx2cas [-i] [-r] [-w [<output-file>]] <" + SPEEDS + "> <input-file> [<input-file>...]");
-        System.out.println(
-                "-i: Invert Waveform (fix playback on some soundboards)");
-        System.out.println(
-                "-r: Reset MSX after loading a ROM");
-        System.out.println(
-                "-w: Write a WAV file with <output-file> name OR with file token name (first 6 characters from <filename>)");
-        System.out.println("<" + SPEEDS + ">: Playback speed in bps");
-        System.out.println("<input-file>: A ROM, BIN, LDR, MX1, MX2, CAS, BAS(tokenize or not) file");
-        System.out.println();
-        System.out.println("If you do not use -w, MSX2Cas will play to default sound interface");
+        System.out.println("""
+                Usage: msx2cas [-i] [-r] [-w [<output-file>]] <%s> <input-file> [<input-file>...]
+                -i: Invert Waveform (fix playback on some soundboards)
+                -r: Reset MSX after loading a ROM
+                -w: Write a WAV file with <output-file> name OR with file token name (first 6 characters from <filename>)
+                <%s>: Playback speed in bps
+                <input-file>: A ROM, BIN, LDR, MX1, MX2, CAS, BAS(tokenize or not) file
+                
+                If you do not use -w, MSX2Cas will play to default sound interface""".formatted(SPEEDS, SPEEDS));
     }
 
     List<ConvertFile> getFiles() {
