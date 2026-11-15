@@ -211,13 +211,18 @@ START5:
     JP      C,RAMERR
     LD      (SLOT1_FND),A
 
-    ; If STARTA < 0x8000 and EXECA < 0x4000, also probe Page 0 RAM
+    ; Map Page 1 before altering Page 0 subslot so BIOS at 0x0024 stays mapped if Page 0 RAM shares slot 0
+    LD      H,#0x40
+    CALL    0x0024        ; ENASLT: map Page 1 to detected RAM slot
+    DI
+
+    ; If STARTA < 0x8000 and EXECA < 0x4000, also probe and configure Page 0 RAM
     LD      A,(STARTA+1)
     CP      #0x80
-    JR      NC,S5_MAP_P1
+    JR      NC,START6
     LD      A,(EXECA+1)
     CP      #0x40
-    JR      NC,S5_MAP_P1
+    JR      NC,START6
 
     LD      HL,#0x0000
     LD      DE,#0x3FFE
@@ -227,7 +232,7 @@ START5:
 
     ; Set Page 0 subslot if expanded (from Page 2) before copying
     BIT     7,A
-    JR      Z,S5_MAP_P1
+    JR      Z,START6
     LD      B,A
     AND     #0x03
     LD      E,A
@@ -261,12 +266,6 @@ START5:
     LD      (0x0FFFF),A
     LD      A,D
     OUT     (0x0A8),A
-
-S5_MAP_P1:
-    LD      A,(SLOT1_FND)
-    LD      H,#0x40
-    CALL    0x0024        ; ENASLT: map Page 1 to detected RAM slot
-    DI
 
 START6:
     LD      A,(STARTA+1)

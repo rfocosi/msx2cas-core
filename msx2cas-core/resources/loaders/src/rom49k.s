@@ -222,7 +222,11 @@ START5:
     CALL    0x0024
     DI
 
-    ; Pre-configure Page 0 secondary slot if Page 0 RAM is expanded
+    ; Pre-configure Page 0 secondary slot only when executing in Page 0 (EXECA < 0x4000),
+    ; keeping BIOS mapped in Page 0 otherwise (needed when Page 0 RAM shares slot 0)
+    LD      A,(EXECA+1)
+    CP      #0x40
+    JR      NC,S5_STUB
     LD      A,(SLOT0_FND)
     BIT     7,A
     JR      Z,S5_STUB

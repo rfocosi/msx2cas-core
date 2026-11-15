@@ -216,43 +216,6 @@ START5:
     CALL    0x0024        ; ENASLT: map Page 1 to detected RAM slot
     DI
 
-    ; Pre-configure Page 0 secondary slot if Page 0 RAM is expanded
-    LD      A,(SLOT0_FND)
-    BIT     7,A
-    JR      Z,START6
-    LD      B,A
-    AND     #0x03
-    LD      E,A
-    LD      D,#0
-    LD      HL,#0x0FCC5   ; SLTTBL
-    ADD     HL,DE
-    LD      A,B
-    RRCA
-    RRCA
-    AND     #0x03
-    LD      B,A
-    LD      A,(HL)
-    AND     #0x0FC
-    OR      B
-    LD      (HL),A
-    LD      C,A
-
-    LD      A,E
-    RRCA
-    RRCA
-    AND     #0x0C0
-    LD      B,A
-
-    IN      A,(0x0A8)
-    LD      D,A
-    AND     #0x3F
-    OR      B
-    OUT     (0x0A8),A
-    LD      A,C
-    LD      (0x0FFFF),A
-    LD      A,D
-    OUT     (0x0A8),A
-
 START6:
     LD      HL,#ROMCODE
     LD      DE,#START8+5
