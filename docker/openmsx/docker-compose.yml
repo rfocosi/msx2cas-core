@@ -1,0 +1,17 @@
+services:
+  openmsx-it:
+    build:
+      context: ../..
+      dockerfile: docker/openmsx/Dockerfile
+      args:
+        USER_UID: ${USER_UID:-1000}
+        USER_GID: ${USER_GID:-1000}
+    user: "${USER_UID:-1000}:${USER_GID:-1000}"
+    environment:
+      OPENMSX_SYSTEM_ROMS: /openmsx-roms
+      SDL_VIDEODRIVER: dummy
+      SDL_AUDIODRIVER: dummy
+    volumes:
+      - ../..:/workspace
+      - ${HOME}/.m2:/home/ubuntu/.m2
+      - ${OPENMSX_SYSTEM_ROMS:-${HOME}/.openMSX/share/systemroms}:/openmsx-roms:ro

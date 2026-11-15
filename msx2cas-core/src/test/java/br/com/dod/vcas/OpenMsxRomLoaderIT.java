@@ -1,0 +1,458 @@
+package br.com.dod.vcas;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
+
+import org.junit.Assume;
+import org.junit.BeforeClass;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+import br.com.dod.vcas.exception.FlowException;
+import br.com.dod.vcas.model.SampleRate;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+/**
+ * End-to-end integration tests that convert MSX ROMs to 2400 bps WAV via {@link VirtualCas}
+ * and execute them headless inside {@code openmsx} across fragmented-RAM (Toshiba HX-20E)
+ * and standard/expanded MSX1 machines (Toshiba HX-21, Toshiba HX-10).
+ *
+ * <p>Requires {@code openmsx} on {@code PATH} (or {@code -Dopenmsx.bin=...}) and host MSX1 BIOS
+ * system ROMs under {@code $OPENMSX_SYSTEM_ROMS}, {@code $OPENMSX_USER_DATA/systemroms}, or
+ * {@code ~/.openMSX/share/systemroms}. Missing binaries or ROMs skip the corresponding tests cleanly.
+ */
+public class OpenMsxRomLoaderIT {
+
+    private static final int EMULATED_LOAD_WAIT_SEC = 500;
+    private static final long WALL_TIMEOUT_SEC = 90L;
+    private static final Pattern WORD_PROCESSOR_ROM_PATTERN = Pattern.compile(
+            "<ROM\\s+id=\"Word Processor ROM\">[\\s\\S]*?</ROM>");
+    private static final Pattern BIOS_ROM_PATTERN = Pattern.compile(
+            "<ROM\\s+id=\"MSX BIOS with BASIC ROM\">[\\s\\S]*?</ROM>");
+
+    private static String openMsxBin;
+    private static Map<String, Path> availableRoms;
+
+    @Rule
+    public TemporaryFolder tempFolder = new TemporaryFolder();
+
+    @BeforeClass
+    public static void detectEnvironment() throws IOException {
+        openMsxBin = findOpenMsxExecutable();
+        Assume.assumeTrue("openmsx binary not found; skipping emulator integration tests", openMsxBin != null);
+        availableRoms = discoverSystemRoms();
+    }
+
+    @Test
+    public void hx20eFragmentedRamLoadsAllRomSizesAndResets() throws Exception, FlowException {
+        Path machineXml = findSystemMachineXml("Toshiba_HX-20E.xml");
+        Assume.assumeTrue("Toshiba_HX-20E.xml not found in openMSX system data", machineXml != null);
+
+        Path biosRom = findAnyRom("hx-20E_basic-bios.rom", "hx-10_basic-bios1.rom", "expert_1.1_basic-bios1.rom");
+        Assume.assumeTrue("No MSX1 BASIC BIOS ROM found for HX-20E test", biosRom != null);
+
+        Path userData = prepareUserData(biosRom, machineXml);
+        assertAllLoaderVariants(userData, "Toshiba_HX-20E_clean", "3 0", "3 0");
+    }
+
+    @Test
+    public void hx21ExpandedSlotLoadsAllRomSizesAndResets() throws Exception, FlowException {
+        Assume.assumeTrue("Toshiba HX-21 ROMs (HX21-IC2.BIN, HX21-IC3.BIN) not found",
+                hasAllRoms("HX21-IC2.BIN", "HX21-IC3.BIN"));
+
+        Path userData = prepareUserData(null, null);
+        assertAllLoaderVariants(userData, "Toshiba_HX-21", "3 0", "3 0");
+    }
+
+    @Test
+    public void hx10PrimarySlotLoadsAllRomSizesAndResets() throws Exception, FlowException {
+        Assume.assumeTrue("Toshiba HX-10 BIOS ROM (hx-10_basic-bios1.rom) not found",
+                hasAllRoms("hx-10_basic-bios1.rom"));
+
+        Path userData = prepareUserData(null, null);
+        assertAllLoaderVariants(userData, "Toshiba_HX-10", "2 X", "2 X");
+    }
+
+    private void assertAllLoaderVariants(Path userData, String machine, String expectedPage1Slot, String expectedPage0Slot)
+            throws Exception, FlowException {
+        // 8K at 0x4000 (ROM_16K & ROM_16K_RST)
+        byte[] rom8k = buildCheckRom(8192, 0x0000, 0x4010, List.of(), "8K", false);
+        assertRomBoots(userData, machine, "rom8k_norm", rom8k, false, "OK8K", expectedPage1Slot, null);
+        assertRomBoots(userData, machine, "rom8k_rst", rom8k, true, "OK8K", expectedPage1Slot, null);
+
+        // 8K at 0x0000 (ROM_16K LOAD_PG0 with IM1 VDP IRQ ack at 0x0038)
+        byte[] rom8kPg0 = buildCheckRom(8192, 0x0000, 0x0050, List.of(new int[] { 0x1FFE, 0x77 }), "P0", true);
+        rom8kPg0[0x1FFE] = 0x77;
+        assertRomBoots(userData, machine, "rom8k_pg0", rom8kPg0, false, "OKP0", null, expectedPage0Slot);
+
+        // 16K at 0x4000 (ROM_16K & ROM_16K_RST)
+        byte[] rom16k = buildCheckRom(16384, 0x0000, 0x4010, List.of(new int[] { 0x7FFE, 0x5A }), "16", false);
+        rom16k[0x3FFE] = 0x5A;
+        assertRomBoots(userData, machine, "rom16k_norm", rom16k, false, "OK16", expectedPage1Slot, null);
+        assertRomBoots(userData, machine, "rom16k_rst", rom16k, true, "OK16", expectedPage1Slot, null);
+
+        // 32K at 0x4000..0xBFFF (BLOCK_LOADER + ROM_32K / ROM_32K_RST)
+        byte[] rom32k = buildCheckRom(32768, 0x0000, 0x4010,
+                List.of(new int[] { 0x7FFE, 0x3C }, new int[] { 0xBFFE, 0xA5 }), "32", false);
+        rom32k[0x3FFE] = 0x3C;
+        rom32k[0x7FFE] = (byte) 0xA5;
+        assertRomBoots(userData, machine, "rom32k_norm", rom32k, false, "OK32", expectedPage1Slot, null);
+        assertRomBoots(userData, machine, "rom32k_rst", rom32k, true, "OK32", expectedPage1Slot, null);
+
+        // 32K at 0x0000..0x7FFF (BLOCK_LOADER LR_PG0 + ROM_32K)
+        byte[] rom32kPg0 = buildCheckRom(32768, 0x0000, 0x0050,
+                List.of(new int[] { 0x1000, 0x12 }, new int[] { 0x7FFE, 0x34 }), "3P", true);
+        rom32kPg0[0x1000] = 0x12;
+        rom32kPg0[0x7FFE] = 0x34;
+        assertRomBoots(userData, machine, "rom32k_pg0", rom32kPg0, false, "OK3P", expectedPage1Slot, expectedPage0Slot);
+
+        // 49K at 0x0000..0xC3FF (BLOCK_LOADER x2 + ROM_49K / ROM_49K_RST)
+        byte[] rom49k = buildCheckRom(50176, 0x4000, 0x4010,
+                List.of(new int[] { 0x7FFE, 0x22 }, new int[] { 0x8100, 0x33 }, new int[] { 0xC100, 0x44 }),
+                "49", false);
+        rom49k[0x7FFE] = 0x22;
+        rom49k[0x8100] = 0x33;
+        rom49k[0xC100] = 0x44;
+        assertRomBoots(userData, machine, "rom49k_norm", rom49k, false, "OK49", expectedPage1Slot, null);
+        assertRomBoots(userData, machine, "rom49k_rst", rom49k, true, "OK49", expectedPage1Slot, null);
+    }
+
+    private void assertRomBoots(
+            Path userData,
+            String machine,
+            String caseName,
+            byte[] romBytes,
+            boolean reset,
+            String expectedTag,
+            String expectedPage1Slot,
+            String expectedPage0Slot) throws Exception, FlowException {
+        Path caseDir = tempFolder.newFolder(machine + "_" + caseName).toPath();
+        Path romFile = caseDir.resolve(caseName + ".rom");
+        Files.write(romFile, romBytes);
+
+        // MSX1 BIOS BLOAD"CAS:",R loads reliably at 2400 bps (sr22050).
+        byte[] wavBytes = new VirtualCas(SampleRate.sr22050)
+                .resetRom(reset)
+                .convert(romFile.toAbsolutePath().toString())
+                .toBytes();
+        Path wavFile = caseDir.resolve(caseName + ".wav");
+        Files.write(wavFile, wavBytes);
+
+        Path outFile = caseDir.resolve("result.txt");
+        Path tclFile = caseDir.resolve("run.tcl");
+        Files.writeString(tclFile, buildOpenMsxTclScript(), StandardCharsets.UTF_8);
+
+        ProcessBuilder pb = new ProcessBuilder(openMsxBin, "-machine", machine, "-script", tclFile.toString());
+        Map<String, String> env = pb.environment();
+        env.put("OPENMSX_USER_DATA", userData.toString());
+        env.put("SDL_VIDEODRIVER", "dummy");
+        env.put("SDL_AUDIODRIVER", "dummy");
+        env.put("TEST_WAV", wavFile.toString());
+        env.put("OUT_FILE", outFile.toString());
+        pb.redirectErrorStream(true);
+
+        Process proc = pb.start();
+        boolean finished = proc.waitFor(WALL_TIMEOUT_SEC, TimeUnit.SECONDS);
+        if (!finished) {
+            proc.destroyForcibly();
+            throw new AssertionError("openMSX timed out after " + WALL_TIMEOUT_SEC + "s for " + machine + "/" + caseName);
+        }
+
+        String procLog = new String(proc.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        assertEquals("openMSX exited non-zero for " + machine + "/" + caseName + ": " + procLog, 0, proc.exitValue());
+        assertTrue("Missing openMSX output file for " + machine + "/" + caseName, Files.exists(outFile));
+
+        String result = Files.readString(outFile, StandardCharsets.UTF_8).trim();
+        assertTrue("Expected signature '" + expectedTag + "' for " + machine + "/" + caseName + " but got: " + result,
+                result.contains("TAG=" + expectedTag));
+        if (expectedPage1Slot != null) {
+            assertTrue("Expected Page 1 slot '" + expectedPage1Slot + "' for " + machine + "/" + caseName + " but got: " + result,
+                    result.contains("P1=" + expectedPage1Slot));
+        }
+        if (expectedPage0Slot != null) {
+            assertTrue("Expected Page 0 slot '" + expectedPage0Slot + "' for " + machine + "/" + caseName + " but got: " + result,
+                    result.contains("P0=" + expectedPage0Slot));
+        }
+    }
+
+    /**
+     * Generates a headless openMSX Tcl script. Registers a hard emulated-time safety quit first
+     * so any Tcl error cannot leave an orphan emulator waiting indefinitely.
+     */
+    private static String buildOpenMsxTclScript() {
+        return "set renderer none\n"
+                + "set throttle off\n"
+                + "set max_wait " + EMULATED_LOAD_WAIT_SEC + "\n"
+                + "proc write_result {} {\n"
+                + "    global env\n"
+                + "    set b0 [debug read \"memory\" 0xD000]\n"
+                + "    set b1 [debug read \"memory\" 0xD001]\n"
+                + "    set b2 [debug read \"memory\" 0xD002]\n"
+                + "    set b3 [debug read \"memory\" 0xD003]\n"
+                + "    set fp [open $env(OUT_FILE) \"w\"]\n"
+                + "    puts $fp [format \"t=%.2f TAG=%c%c%c%c HEX=%02X%02X%02X%02X PC=%04X P0=%s P1=%s P2=%s P3=%s\" "
+                + "[machine_info time] $b0 $b1 $b2 $b3 $b0 $b1 $b2 $b3 [reg PC] "
+                + "[get_selected_slot 0] [get_selected_slot 1] [get_selected_slot 2] [get_selected_slot 3]]\n"
+                + "    catch { get_screen } scr\n"
+                + "    puts $fp \"SCREEN:\\n$scr\"\n"
+                + "    close $fp\n"
+                + "}\n"
+                + "after time $max_wait {\n"
+                + "    write_result\n"
+                + "    quit\n"
+                + "}\n"
+                + "cassetteplayer insert $env(TEST_WAV)\n"
+                + "after time 7 {\n"
+                + "    type \"bload\\\"cas:\\\",r\\r\"\n"
+                + "}\n"
+                + "proc poll_done {} {\n"
+                + "    set b0 [debug read \"memory\" 0xD000]\n"
+                + "    set b1 [debug read \"memory\" 0xD001]\n"
+                + "    if {($b0 == 0x4F && $b1 == 0x4B) || ($b0 == 0x45 && $b1 == 0x52)} {\n"
+                + "        write_result\n"
+                + "        quit\n"
+                + "    }\n"
+                + "    after time 5 poll_done\n"
+                + "}\n"
+                + "after time 20 poll_done\n";
+    }
+
+    /**
+     * Stages system ROMs directly under {@code <tmp>/systemroms} and, when requested, builds a
+     * Word-Processor-free {@code Toshiba_HX-20E_clean.xml} under {@code <tmp>/machines}.
+     */
+    private Path prepareUserData(Path hx20BiosOverride, Path hx20SourceXml) throws IOException {
+        Path userData = tempFolder.newFolder("openmsx_data_" + System.nanoTime()).toPath();
+        Path romsDir = Files.createDirectories(userData.resolve("systemroms"));
+        Path machinesDir = Files.createDirectories(userData.resolve("machines"));
+
+        for (Map.Entry<String, Path> entry : availableRoms.entrySet()) {
+            Files.copy(entry.getValue(), romsDir.resolve(entry.getKey()), StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        if (hx20SourceXml != null && hx20BiosOverride != null) {
+            byte[] dummy = new byte[32768];
+            Arrays.fill(dummy, (byte) 0xFF);
+            Files.write(romsDir.resolve("dummy32k.rom"), dummy);
+            byte[] biosBytes = Files.readAllBytes(hx20BiosOverride);
+            Files.write(romsDir.resolve("msx1_basic_bios.rom"), biosBytes);
+
+            String xml = Files.readString(hx20SourceXml, StandardCharsets.UTF_8);
+            String biosBlock = "<ROM id=\"MSX BIOS with BASIC ROM\">\n"
+                    + "        <rom>\n"
+                    + "          <filename>msx1_basic_bios.rom</filename>\n"
+                    + "          <sha1>" + sha1Hex(biosBytes) + "</sha1>\n"
+                    + "        </rom>\n"
+                    + "        <mem base=\"0x0000\" size=\"0x8000\"/>\n"
+                    + "      </ROM>";
+            String wpBlock = "<ROM id=\"Word Processor ROM\">\n"
+                    + "          <rom>\n"
+                    + "            <sha1>" + sha1Hex(dummy) + "</sha1>\n"
+                    + "            <filename>dummy32k.rom</filename>\n"
+                    + "          </rom>\n"
+                    + "          <mem base=\"0x4000\" size=\"0x8000\"/>\n"
+                    + "        </ROM>";
+            xml = BIOS_ROM_PATTERN.matcher(xml).replaceFirst(biosBlock);
+            xml = WORD_PROCESSOR_ROM_PATTERN.matcher(xml).replaceFirst(wpBlock);
+            Files.writeString(machinesDir.resolve("Toshiba_HX-20E_clean.xml"), xml, StandardCharsets.UTF_8);
+        }
+        return userData;
+    }
+
+    private static String sha1Hex(byte[] data) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-1").digest(data);
+            StringBuilder sb = new StringBuilder(digest.length * 2);
+            for (byte b : digest) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /**
+     * Constructs a synthetic MSX ROM with an {@code AB} cartridge header, optional IM1 VDP IRQ ack
+     * handler at {@code 0x0038}, and Z80 verification code writing {@code OK<tag>} or {@code ER<tag>}
+     * to {@code 0xD000..0xD003}.
+     */
+    private static byte[] buildCheckRom(
+            int sizeBytes,
+            int abOffset,
+            int initAddr,
+            List<int[]> checks,
+            String tag,
+            boolean withIm1VdpAck) {
+        byte[] rom = new byte[sizeBytes];
+        rom[abOffset] = 'A';
+        rom[abOffset + 1] = 'B';
+        rom[abOffset + 2] = (byte) (initAddr & 0xFF);
+        rom[abOffset + 3] = (byte) ((initAddr >> 8) & 0xFF);
+
+        if (withIm1VdpAck) {
+            // PUSH AF; IN A,(0x99); POP AF; EI; RET (clears TMS9918/T6950 VDP interrupt flag)
+            byte[] isr = new byte[] { (byte) 0xF5, (byte) 0xDB, (byte) 0x99, (byte) 0xF1, (byte) 0xFB, (byte) 0xC9 };
+            System.arraycopy(isr, 0, rom, 0x0038, isr.length);
+        }
+
+        byte[] code = makeCheckCode(checks, tag);
+        int codeOffset = initAddr - (abOffset == 0 && initAddr >= 0x4000 ? 0x4000 : 0);
+        System.arraycopy(code, 0, rom, codeOffset, code.length);
+        return rom;
+    }
+
+    private static byte[] makeCheckCode(List<int[]> checks, String tag) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        List<Integer> failPatchPositions = new ArrayList<>();
+        for (int[] check : checks) {
+            int addr = check[0];
+            int val = check[1] & 0xFF;
+            out.write(0x3A); // LD A, (addr)
+            out.write(addr & 0xFF);
+            out.write((addr >> 8) & 0xFF);
+            out.write(0xFE); // CP val
+            out.write(val);
+            out.write(0x20); // JR NZ, rel
+            failPatchPositions.add(out.size());
+            out.write(0x00);
+        }
+        writeSignatureLoop(out, "OK" + tag);
+        int failPos = out.size();
+        writeSignatureLoop(out, "ER" + tag);
+
+        byte[] code = out.toByteArray();
+        for (int idx : failPatchPositions) {
+            code[idx] = (byte) (failPos - (idx + 1));
+        }
+        return code;
+    }
+
+    private static void writeSignatureLoop(ByteArrayOutputStream out, String sig) {
+        byte[] bytes = sig.getBytes(StandardCharsets.US_ASCII);
+        out.write(0x21); // LD HL, 0xD000
+        out.write(0x00);
+        out.write(0xD0);
+        for (int i = 0; i < 4; i++) {
+            out.write(0x36); // LD (HL), byte
+            out.write(bytes[i]);
+            if (i < 3) {
+                out.write(0x23); // INC HL
+            }
+        }
+        out.write(0xFB); // EI
+        out.write(0x18); // JR $
+        out.write(0xFE);
+    }
+
+    private static boolean hasAllRoms(String... names) {
+        for (String name : names) {
+            if (!availableRoms.containsKey(name)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static Path findAnyRom(String... preferredNames) {
+        for (String name : preferredNames) {
+            if (availableRoms.containsKey(name)) {
+                return availableRoms.get(name);
+            }
+        }
+        return availableRoms.entrySet().stream()
+                .filter(e -> e.getKey().toLowerCase().contains("basic-bios1"))
+                .map(Map.Entry::getValue)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private static Path findSystemMachineXml(String fileName) {
+        List<Path> candidates = List.of(
+                Paths.get(System.getProperty("openmsx.system.data", "/usr/share/openmsx"), "machines", fileName),
+                Paths.get("/usr/local/share/openmsx/machines", fileName)
+        );
+        for (Path p : candidates) {
+            if (Files.isRegularFile(p)) {
+                return p;
+            }
+        }
+        return null;
+    }
+
+    private static Map<String, Path> discoverSystemRoms() throws IOException {
+        Map<String, Path> roms = new HashMap<>();
+        List<Path> roots = new ArrayList<>();
+        addIfNonBlank(roots, System.getProperty("openmsx.roms"));
+        addIfNonBlank(roots, System.getenv("OPENMSX_SYSTEM_ROMS"));
+        String userData = System.getenv("OPENMSX_USER_DATA");
+        if (userData != null && !userData.isBlank()) {
+            roots.add(Paths.get(userData, "systemroms"));
+        }
+        roots.add(Paths.get(System.getProperty("user.home"), ".openMSX", "share", "systemroms"));
+        roots.add(Paths.get("/usr/share/openmsx/systemroms"));
+
+        for (Path root : roots) {
+            if (!Files.isDirectory(root)) {
+                continue;
+            }
+            try (Stream<Path> walk = Files.walk(root)) {
+                walk.filter(Files::isRegularFile).forEach(p -> {
+                    String name = p.getFileName().toString();
+                    String lower = name.toLowerCase();
+                    if ((lower.endsWith(".rom") || lower.endsWith(".bin")) && !roms.containsKey(name)) {
+                        roms.put(name, p);
+                    }
+                });
+            }
+        }
+        return roms;
+    }
+
+    private static void addIfNonBlank(List<Path> list, String value) {
+        if (value != null && !value.isBlank()) {
+            list.add(Paths.get(value));
+        }
+    }
+
+    private static String findOpenMsxExecutable() {
+        String prop = System.getProperty("openmsx.bin");
+        if (prop != null && !prop.isBlank() && Files.isExecutable(Paths.get(prop))) {
+            return prop;
+        }
+        String env = System.getenv("OPENMSX_BIN");
+        if (env != null && !env.isBlank() && Files.isExecutable(Paths.get(env))) {
+            return env;
+        }
+        String path = System.getenv("PATH");
+        if (path != null) {
+            for (String dir : path.split(File.pathSeparator)) {
+                Path candidate = Paths.get(dir, "openmsx");
+                if (Files.isExecutable(candidate)) {
+                    return candidate.toAbsolutePath().toString();
+                }
+            }
+        }
+        Path usrBin = Paths.get("/usr/bin/openmsx");
+        return Files.isExecutable(usrBin) ? usrBin.toString() : null;
+    }
+}
