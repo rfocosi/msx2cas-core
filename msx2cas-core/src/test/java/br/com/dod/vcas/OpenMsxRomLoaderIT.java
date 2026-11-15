@@ -34,7 +34,8 @@ import static org.junit.Assert.assertTrue;
 /**
  * End-to-end integration tests that convert MSX ROMs to 2400 bps WAV via {@link VirtualCas}
  * and execute them headless inside {@code openmsx} across fragmented-RAM (Toshiba HX-20E),
- * expanded-slot (Toshiba HX-21, Yamaha AX200), and standard primary-slot (Toshiba HX-10) MSX1 machines.
+ * expanded-slot (Toshiba HX-21, Yamaha AX200), memory-mapper MSX1 (National CF-2000 + ram512k),
+ * and standard primary-slot (Toshiba HX-10) machines.
  *
  * <p>Requires {@code openmsx} on {@code PATH} (or {@code -Dopenmsx.bin=...}) and host MSX1 BIOS
  * system ROMs under {@code $OPENMSX_SYSTEM_ROMS}, {@code $OPENMSX_USER_DATA/systemroms}, or
@@ -103,6 +104,15 @@ public class OpenMsxRomLoaderIT {
         assertAllLoaderVariants(userData, "Yamaha_AX200", "0 2", "0 2", true);
     }
 
+    @Test
+    public void nationalCf2000WithRam512kLoadsAllRomSizesAndResets() throws Exception, FlowException {
+        Assume.assumeTrue("National CF-2000 BIOS ROM not found",
+                hasRom("cf-2000_basic-bios1.rom", "302afb5d8be26c758309ca3df611ae69cced2821"));
+
+        Path userData = prepareUserData(null, null);
+        assertAllLoaderVariants(userData, "National_CF-2000", "1 X", "1 X", false, List.of("-ext", "ram512k"));
+    }
+
     private void assertAllLoaderVariants(
             Path userData,
             String machine,
@@ -110,36 +120,47 @@ public class OpenMsxRomLoaderIT {
             String expectedPage0Slot,
             boolean holdCtrlOnBoot)
             throws Exception, FlowException {
+        assertAllLoaderVariants(userData, machine, expectedPage1Slot, expectedPage0Slot, holdCtrlOnBoot, List.of());
+    }
+
+    private void assertAllLoaderVariants(
+            Path userData,
+            String machine,
+            String expectedPage1Slot,
+            String expectedPage0Slot,
+            boolean holdCtrlOnBoot,
+            List<String> extraArgs)
+            throws Exception, FlowException {
         // 8K at 0x4000 (ROM_16K & ROM_16K_RST)
         byte[] rom8k = buildCheckRom(8192, 0x0000, 0x4010, List.of(), "8K", false);
-        assertRomBoots(userData, machine, "rom8k_norm", rom8k, false, "OK8K", expectedPage1Slot, null, holdCtrlOnBoot);
-        assertRomBoots(userData, machine, "rom8k_rst", rom8k, true, "OK8K", expectedPage1Slot, null, holdCtrlOnBoot);
+        assertRomBoots(userData, machine, "rom8k_norm", rom8k, false, "OK8K", expectedPage1Slot, null, holdCtrlOnBoot, extraArgs);
+        assertRomBoots(userData, machine, "rom8k_rst", rom8k, true, "OK8K", expectedPage1Slot, null, holdCtrlOnBoot, extraArgs);
 
         // 8K at 0x0000 (ROM_16K LOAD_PG0 with IM1 VDP IRQ ack at 0x0038)
         byte[] rom8kPg0 = buildCheckRom(8192, 0x0000, 0x0050, List.of(new int[] { 0x1FFE, 0x77 }), "P0", true);
         rom8kPg0[0x1FFE] = 0x77;
-        assertRomBoots(userData, machine, "rom8k_pg0", rom8kPg0, false, "OKP0", null, expectedPage0Slot, holdCtrlOnBoot);
+        assertRomBoots(userData, machine, "rom8k_pg0", rom8kPg0, false, "OKP0", null, expectedPage0Slot, holdCtrlOnBoot, extraArgs);
 
         // 16K at 0x4000 (ROM_16K & ROM_16K_RST)
         byte[] rom16k = buildCheckRom(16384, 0x0000, 0x4010, List.of(new int[] { 0x7FFE, 0x5A }), "16", false);
         rom16k[0x3FFE] = 0x5A;
-        assertRomBoots(userData, machine, "rom16k_norm", rom16k, false, "OK16", expectedPage1Slot, null, holdCtrlOnBoot);
-        assertRomBoots(userData, machine, "rom16k_rst", rom16k, true, "OK16", expectedPage1Slot, null, holdCtrlOnBoot);
+        assertRomBoots(userData, machine, "rom16k_norm", rom16k, false, "OK16", expectedPage1Slot, null, holdCtrlOnBoot, extraArgs);
+        assertRomBoots(userData, machine, "rom16k_rst", rom16k, true, "OK16", expectedPage1Slot, null, holdCtrlOnBoot, extraArgs);
 
         // 32K at 0x4000..0xBFFF (BLOCK_LOADER + ROM_32K / ROM_32K_RST)
         byte[] rom32k = buildCheckRom(32768, 0x0000, 0x4010,
                 List.of(new int[] { 0x7FFE, 0x3C }, new int[] { 0xBFFE, 0xA5 }), "32", false);
         rom32k[0x3FFE] = 0x3C;
         rom32k[0x7FFE] = (byte) 0xA5;
-        assertRomBoots(userData, machine, "rom32k_norm", rom32k, false, "OK32", expectedPage1Slot, null, holdCtrlOnBoot);
-        assertRomBoots(userData, machine, "rom32k_rst", rom32k, true, "OK32", expectedPage1Slot, null, holdCtrlOnBoot);
+        assertRomBoots(userData, machine, "rom32k_norm", rom32k, false, "OK32", expectedPage1Slot, null, holdCtrlOnBoot, extraArgs);
+        assertRomBoots(userData, machine, "rom32k_rst", rom32k, true, "OK32", expectedPage1Slot, null, holdCtrlOnBoot, extraArgs);
 
         // 32K at 0x0000..0x7FFF (BLOCK_LOADER LR_PG0 + ROM_32K)
         byte[] rom32kPg0 = buildCheckRom(32768, 0x0000, 0x0050,
                 List.of(new int[] { 0x1000, 0x12 }, new int[] { 0x7FFE, 0x34 }), "3P", true);
         rom32kPg0[0x1000] = 0x12;
         rom32kPg0[0x7FFE] = 0x34;
-        assertRomBoots(userData, machine, "rom32k_pg0", rom32kPg0, false, "OK3P", expectedPage1Slot, expectedPage0Slot, holdCtrlOnBoot);
+        assertRomBoots(userData, machine, "rom32k_pg0", rom32kPg0, false, "OK3P", expectedPage1Slot, expectedPage0Slot, holdCtrlOnBoot, extraArgs);
 
         // 49K at 0x0000..0xC3FF (BLOCK_LOADER x2 + ROM_49K / ROM_49K_RST)
         byte[] rom49k = buildCheckRom(50176, 0x4000, 0x4010,
@@ -148,8 +169,8 @@ public class OpenMsxRomLoaderIT {
         rom49k[0x7FFE] = 0x22;
         rom49k[0x8100] = 0x33;
         rom49k[0xC100] = 0x44;
-        assertRomBoots(userData, machine, "rom49k_norm", rom49k, false, "OK49", expectedPage1Slot, null, holdCtrlOnBoot);
-        assertRomBoots(userData, machine, "rom49k_rst", rom49k, true, "OK49", expectedPage1Slot, null, holdCtrlOnBoot);
+        assertRomBoots(userData, machine, "rom49k_norm", rom49k, false, "OK49", expectedPage1Slot, null, holdCtrlOnBoot, extraArgs);
+        assertRomBoots(userData, machine, "rom49k_rst", rom49k, true, "OK49", expectedPage1Slot, null, holdCtrlOnBoot, extraArgs);
     }
 
     private void assertRomBoots(
@@ -161,7 +182,8 @@ public class OpenMsxRomLoaderIT {
             String expectedTag,
             String expectedPage1Slot,
             String expectedPage0Slot,
-            boolean holdCtrlOnBoot) throws Exception, FlowException {
+            boolean holdCtrlOnBoot,
+            List<String> extraArgs) throws Exception, FlowException {
         Path caseDir = tempFolder.newFolder(machine + "_" + caseName).toPath();
         Path romFile = caseDir.resolve(caseName + ".rom");
         Files.write(romFile, romBytes);
@@ -178,7 +200,14 @@ public class OpenMsxRomLoaderIT {
         Path tclFile = caseDir.resolve("run.tcl");
         Files.writeString(tclFile, buildOpenMsxTclScript(holdCtrlOnBoot), StandardCharsets.UTF_8);
 
-        ProcessBuilder pb = new ProcessBuilder(openMsxBin, "-machine", machine, "-script", tclFile.toString());
+        List<String> cmd = new ArrayList<>();
+        cmd.add(openMsxBin);
+        cmd.add("-machine");
+        cmd.add(machine);
+        cmd.addAll(extraArgs);
+        cmd.add("-script");
+        cmd.add(tclFile.toString());
+        ProcessBuilder pb = new ProcessBuilder(cmd);
         Map<String, String> env = pb.environment();
         env.put("OPENMSX_USER_DATA", userData.toString());
         env.put("SDL_VIDEODRIVER", "dummy");
@@ -395,6 +424,18 @@ public class OpenMsxRomLoaderIT {
             }
         }
         return true;
+    }
+
+    private static boolean hasRom(String name, String expectedSha1) throws IOException {
+        if (availableRoms.containsKey(name)) {
+            return true;
+        }
+        for (Path path : availableRoms.values()) {
+            if (sha1Hex(Files.readAllBytes(path)).equals(expectedSha1)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static Path findAnyRom(String... preferredNames) {

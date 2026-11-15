@@ -33,6 +33,10 @@ TMPVAL:
     .DB     00
 SLOT_FND:
     .DB     00
+UAP_PORT:
+    .DB     00
+UAP_PTR:
+    .DW     00
 
 START1:
     DI
@@ -202,6 +206,97 @@ TA_OK:
     OR      A
     RET
 
+; Ensure target page (H = 0x00 or 0x40, A = mapper port 0xFC/0xFD, E = initial seg)
+; does not alias any other active page via an uninitialized MSX Memory Mapper.
+UNALIAS_PG:
+    LD      (UAP_PORT),A
+    LD      L,#0
+    LD      (UAP_PTR),HL
+    LD      D,#0
+UAP_LOOP:
+    CALL    CHK_PG_UNIQ
+    RET     NC
+    LD      A,(UAP_PORT)
+    LD      C,A
+    OUT     (C),E
+    INC     E
+    DEC     D
+    JR      NZ,UAP_LOOP
+    RET
+
+CHK_PG_UNIQ:
+    LD      A,(#0x0000)
+    PUSH    AF
+    LD      A,(#0x4000)
+    PUSH    AF
+    LD      A,(#0x8000)
+    PUSH    AF
+    LD      A,(#0xC000)
+    PUSH    AF
+
+    LD      HL,(UAP_PTR)
+    LD      A,(HL)
+    LD      B,A
+    XOR     #0xFF
+    LD      (HL),A
+    CP      (HL)
+    JR      NZ,CPU_FAIL
+
+    POP     AF
+    LD      C,A
+    LD      A,(UAP_PTR+1)
+    CP      #0xC0
+    JR      Z,CPU_P2
+    LD      A,(#0xC000)
+    CP      C
+    JR      NZ,CPU_FAIL_3
+CPU_P2:
+    POP     AF
+    LD      C,A
+    LD      A,(UAP_PTR+1)
+    CP      #0x80
+    JR      Z,CPU_P1
+    LD      A,(#0x8000)
+    CP      C
+    JR      NZ,CPU_FAIL_2
+CPU_P1:
+    POP     AF
+    LD      C,A
+    LD      A,(UAP_PTR+1)
+    CP      #0x40
+    JR      Z,CPU_P0
+    LD      A,(#0x4000)
+    CP      C
+    JR      NZ,CPU_FAIL_1
+CPU_P0:
+    POP     AF
+    LD      C,A
+    LD      A,(UAP_PTR+1)
+    OR      A
+    JR      Z,CPU_OK
+    LD      A,(#0x0000)
+    CP      C
+    JR      NZ,CPU_FAIL_0
+CPU_OK:
+    LD      HL,(UAP_PTR)
+    LD      (HL),B
+    OR      A
+    RET
+
+CPU_FAIL:
+    POP     AF
+CPU_FAIL_3:
+    POP     AF
+CPU_FAIL_2:
+    POP     AF
+CPU_FAIL_1:
+    POP     AF
+CPU_FAIL_0:
+    LD      HL,(UAP_PTR)
+    LD      (HL),B
+    SCF
+    RET
+
 START5:
     DI
     LD      A,(STARTA+1)
@@ -237,6 +332,10 @@ LOAD_PG1:
     LD      H,#0x40
     CALL    0x0024        ; ENASLT: map Page 1 to detected RAM slot
     DI
+    LD      H,#0x40
+    LD      A,#0xFD
+    LD      E,#2
+    CALL    UNALIAS_PG
     LD      HL,(EXECA)
     PUSH    HL
     LD      HL,(ENDA)
@@ -329,6 +428,11 @@ PG0_PRI:
     AND     #0x0FC
     OR      B
     OUT     (0x0A8),A
+
+    LD      H,#0x00
+    LD      A,#0xFC
+    LD      E,#3
+    CALL    UNALIAS_PG
 
     LD      HL,(EXECA)
     PUSH    HL
