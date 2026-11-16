@@ -211,9 +211,27 @@ public class OpenMsxRomLoaderIT {
         rom16kPg2[0x3FFE] = (byte) 0x99;
         assertRomBoots(userData, machine, "rom16k_pg2", rom16kPg2, false, "OKP2", null, null, "063607", holdCtrlOnBoot, extraArgs, typeDelaySec);
 
-        // 32K at 0x4000..0xBFFF (BLOCK_LOADER + ROM_32K / ROM_32K_RST)
-        byte[] rom32k = buildCheckRom(32768, 0x0000, 0x4010,
+        // 32K at 0x4000..0xBFFF with Konami-style RSLREG + ENASLT(Page1_slot, 0x80)
+        // (BLOCK_LOADER + ROM_32K / ROM_32K_RST)
+        byte[] konamiPage2Map = {
+                (byte) 0xCD, 0x38, 0x01,                   // CALL 0x0138 (RSLREG)
+                0x0F, 0x0F,                                // RRCA; RRCA
+                (byte) 0xE6, 0x03,                         // AND 0x03
+                0x4F, 0x06, 0x00,                          // LD C, A; LD B, 0
+                0x21, (byte) 0xC1, (byte) 0xFC,            // LD HL, 0xFCC1 (EXPTBL)
+                0x09,                                      // ADD HL, BC
+                0x7E, (byte) 0xE6, (byte) 0x80, (byte) 0xB1, // LD A, (HL); AND 0x80; OR C
+                0x4F,                                      // LD C, A
+                0x23, 0x23, 0x23, 0x23,                    // INC HL x4 (SLTTBL)
+                0x7E, (byte) 0xE6, 0x0C, (byte) 0xB1,      // LD A, (HL); AND 0x0C; OR C
+                0x26, (byte) 0x80,                         // LD H, 0x80
+                (byte) 0xCD, 0x24, 0x00                    // CALL 0x0024 (ENASLT)
+        };
+        byte[] rom32k = buildCheckRom(32768, 0x0000, 0x4010 + konamiPage2Map.length,
                 List.of(new int[] { 0x7FFE, 0x3C }, new int[] { 0xBFFE, 0xA5 }), "32", false);
+        rom32k[0x02] = 0x10;
+        rom32k[0x03] = 0x40;
+        System.arraycopy(konamiPage2Map, 0, rom32k, 0x10, konamiPage2Map.length);
         rom32k[0x3FFE] = 0x3C;
         rom32k[0x7FFE] = (byte) 0xA5;
         assertRomBoots(userData, machine, "rom32k_norm", rom32k, false, "OK32", expectedPage1Slot, null, holdCtrlOnBoot, extraArgs, typeDelaySec);
