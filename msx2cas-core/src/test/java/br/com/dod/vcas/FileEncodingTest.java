@@ -10,7 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.Map.Entry;
 
 import br.com.dod.vcas.model.SampleRate;
-import br.com.dod.vcas.util.FileCommons;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -39,14 +39,14 @@ public class FileEncodingTest {
                         || path.toString().endsWith(".bin")
                         || path.toString().endsWith(".bas")
                         || path.toString().endsWith(".cas"))
-                .forEach( file -> files.put(file.toString(), FileCommons.getCasName(file.getFileName().toString())));
+                .forEach(file -> files.put(file.toString(), file.getFileName().toString()));
 
         Files.list(getExtraTestResourcesPath())
                 .filter(path -> path.toString().endsWith(".rom")
                         || path.toString().endsWith(".bin")
                         || path.toString().endsWith(".bas")
                         || path.toString().endsWith(".cas"))
-                .forEach( file -> files.put(file.toString(), FileCommons.getCasName(file.getFileName().toString())));
+                .forEach(file -> files.put(file.toString(), file.getFileName().toString()));
 
         out.println("Generating test files...");
         generateTestFiles();
@@ -59,17 +59,25 @@ public class FileEncodingTest {
             String casName = entry.getValue();
 
             try {
-                generateFile(file, casName, SampleRate.sr11025);
-                generateFile(file, casName, SampleRate.sr22050);
-                generateFile(file, casName, SampleRate.sr27563);
-                generateFile(file, casName, SampleRate.sr33075);
-                generateFile(file, casName, SampleRate.sr11025.invertWaveForm());
-                generateFile(file, casName, SampleRate.sr22050.invertWaveForm());
-                generateFile(file, casName, SampleRate.sr27563.invertWaveForm());
-                generateFile(file, casName, SampleRate.sr33075.invertWaveForm());
+                generateFile(file, casName, SampleRate.sr11025.invertWaveForm(false));
+                generateFile(file, casName, SampleRate.sr22050.invertWaveForm(false));
+                generateFile(file, casName, SampleRate.sr27563.invertWaveForm(false));
+                generateFile(file, casName, SampleRate.sr33075.invertWaveForm(false));
+                generateFile(file, casName, SampleRate.sr11025.invertWaveForm(true));
+                generateFile(file, casName, SampleRate.sr22050.invertWaveForm(true));
+                generateFile(file, casName, SampleRate.sr27563.invertWaveForm(true));
+                generateFile(file, casName, SampleRate.sr33075.invertWaveForm(true));
             } catch (FlowException e) {
                 out.println("Can not generate file ["+file+"]: " + e.getMessage());
             }
+        }
+        resetSampleRateInversion();
+    }
+
+    @AfterClass
+    public static void resetSampleRateInversion() {
+        for (SampleRate rate : SampleRate.values()) {
+            rate.invertWaveForm(false);
         }
     }
 
@@ -85,42 +93,42 @@ public class FileEncodingTest {
 
     @Test
     public void test11025Files() {
-        testFiles(SampleRate.sr11025);
+        testFiles(SampleRate.sr11025.invertWaveForm(false));
     }
 
     @Test
     public void test22050Files() {
-        testFiles(SampleRate.sr22050);
+        testFiles(SampleRate.sr22050.invertWaveForm(false));
     }
 
     @Test
     public void test27563Files() {
-        testFiles(SampleRate.sr27563);
+        testFiles(SampleRate.sr27563.invertWaveForm(false));
     }
 
     @Test
     public void test33075Files() {
-        testFiles(SampleRate.sr33075);
+        testFiles(SampleRate.sr33075.invertWaveForm(false));
     }
 
     @Test
     public void test11025iFiles() {
-        testFiles(SampleRate.sr11025.invertWaveForm());
+        testFiles(SampleRate.sr11025.invertWaveForm(true));
     }
 
     @Test
     public void test22050iFiles() {
-        testFiles(SampleRate.sr22050.invertWaveForm());
+        testFiles(SampleRate.sr22050.invertWaveForm(true));
     }
 
     @Test
     public void test27563iFiles() {
-        testFiles(SampleRate.sr27563.invertWaveForm());
+        testFiles(SampleRate.sr27563.invertWaveForm(true));
     }
 
     @Test
     public void test33075iFiles() {
-        testFiles(SampleRate.sr33075.invertWaveForm());
+        testFiles(SampleRate.sr33075.invertWaveForm(true));
     }
 
     private void testFiles(SampleRate sampleRate) {
