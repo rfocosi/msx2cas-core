@@ -244,15 +244,73 @@ public class OpenMsxRomLoaderIT {
         rom32kPg0[0x7FFE] = 0x34;
         assertRomBoots(userData, machine, "rom32k_pg0", rom32kPg0, false, "OK3P", expectedPage1Slot, expectedPage0Slot, holdCtrlOnBoot, extraArgs, typeDelaySec);
 
-        // 49K at 0x0000..0xC3FF (BLOCK_LOADER x2 + ROM_49K / ROM_49K_RST)
-        byte[] rom49k = buildCheckRom(50176, 0x4000, 0x4010,
+        // 49K at 0x0000..0xC3FF with Konami-style RSLREG + ENASLT(Page1_slot, 0x80)
+        // (BLOCK_LOADER x2 + ROM_49K / ROM_49K_RST)
+        byte[] rom49k = buildCheckRom(50176, 0x4000, 0x4010 + konamiPage2Map.length,
                 List.of(new int[] { 0x7FFE, 0x22 }, new int[] { 0x8100, 0x33 }, new int[] { 0xC100, 0x44 }),
                 "49", false);
+        rom49k[0x4002] = 0x10;
+        rom49k[0x4003] = 0x40;
+        System.arraycopy(konamiPage2Map, 0, rom49k, 0x4010, konamiPage2Map.length);
         rom49k[0x7FFE] = 0x22;
         rom49k[0x8100] = 0x33;
         rom49k[0xC100] = 0x44;
         assertRomBoots(userData, machine, "rom49k_norm", rom49k, false, "OK49", expectedPage1Slot, null, holdCtrlOnBoot, extraArgs, typeDelaySec);
         assertRomBoots(userData, machine, "rom49k_rst", rom49k, true, "OK49", expectedPage1Slot, null, holdCtrlOnBoot, extraArgs, typeDelaySec);
+
+        // 49K MSXB2R-style case: INIT returns via RET after hooking H.STKE (0xFEDA) and
+        // reads Page 0 via LD A,(0xC01D); LD H,0x00; CALL ... (requires JP patch + GSP_CHK_PG0 on AX200)
+        byte[] rom49kRet = buildCheckRom(50176, 0x4000, 0x4120,
+                List.of(new int[] { 0xC01E, 0x5A }, new int[] { 0x7FFE, 0x22 }, new int[] { 0x8100, 0x33 }, new int[] { 0xC100, 0x44 }),
+                "4R", false);
+        rom49kRet[0x0010] = 0x5A;
+        rom49kRet[0x4002] = 0x10;
+        rom49kRet[0x4003] = 0x40;
+        byte[] retInitStub = {
+                0x26, 0x40, (byte) 0xCD, 0x60, 0x40,       // 4010: LD H,0x40; CALL getSlot
+                0x32, 0x1C, (byte) 0xC0,                   // 4015: LD (0xC01C), A
+                0x32, (byte) 0xDB, (byte) 0xFE,            // 4018: LD (0xFEDB), A
+                0x3E, (byte) 0xF7, 0x32, (byte) 0xDA, (byte) 0xFE, // 401B: LD (0xFEDA), 0xF7
+                0x21, 0x30, 0x40, 0x22, (byte) 0xDC, (byte) 0xFE,  // 4020: LD (0xFEDC), 0x4030
+                0x3E, (byte) 0xC9, 0x32, (byte) 0xDE, (byte) 0xFE, // 4026: LD (0xFEDE), 0xC9
+                (byte) 0xC9                                // 402B: RET
+        };
+        byte[] hStkeHandler = {
+                0x3E, (byte) 0xC9, 0x32, (byte) 0xDA, (byte) 0xFE, // 4030: unhook H.STKE
+                0x26, (byte) 0x80, (byte) 0xCD, 0x60, 0x40,        // 4035: LD H,0x80; CALL getSlot
+                0x32, 0x1D, (byte) 0xC0,                           // 403A: LD (0xC01D), A
+                0x3A, 0x1D, (byte) 0xC0, 0x26, 0x00, (byte) 0xCD, (byte) 0xA0, 0x40, // 403D: LD A,(0xC01D); LD H,0; CALL pg0Read
+                (byte) 0xC3, 0x20, 0x41                            // 4045: JP 0x4120
+        };
+        byte[] getSlotHelper = {
+                (byte) 0xCD, 0x38, 0x01, (byte) 0xCB, 0x7C, 0x28, 0x04, 0x0F, 0x0F, 0x0F, 0x0F,
+                (byte) 0xCB, 0x74, 0x28, 0x02, 0x0F, 0x0F, (byte) 0xE6, 0x03, 0x4F, 0x06, 0x00,
+                (byte) 0xEB, 0x21, (byte) 0xC1, (byte) 0xFC, 0x09, 0x4F, 0x7E, (byte) 0xE6, (byte) 0x80,
+                (byte) 0xB1, 0x4F, 0x23, 0x23, 0x23, 0x23, 0x7E, (byte) 0xEB, (byte) 0xCB, 0x7C,
+                0x28, 0x04, 0x0F, 0x0F, 0x0F, 0x0F, (byte) 0xCB, 0x74, 0x20, 0x02, 0x07, 0x07,
+                (byte) 0xE6, 0x0C, (byte) 0xB1, (byte) 0xC9
+        };
+        byte[] pg0ReadHelper = {
+                (byte) 0xF3, 0x5F, (byte) 0xDB, (byte) 0xA8, (byte) 0xF5, (byte) 0xCB, 0x7B, 0x28, 0x2D, 0x7B, (byte) 0xE6, 0x03,
+                0x4F, 0x06, 0x00, 0x21, (byte) 0xC5, (byte) 0xFC, 0x09, 0x7E, (byte) 0xF5, 0x57, 0x7B, 0x0F,
+                0x0F, (byte) 0xE6, 0x03, 0x47, 0x7A, (byte) 0xE6, (byte) 0xFC, (byte) 0xB0, 0x57, 0x79, 0x0F, 0x0F,
+                (byte) 0xE6, (byte) 0xC0, 0x47, (byte) 0xDB, (byte) 0xA8, 0x4F, (byte) 0xE6, 0x3F, (byte) 0xB0, (byte) 0xD3, (byte) 0xA8, 0x7A,
+                0x32, (byte) 0xFF, (byte) 0xFF, 0x79, (byte) 0xD3, (byte) 0xA8, 0x7B, (byte) 0xE6, 0x03, 0x47, (byte) 0xDB, (byte) 0xA8,
+                (byte) 0xE6, (byte) 0xFC, (byte) 0xB0, (byte) 0xD3, (byte) 0xA8, 0x3A, 0x10, 0x00, 0x32, 0x1E, (byte) 0xC0, (byte) 0xCB,
+                0x7B, 0x28, 0x1A, (byte) 0xD1, (byte) 0xE1, 0x7B, (byte) 0xE6, 0x03, 0x0F, 0x0F, (byte) 0xE6, (byte) 0xC0,
+                0x47, (byte) 0xDB, (byte) 0xA8, (byte) 0xE6, 0x3F, (byte) 0xB0, (byte) 0xD3, (byte) 0xA8, 0x7A, 0x32, (byte) 0xFF, (byte) 0xFF,
+                0x7C, (byte) 0xD3, (byte) 0xA8, (byte) 0xFB, (byte) 0xC9, (byte) 0xF1, (byte) 0xD3, (byte) 0xA8, (byte) 0xFB, (byte) 0xC9
+        };
+        System.arraycopy(retInitStub, 0, rom49kRet, 0x4010, retInitStub.length);
+        System.arraycopy(hStkeHandler, 0, rom49kRet, 0x4030, hStkeHandler.length);
+        System.arraycopy(getSlotHelper, 0, rom49kRet, 0x4060, getSlotHelper.length);
+        System.arraycopy(pg0ReadHelper, 0, rom49kRet, 0x40A0, pg0ReadHelper.length);
+        rom49kRet[0x7FFE] = 0x22;
+        rom49kRet[0x8100] = 0x33;
+        rom49kRet[0xC100] = 0x44;
+        // Also use a <6-char CAS filename ("adv") to guard 6-byte filename padding in multi-block ROMs.
+        assertRomBoots(userData, machine, "adv", rom49kRet, false, "OK4R", expectedPage1Slot, null, holdCtrlOnBoot, extraArgs, typeDelaySec);
+        assertRomBoots(userData, machine, "rom49k_rst_ret", rom49kRet, true, "OK4R", expectedPage1Slot, null, holdCtrlOnBoot, extraArgs, typeDelaySec);
     }
 
     private void assertRomBoots(

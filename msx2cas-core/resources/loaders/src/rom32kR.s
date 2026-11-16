@@ -341,8 +341,8 @@ START6:
     LD      DE,#START8+28
     LD      (DE),A        ; transfer 3rd byte from EPA
     POP     HL
-    LD      A,#0x0CD
-    LD      (HL),A        ; place call opcode at EPA
+    LD      A,#0x0C3
+    LD      (HL),A        ; place jump opcode at EPA
     INC     HL
     PUSH    HL
     LD      HL,#ROMCODE+4

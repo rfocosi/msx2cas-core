@@ -172,6 +172,30 @@ public class VirtualCasRegressionTest {
         assertArrayEquals(wavFromFile, wavFromList);
     }
 
+    @Test
+    public void shortFilenamePadsNameBuffersToSixChars() throws Exception, FlowException {
+        File shortRom = tempFolder.newFile("adv.rom");
+        byte[] rom49k = new byte[49152];
+        rom49k[0x4000] = 'A';
+        rom49k[0x4001] = 'B';
+        rom49k[0x4002] = 0x10;
+        rom49k[0x4003] = 0x40;
+        Files.write(shortRom.toPath(), rom49k);
+
+        class TestRomConverter extends br.com.dod.vcas.converter.impl.RomConverter {
+            TestRomConverter(String path) throws FlowException {
+                super(path, SampleRate.sr11025);
+            }
+            char[] nameBuf() { return getNameBuffer(); }
+            char[] numberedBuf(int n) { return getNumberedNameBuffer(n); }
+        }
+
+        TestRomConverter converter = new TestRomConverter(shortRom.getAbsolutePath());
+        assertArrayEquals("adv   ".toCharArray(), converter.nameBuf());
+        assertArrayEquals("adv2  ".toCharArray(), converter.numberedBuf(2));
+        assertArrayEquals("adv3  ".toCharArray(), converter.numberedBuf(3));
+    }
+
     private void assertFlowError(byte[] data, String name, String expectedMessage) throws Exception {
         File file = tempFolder.newFile(name);
         Files.write(file.toPath(), data);

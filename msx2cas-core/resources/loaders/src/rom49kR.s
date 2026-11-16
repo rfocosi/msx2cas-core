@@ -33,6 +33,8 @@ TMPVAL:
     .DB     00
 SLOT0_FND:
     .DB     00
+SLOT1_FND:
+    .DB     00
 
 START1:
     DI
@@ -212,9 +214,11 @@ START5:
     LD      DE,#0x7FFE
     CALL    FINDRAM
     JP      C,RAMERR
+    LD      (SLOT1_FND),A
     LD      H,#0x40
     CALL    0x0024        ; ENASLT: map Page 1 to detected RAM slot
     DI
+    CALL    GUARD_SPLIT_P2
 
 START6:
     LD      HL,#ROMCODE
@@ -244,8 +248,8 @@ START6:
     LD      DE,#START8+28
     LD      (DE),A        ; transfer 3rd byte from EPA
     POP     HL
-    LD      A,#0x0CD
-    LD      (HL),A        ; place call opcode at EPA
+    LD      A,#0x0C3
+    LD      (HL),A        ; place jump opcode at EPA
     INC     HL
     PUSH    HL
     LD      HL,#ROMCODE+4
@@ -331,5 +335,164 @@ START8:
     POP     HL
     JP      (HL)
     NOP
+
+; On split-RAM machines where Page 1 RAM lacks Page 2 RAM, a 49K ROM with Block 3 at 0x8000
+; will break itself if startup calls BIOS ENASLT(H=0x80). NOP out that Page-2 ENASLT call.
+GUARD_SPLIT_P2:
+    LD      A,(STARTA+1)
+    CP      #0x80
+    RET     NZ
+    LD      HL,#0x8000
+    LD      (TST_A1),HL
+    LD      HL,#0xBFFE
+    LD      (TST_A2),HL
+    LD      A,(SLOT1_FND)
+    CALL    TSTSLOT
+    DI
+    RET     NC
+
+    LD      HL,(EXECA)
+    LD      B,#2
+GSP_JP:
+    LD      A,H
+    CP      #0x40
+    RET     C
+    CP      #0x80
+    RET     NC
+    LD      A,(HL)
+    CP      #0xC3
+    JR      NZ,GSP_SCAN_INIT
+    INC     HL
+    LD      E,(HL)
+    INC     HL
+    LD      D,(HL)
+    EX      DE,HL
+    DJNZ    GSP_JP
+
+GSP_SCAN_INIT:
+    LD      A,H
+    CP      #0x40
+    RET     C
+    CP      #0x80
+    RET     NC
+    LD      B,#0x60
+    LD      C,#0
+
+GSP_LOOP:
+    LD      A,H
+    CP      #0x80
+    RET     NC
+    LD      A,(HL)
+    CP      #0x26
+    JR      NZ,GSP_CHK_HL
+    PUSH    HL
+    INC     HL
+    LD      A,(HL)
+    POP     HL
+    CP      #0x80
+    JR      NZ,GSP_CLR_WIN
+    LD      C,#11
+    JR      GSP_NEXT
+GSP_CLR_WIN:
+    LD      C,#0
+    JR      GSP_NEXT
+
+GSP_CHK_HL:
+    CP      #0x21
+    JR      NZ,GSP_CHK_CALL
+    PUSH    HL
+    INC     HL
+    INC     HL
+    LD      A,(HL)
+    POP     HL
+    CP      #0x80
+    JR      NZ,GSP_NEXT
+    LD      C,#12
+    JR      GSP_NEXT
+
+GSP_CHK_CALL:
+    CP      #0xCD
+    JR      NZ,GSP_NEXT
+    LD      A,C
+    OR      A
+    JR      Z,GSP_NEXT
+    PUSH    HL
+    INC     HL
+    LD      A,(HL)
+    CP      #0x24
+    JR      NZ,GSP_NO_MATCH
+    INC     HL
+    LD      A,(HL)
+    OR      A
+    JR      NZ,GSP_NO_MATCH
+    POP     HL
+    XOR     A
+    LD      (HL),A
+    INC     HL
+    LD      (HL),A
+    INC     HL
+    LD      (HL),A
+    JR      GSP_CHK_PG0
+
+GSP_NO_MATCH:
+    POP     HL
+
+GSP_NEXT:
+    LD      A,C
+    OR      A
+    JR      Z,GSP_ADV
+    DEC     C
+GSP_ADV:
+    INC     HL
+    DJNZ    GSP_LOOP
+
+; On split-RAM machines where Page 0 & Page 1 share SLOT1_FND (e.g. Yamaha AX200),
+; MSXB2R-based 48K ROMs switch Page 0 to read Block 1 via LD A,(0xC01D); LD H,0x00; CALL ...
+; Point that read to (0xC01C) (Page 1 slot) instead of (0xC01D) (Page 2 slot).
+GSP_CHK_PG0:
+    LD      A,(SLOT0_FND)
+    LD      HL,#SLOT1_FND
+    CP      (HL)
+    RET     NZ
+    LD      HL,#0x4000
+    LD      BC,#0x3FFB
+GSP_P0_LOOP:
+    LD      A,(HL)
+    CP      #0x3A
+    JR      NZ,GSP_P0_NEXT
+    PUSH    HL
+    INC     HL
+    LD      A,(HL)
+    CP      #0x1D
+    JR      NZ,GSP_P0_POP
+    INC     HL
+    LD      A,(HL)
+    CP      #0xC0
+    JR      NZ,GSP_P0_POP
+    INC     HL
+    LD      A,(HL)
+    CP      #0x26
+    JR      NZ,GSP_P0_POP
+    INC     HL
+    LD      A,(HL)
+    OR      A
+    JR      NZ,GSP_P0_POP
+    INC     HL
+    LD      A,(HL)
+    CP      #0xCD
+    JR      NZ,GSP_P0_POP
+    POP     HL
+    PUSH    HL
+    INC     HL
+    LD      (HL),#0x1C
+GSP_P0_POP:
+    POP     HL
+GSP_P0_NEXT:
+    INC     HL
+    DEC     BC
+    LD      A,B
+    OR      C
+    JR      NZ,GSP_P0_LOOP
+    RET
 
 ROMCODE:
