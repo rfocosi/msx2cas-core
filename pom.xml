@@ -8,7 +8,7 @@
     <groupId>br.com.dod</groupId>
     <artifactId>msx2cas</artifactId>
     <packaging>pom</packaging>
-    <version>4.0.0</version>
+    <version>5.0.0</version>
 
     <modules>
         <module>msx2cas-core</module>
@@ -36,7 +36,10 @@
                 <artifactId>maven-assembly-plugin</artifactId>
                 <version>3.7.1</version>
                 <configuration>
-                    <descriptors>${project.basedir}/src/assembly/release.xml</descriptors>
+                    <descriptors>
+                        <descriptor>${project.basedir}/src/assembly/release-linux.xml</descriptor>
+                        <descriptor>${project.basedir}/src/assembly/release-windows.xml</descriptor>
+                    </descriptors>
                 </configuration>
                 <executions>
                     <execution>

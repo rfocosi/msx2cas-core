@@ -39,7 +39,10 @@ public class Main extends JFrame implements NativeKeyListener {
 
             for (ConvertFile file : params.getFiles()) {
                 try {
-                    VirtualCas vcas = new VirtualCas(file.sampleRate()).resetRom(params.resetRom());
+                    VirtualCas vcas = new VirtualCas(file.sampleRate())
+                            .resetRom(params.resetRom())
+                            .megaRam(params.megaRam())
+                            .mapperType(params.mapperType());
                     WavOutput wavFile = vcas.convert(file.inputName());
 
                     if (file.write()) {

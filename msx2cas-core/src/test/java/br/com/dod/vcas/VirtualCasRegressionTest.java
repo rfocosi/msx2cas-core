@@ -21,6 +21,7 @@ import br.com.dod.vcas.wav.WavOutput;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class VirtualCasRegressionTest {
@@ -65,8 +66,8 @@ public class VirtualCasRegressionTest {
         Files.write(file16k.toPath(), rom16k);
 
         byte[] wavReset = new VirtualCas(SampleRate.sr11025).resetRom(true).convert(file16k.getAbsolutePath()).toBytes();
-        assertEquals(1969309, wavReset.length);
-        assertEquals("08a0ff73bd3cc15ccd313cfb4ce6476e6b0aefc79f8a498fce814bcdb220613f", sha256(wavReset));
+        assertEquals(2020459, wavReset.length);
+        assertEquals("40eaef1cccee77bca5656a3ccd376c53d4747a79771b9f95551c75b3fe570c6d", sha256(wavReset));
 
         byte[] rom16kHead80 = rom16k.clone();
         rom16kHead80[3] = (byte) 0x80;
@@ -74,8 +75,8 @@ public class VirtualCasRegressionTest {
         Files.write(file16kHead80.toPath(), rom16kHead80);
 
         byte[] wavHead80 = new VirtualCas(SampleRate.sr11025).convert(file16kHead80.getAbsolutePath()).toBytes();
-        assertEquals(1940709, wavHead80.length);
-        assertEquals("7309e3e452c93af8e9fd2523af4ee73ac55f3ab04075e3634bbe68b7480be520", sha256(wavHead80));
+        assertEquals(1941369, wavHead80.length);
+        assertEquals("2bcb6a92db214cbbd57f2ab88ed6716f71b9cbe6ef915fe564f411b9bb63a5a2", sha256(wavHead80));
     }
 
     @Test
@@ -93,12 +94,12 @@ public class VirtualCasRegressionTest {
         Files.write(file32k.toPath(), rom32k);
 
         byte[] normalWav = new VirtualCas(SampleRate.sr11025).convert(file32k.getAbsolutePath()).toBytes();
-        assertEquals(3936764, normalWav.length);
-        assertEquals("c06316b4dde2ab80730a2e1c78225d4a9732a4d2136470dc879e85b6469dc58d", sha256(normalWav));
+        assertEquals(4047424, normalWav.length);
+        assertEquals("fd7104b516893dcdb0d4249e759317ab1dc4579459359708ef097077dd6f205c", sha256(normalWav));
 
         byte[] resetWav = new VirtualCas(SampleRate.sr11025).resetRom(true).convert(file32k.getAbsolutePath()).toBytes();
-        assertEquals(3950074, resetWav.length);
-        assertEquals("6824e643f7b42b6581c039ee58b9f979cf60e64bcd09da123688192b05706e40", sha256(resetWav));
+        assertEquals(4051934, resetWav.length);
+        assertEquals("598ab37c24d92d6286d837db131344c60091028f9e0558f6f3af638d853cc85c", sha256(resetWav));
     }
 
     @Test
@@ -122,12 +123,12 @@ public class VirtualCasRegressionTest {
         Files.write(file49k.toPath(), rom49k);
 
         byte[] normalWav = new VirtualCas(SampleRate.sr11025).convert(file49k.getAbsolutePath()).toBytes();
-        assertEquals(5903119, normalWav.length);
-        assertEquals("30e66d0a340c1ebf06c70297df6648fe0de80024952b17de45eaf8b11cb637ad", sha256(normalWav));
+        assertEquals(6063609, normalWav.length);
+        assertEquals("0da6f580e58613d657d34a2d137599d61758bb56a67340f04117995c22e0c00f", sha256(normalWav));
 
         byte[] resetWav = new VirtualCas(SampleRate.sr11025).resetRom(true).convert(file49k.getAbsolutePath()).toBytes();
-        assertEquals(5917309, resetWav.length);
-        assertEquals("682b751301a689890a0d810d28937e036fc0f573473ed4f405d480b3732f0e5c", sha256(resetWav));
+        assertEquals(6064489, resetWav.length);
+        assertEquals("0ca92101b8faf49719469418ed72787ce24cb8427c42ae08d4397d754306f884", sha256(resetWav));
     }
 
     @Test
@@ -194,6 +195,28 @@ public class VirtualCasRegressionTest {
         assertArrayEquals("adv   ".toCharArray(), converter.nameBuf());
         assertArrayEquals("adv2  ".toCharArray(), converter.numberedBuf(2));
         assertArrayEquals("adv3  ".toCharArray(), converter.numberedBuf(3));
+        assertArrayEquals("adv10 ".toCharArray(), converter.numberedBuf(10));
+        assertArrayEquals("adv100".toCharArray(), converter.numberedBuf(100));
+    }
+
+    @Test
+    public void megaRamConverts128kRomAndHandlesMultiDigitNames() throws Exception, FlowException {
+        File romFile = tempFolder.newFile("gradius.rom");
+        byte[] rom128k = new byte[128 * 1024];
+        rom128k[0] = 'A';
+        rom128k[1] = 'B';
+        rom128k[2] = 0x10;
+        rom128k[3] = 0x40;
+        Files.write(romFile.toPath(), rom128k);
+
+        assertFlowError(rom128k, "gradius_std.rom", "file_size_invalid");
+
+        byte[] wavBytes = new VirtualCas(SampleRate.sr33075)
+                .megaRam(true)
+                .resetRom(true)
+                .convert(romFile.getAbsolutePath())
+                .toBytes();
+        assertTrue(wavBytes.length > 44);
     }
 
     private void assertFlowError(byte[] data, String name, String expectedMessage) throws Exception {

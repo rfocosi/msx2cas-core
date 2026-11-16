@@ -10,6 +10,7 @@ import br.com.dod.vcas.converter.Converter;
 import br.com.dod.vcas.converter.DefaultFileConverterFactory;
 import br.com.dod.vcas.converter.FileConverterFactory;
 import br.com.dod.vcas.exception.FlowException;
+import br.com.dod.vcas.model.MapperType;
 import br.com.dod.vcas.model.SampleRate;
 import br.com.dod.vcas.wav.WavOutput;
 
@@ -23,6 +24,8 @@ public class VirtualCas {
     private final SampleRate sampleRate;
     private final FileConverterFactory converterFactory;
     private boolean reset;
+    private boolean megaRam;
+    private MapperType mapperType = MapperType.AUTO;
 
     /**
      * Constructor for VirtualCas
@@ -67,6 +70,28 @@ public class VirtualCas {
     }
 
     /**
+     * Set whether to convert ROMs for MegaRAM cartridges (port 0x8E)
+     *
+     * @param megaRam True to enable MegaRAM mode, false otherwise
+     * @return This VirtualCas instance
+     */
+    public VirtualCas megaRam(boolean megaRam) {
+        this.megaRam = megaRam;
+        return this;
+    }
+
+    /**
+     * Set the source MegaROM mapper type for MegaRAM conversion/patching
+     *
+     * @param mapperType Mapper type ({@link MapperType#AUTO} by default)
+     * @return This VirtualCas instance
+     */
+    public VirtualCas mapperType(MapperType mapperType) {
+        this.mapperType = mapperType != null ? mapperType : MapperType.AUTO;
+        return this;
+    }
+
+    /**
      * Convert a single file to WAV format
      *
      * @param filePath Path to the file
@@ -75,7 +100,7 @@ public class VirtualCas {
      */
     public WavOutput convert(String filePath) throws FlowException {
         Converter converter = converterFactory.createConverter(
-                filePath, sampleRate, new ConversionOptions(reset));
+                filePath, sampleRate, new ConversionOptions(reset, megaRam, mapperType));
         return converter.convert();
     }
 
@@ -99,7 +124,7 @@ public class VirtualCas {
      */
     public List<WavOutput> convert() throws FlowException {
         final List<WavOutput> wavList = new LinkedList<>();
-        ConversionOptions options = new ConversionOptions(reset);
+        ConversionOptions options = new ConversionOptions(reset, megaRam, mapperType);
 
         for (String fileName : fileList) {
             Converter converter = converterFactory.createConverter(fileName, sampleRate, options);
