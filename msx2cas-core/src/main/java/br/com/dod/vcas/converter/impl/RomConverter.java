@@ -15,6 +15,8 @@ public class RomConverter extends AbstractFileConverter {
     private static final int ROM_16K_MAX_SIZE = 16384;
     private static final int ROM_32K_MAX_SIZE = 32768;
     private static final int ROM_49K_MAX_SIZE = 50176;
+    private static final int MSX_WORK_AREA_START = 0xF380;
+    private static final int INIT32_TRAMPOLINE_SIZE = 6;
 
     private boolean resetRom;
 
@@ -100,19 +102,31 @@ public class RomConverter extends AbstractFileConverter {
             encodeRomBlock(encoder, headId, 0, inputMemPointer.length, RomLoaders.rom16K(resetRom));
         } else {
             encoder.encodeShortHeader();
-            char startAddr = (char) ((headId & 0xF0) << 8);
-            char endAddr = (char) (startAddr + inputMemPointer.length - 1);
+            int startAddr = (headId & 0xF0) << 8;
+            int stubAddr = startAddr + inputMemPointer.length;
+            boolean appendInit32Stub = stubAddr + INIT32_TRAMPOLINE_SIZE <= MSX_WORK_AREA_START;
+            int endAddr = appendInit32Stub
+                    ? stubAddr + INIT32_TRAMPOLINE_SIZE - 1
+                    : stubAddr - 1;
             char[] addressBuffer = {
                     0,
                     (char) (startAddr >> 8),
-                    endAddr,
+                    (char) endAddr,
                     (char) (endAddr >> 8),
-                    (char) inputMemPointer[2],
-                    (char) inputMemPointer[3]
+                    appendInit32Stub ? (char) stubAddr : (char) inputMemPointer[2],
+                    appendInit32Stub ? (char) (stubAddr >> 8) : (char) inputMemPointer[3]
             };
             encoder.encodeData(addressBuffer);
             for (byte b : inputMemPointer) {
                 encoder.writeDataByte((char) b);
+            }
+            if (appendInit32Stub) {
+                // 40-column MSX BASIC leaves VDP R2/R5/R6 at 0x00; match BIOS cartridge boot via INIT32 (0x006F).
+                char[] init32Trampoline = {
+                        0xCD, 0x6F, 0x00,
+                        0xC3, (char) inputMemPointer[2], (char) inputMemPointer[3]
+                };
+                encoder.encodeData(init32Trampoline);
             }
         }
     }
