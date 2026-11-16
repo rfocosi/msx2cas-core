@@ -1,5 +1,6 @@
 package br.com.dod.vcas;
 
+import br.com.dod.vcas.model.MapperType;
 import br.com.dod.vcas.model.SampleRate;
 import br.com.dod.vcas.util.FileCommons;
 
@@ -16,6 +17,7 @@ class Params {
     private static final String SPEEDS = "1200|2400|3000|3600";
     private boolean resetRom;
     private boolean megaRam;
+    private MapperType mapperType = MapperType.AUTO;
 
     private final List<ConvertFile> files = new LinkedList<>();
 
@@ -35,6 +37,10 @@ class Params {
                 boolean inverted = arguments.remove("-i");
                 this.resetRom = arguments.remove("-r");
                 this.megaRam = arguments.remove("-m");
+                this.mapperType = extractMapperType(arguments);
+                if (this.mapperType != MapperType.AUTO) {
+                    this.megaRam = true;
+                }
 
                 boolean write = arguments.remove("-w");
                 String outputFileName = "";
@@ -96,6 +102,22 @@ class Params {
         System.out.println("MSX2Cas v" + getVersion());
     }
 
+    private static MapperType extractMapperType(LinkedHashSet<String> arguments) {
+        Iterator<String> iterator = arguments.iterator();
+        while (iterator.hasNext()) {
+            if ("-t".equals(iterator.next())) {
+                iterator.remove();
+                if (!iterator.hasNext()) {
+                    throw new IllegalArgumentException("Missing mapper type after -t");
+                }
+                String mapperValue = iterator.next();
+                iterator.remove();
+                return MapperType.fromString(mapperValue);
+            }
+        }
+        return MapperType.AUTO;
+    }
+
     private String getBps(LinkedHashSet<String> arguments) {
         for (String arg : arguments) {
             if (arg.matches("\\d{4}")) {
@@ -124,10 +146,11 @@ class Params {
 
     private static void displayUsage() {
         System.out.println("""
-                Usage: msx2cas [-i] [-r] [-m] [-w [<output-file>]] <%s> <input-file> [<input-file>...]
+                Usage: msx2cas [-i] [-r] [-m] [-t <auto|konami4|konami5|ascii8|ascii16>] [-w [<output-file>]] <%s> <input-file> [<input-file>...]
                 -i: Invert Waveform (fix playback on some soundboards)
                 -r: Reset MSX after loading a ROM
-                -m: Load MegaROM into MegaRAM cartridge (Konami4, port 0x8E)
+                -m: Load MegaROM into MegaRAM cartridge (port 0x8E)
+                -t: Force MegaROM mapper type (auto, konami4, konami5, ascii8, ascii16; implies -m)
                 -w: Write a WAV file with <output-file> name OR with file token name (first 6 characters from <filename>)
                 <%s>: Playback speed in bps
                 <input-file>: A ROM, BIN, LDR, MX1, MX2, CAS, BAS(tokenize or not) file
@@ -145,5 +168,9 @@ class Params {
 
     public boolean megaRam() {
         return this.megaRam;
+    }
+
+    public MapperType mapperType() {
+        return this.mapperType;
     }
 }

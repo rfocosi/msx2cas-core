@@ -11,6 +11,7 @@ import br.com.dod.vcas.converter.impl.CasConverter;
 import br.com.dod.vcas.converter.impl.RomConverter;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.FileType;
+import br.com.dod.vcas.model.MapperType;
 import br.com.dod.vcas.model.SampleRate;
 import br.com.dod.vcas.util.FileCommons;
 
@@ -24,12 +25,15 @@ public class DefaultFileConverterFactory implements FileConverterFactory {
             throws FlowException {
         boolean resetRom = options != null && options.resetRom();
         boolean megaRam = options != null && options.megaRam();
+        MapperType mapperType = options != null && options.mapperType() != null
+                ? options.mapperType()
+                : MapperType.AUTO;
         FileType fileType = detectFileType(filePath);
         return switch (fileType) {
             case BAS -> new BasConverter(filePath, sampleRate);
             case BIN -> new BinConverter(filePath, sampleRate);
             case CAS -> new CasConverter(filePath, sampleRate);
-            case ROM -> new RomConverter(filePath, sampleRate, resetRom, megaRam);
+            case ROM -> new RomConverter(filePath, sampleRate, resetRom, megaRam, mapperType);
             default -> new AsciiConverter(filePath, sampleRate);
         };
     }

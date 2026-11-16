@@ -109,6 +109,41 @@ public class OpenMsxMegaRamIT {
                 result.contains("Fail: NO MEGARAM!"));
     }
 
+    @Test
+    public void gradienteExpertAutoPatchesAndBoots128kAscii8WithReset() throws Exception, FlowException {
+        Assume.assumeTrue("Gradiente Expert GPC-1 BIOS ROM not found",
+                hasRom("expert_1.1_basic-bios1.rom", "d6720845928ee848cfa88a86accb067397685f02"));
+
+        byte[] romAscii8 = buildPatchedMapperCheckRom(128 * 1024, "A8",
+                0x6800, 0x7000, 0x7800, false, false);
+        String result = runCase("Gradiente_Expert_GPC-1", List.of("-ext", "megaram"),
+                "ascii8r", romAscii8, true, false, false);
+        assertTrue("Expected OKA8 signature for patched ASCII8 ROM but got: " + result, result.contains("TAG=OKA8"));
+    }
+
+    @Test
+    public void gradienteExpertAutoPatchesAndBoots128kKonami5WithReset() throws Exception, FlowException {
+        Assume.assumeTrue("Gradiente Expert GPC-1 BIOS ROM not found",
+                hasRom("expert_1.1_basic-bios1.rom", "d6720845928ee848cfa88a86accb067397685f02"));
+
+        byte[] romK5 = buildPatchedMapperCheckRom(128 * 1024, "K5",
+                0x7000, 0x9000, 0xB000, true, false);
+        String result = runCase("Gradiente_Expert_GPC-1", List.of("-ext", "megaram"),
+                "k5rst", romK5, true, false, false);
+        assertTrue("Expected OKK5 signature for patched Konami5 ROM but got: " + result, result.contains("TAG=OKK5"));
+    }
+
+    @Test
+    public void gradienteExpertAutoPatchesAndBoots128kAscii16WithReset() throws Exception, FlowException {
+        Assume.assumeTrue("Gradiente Expert GPC-1 BIOS ROM not found",
+                hasRom("expert_1.1_basic-bios1.rom", "d6720845928ee848cfa88a86accb067397685f02"));
+
+        byte[] romA16 = buildAscii16CheckRom(128 * 1024, "16");
+        String result = runCase("Gradiente_Expert_GPC-1", List.of("-ext", "megaram"),
+                "a16rst", romA16, true, false, false);
+        assertTrue("Expected OK16 signature for patched ASCII16 ROM but got: " + result, result.contains("TAG=OK16"));
+    }
+
     private String runCase(
             String machine,
             List<String> extraArgs,
@@ -169,7 +204,27 @@ public class OpenMsxMegaRamIT {
      * stays read-only, and writes {@code OK<tag>} or {@code ER<tag>} to {@code 0xD000..0xD003}.
      */
     private static byte[] buildKonami4CheckRom(int sizeBytes, String tag2Chars) {
+        return buildPatchedMapperCheckRom(sizeBytes, tag2Chars, 0x6000, 0x8000, 0xA000, false, false);
+    }
+
+    /**
+     * Builds a synthetic 8KB-banked MegaROM whose bank registers live at {@code regW1}, {@code regW2},
+     * and {@code regW3} (while reading windows {@code 0x6000}, {@code 0x8000}, {@code 0xA000}).
+     */
+    private static byte[] buildPatchedMapperCheckRom(
+            int sizeBytes,
+            String tag2Chars,
+            int regW1,
+            int regW2,
+            int regW3,
+            boolean includeSccWrites,
+            boolean padWithZero) {
         byte[] rom = new byte[sizeBytes];
+        if (!padWithZero) {
+            for (int i = 0x100; i < rom.length; i++) {
+                rom[i] = (byte) 0xFF;
+            }
+        }
         int totalBanks = sizeBytes / 8192;
         for (int b = 1; b < totalBanks; b++) {
             rom[b * 8192] = (byte) ((b * 17 + 0x11) & 0xFF);
@@ -186,8 +241,6 @@ public class OpenMsxMegaRamIT {
         int bankLast = totalBanks - 1;
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        // Standard MSX cartridge prologue: map Page 2 (0x8000-0xBFFF) to Page 1's cartridge slot
-        // because BIOS cartridge boot enters INIT with only Page 1 mapped to the cartridge.
         byte[] mapPage2ToCartSlot = {
                 (byte) 0xCD, 0x38, 0x01,                   // CALL 0x0138 (RSLREG)
                 0x0F, 0x0F,                                // RRCA; RRCA
@@ -205,20 +258,34 @@ public class OpenMsxMegaRamIT {
         out.writeBytes(mapPage2ToCartSlot);
         List<Integer> failPatchPositions = new ArrayList<>();
 
-        // Select bankA at 0x6000, read (0x6000)
-        emitCheckBank(out, 0x6000, bankA, (bankA * 17 + 0x11) & 0xFF, failPatchPositions);
-        // Select bankB at 0x8000, read (0x8000)
-        emitCheckBank(out, 0x8000, bankB, (bankB * 17 + 0x11) & 0xFF, failPatchPositions);
-        // Select bankLast at 0xA000, read (0xA000)
-        emitCheckBank(out, 0xA000, bankLast, (bankLast * 17 + 0x11) & 0xFF, failPatchPositions);
+        emitCheckRegWindow(out, regW1, 0x6000, bankA, (bankA * 17 + 0x11) & 0xFF, failPatchPositions);
+        emitCheckRegWindow(out, regW2, 0x8000, bankB, (bankB * 17 + 0x11) & 0xFF, failPatchPositions);
+        emitCheckRegWindow(out, regW3, 0xA000, bankLast, (bankLast * 17 + 0x11) & 0xFF, failPatchPositions);
 
-        // Verify Bank 0 at 0x4000 still holds 'A' (Mode 0 writes did not corrupt ROM)
-        out.write(0x3A); // LD A, (0x4000)
+        if (includeSccWrites) {
+            // Write dummy SCC register bytes to 0x988F/0x9800 and confirm Window 2 (0x8000) stays at bankB!
+            out.write(0x3E); // LD A, 0x0F
+            out.write(0x0F);
+            out.write(0x32); // LD (0x988F), A
+            out.write(0x8F);
+            out.write(0x98);
+            out.write(0x3A); // LD A, (0x8000)
+            out.write(0x00);
+            out.write(0x80);
+            out.write(0xFE); // CP expected
+            out.write((bankB * 17 + 0x11) & 0xFF);
+            out.write(0x20);
+            failPatchPositions.add(out.size());
+            out.write(0x00);
+        }
+
+        // Verify Bank 0 at 0x4000 still holds 'A'
+        out.write(0x3A);
         out.write(0x00);
         out.write(0x40);
-        out.write(0xFE); // CP 'A'
+        out.write(0xFE);
         out.write('A');
-        out.write(0x20); // JR NZ, fail
+        out.write(0x20);
         failPatchPositions.add(out.size());
         out.write(0x00);
 
@@ -234,16 +301,93 @@ public class OpenMsxMegaRamIT {
         return rom;
     }
 
-    private static void emitCheckBank(
-            ByteArrayOutputStream out, int windowAddr, int bankIdx, int expectedVal, List<Integer> failPatches) {
+    private static byte[] buildAscii16CheckRom(int sizeBytes, String tag2Chars) {
+        byte[] rom = new byte[sizeBytes];
+        for (int i = 0x100; i < rom.length; i++) {
+            rom[i] = (byte) 0xFF;
+        }
+        int total8kBanks = sizeBytes / 8192;
+        for (int b = 1; b < total8kBanks; b++) {
+            rom[b * 8192] = (byte) ((b * 17 + 0x11) & 0xFF);
+        }
+
+        int initAddr = 0x4020;
+        rom[0] = 'A';
+        rom[1] = 'B';
+        rom[2] = (byte) (initAddr & 0xFF);
+        rom[3] = (byte) ((initAddr >> 8) & 0xFF);
+
+        // 16KB bank 2 -> 8KB banks 4 (0x4000) & 5 (0x6000) via 0x6000;
+        // 16KB bank 7 -> 8KB banks 14 (0x8000) & 15 (0xA000) via 0x77FF!
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        byte[] mapPage2ToCartSlot = {
+                (byte) 0xCD, 0x38, 0x01,
+                0x0F, 0x0F,
+                (byte) 0xE6, 0x03,
+                0x4F, 0x06, 0x00,
+                0x21, (byte) 0xC1, (byte) 0xFC,
+                0x09,
+                0x7E, (byte) 0xE6, (byte) 0x80, (byte) 0xB1,
+                0x4F,
+                0x23, 0x23, 0x23, 0x23,
+                0x7E, (byte) 0xE6, 0x0C, (byte) 0xB1,
+                0x26, (byte) 0x80,
+                (byte) 0xCD, 0x24, 0x00
+        };
+        out.writeBytes(mapPage2ToCartSlot);
+        List<Integer> failPatchPositions = new ArrayList<>();
+
+        // Switch Page 1 to 16KB bank 0 via 0x6000 (tests CALL 0xF560 trampoline without swapping code out!)
+        // and verify (0x6000) holds 8KB bank 1's marker.
+        out.write(0x3E); out.write(0x00);
+        out.write(0x32); out.write(0x00); out.write(0x60); // LD (0x6000), A
+        out.write(0x3A); out.write(0x00); out.write(0x60);
+        out.write(0xFE); out.write((1 * 17 + 0x11) & 0xFF);
+        out.write(0x20); failPatchPositions.add(out.size()); out.write(0x00);
+
+        // Switch Page 2 to 16KB bank 7 via 0x77FF and check both 0x8000 (bank 14) and 0xA000 (bank 15)
+        out.write(0x3E); out.write(0x07);
+        out.write(0x32); out.write(0xFF); out.write(0x77); // LD (0x77FF), A
+        out.write(0x3A); out.write(0x00); out.write(0x80);
+        out.write(0xFE); out.write((14 * 17 + 0x11) & 0xFF);
+        out.write(0x20); failPatchPositions.add(out.size()); out.write(0x00);
+        out.write(0x3A); out.write(0x00); out.write(0xA0);
+        out.write(0xFE); out.write((15 * 17 + 0x11) & 0xFF);
+        out.write(0x20); failPatchPositions.add(out.size()); out.write(0x00);
+
+        // Switch Page 2 to 16KB bank 2 via 0x7000 and check both 0x8000 (bank 4) and 0xA000 (bank 5)
+        out.write(0x3E); out.write(0x02);
+        out.write(0x32); out.write(0x00); out.write(0x70); // LD (0x7000), A
+        out.write(0x3A); out.write(0x00); out.write(0x80);
+        out.write(0xFE); out.write((4 * 17 + 0x11) & 0xFF);
+        out.write(0x20); failPatchPositions.add(out.size()); out.write(0x00);
+        out.write(0x3A); out.write(0x00); out.write(0xA0);
+        out.write(0xFE); out.write((5 * 17 + 0x11) & 0xFF);
+        out.write(0x20); failPatchPositions.add(out.size()); out.write(0x00);
+
+        writeSignatureLoop(out, "OK" + tag2Chars);
+        int failPos = out.size();
+        writeSignatureLoop(out, "ER" + tag2Chars);
+
+        byte[] code = out.toByteArray();
+        for (int idx : failPatchPositions) {
+            code[idx] = (byte) (failPos - (idx + 1));
+        }
+        System.arraycopy(code, 0, rom, initAddr - 0x4000, code.length);
+        return rom;
+    }
+
+    private static void emitCheckRegWindow(
+            ByteArrayOutputStream out, int regAddr, int readAddr, int bankIdx, int expectedVal,
+            List<Integer> failPatches) {
         out.write(0x3E); // LD A, bankIdx
         out.write(bankIdx & 0xFF);
-        out.write(0x32); // LD (windowAddr), A
-        out.write(windowAddr & 0xFF);
-        out.write((windowAddr >> 8) & 0xFF);
-        out.write(0x3A); // LD A, (windowAddr)
-        out.write(windowAddr & 0xFF);
-        out.write((windowAddr >> 8) & 0xFF);
+        out.write(0x32); // LD (regAddr), A
+        out.write(regAddr & 0xFF);
+        out.write((regAddr >> 8) & 0xFF);
+        out.write(0x3A); // LD A, (readAddr)
+        out.write(readAddr & 0xFF);
+        out.write((readAddr >> 8) & 0xFF);
         out.write(0xFE); // CP expectedVal
         out.write(expectedVal & 0xFF);
         out.write(0x20); // JR NZ, fail

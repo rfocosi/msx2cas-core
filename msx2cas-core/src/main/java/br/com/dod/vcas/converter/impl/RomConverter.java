@@ -3,6 +3,7 @@ package br.com.dod.vcas.converter.impl;
 import br.com.dod.vcas.converter.AbstractFileConverter;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.FileType;
+import br.com.dod.vcas.model.MapperType;
 import br.com.dod.vcas.model.SampleRate;
 import br.com.dod.vcas.wav.WavEncoder;
 import br.com.dod.vcas.wav.WavOutput;
@@ -22,6 +23,7 @@ public class RomConverter extends AbstractFileConverter {
 
     private boolean resetRom;
     private boolean megaRam;
+    private MapperType mapperType;
 
     /**
      * Constructor for RomConverter
@@ -31,7 +33,7 @@ public class RomConverter extends AbstractFileConverter {
      * @throws FlowException If reading or validating the ROM fails
      */
     public RomConverter(String inputFileName, SampleRate sampleRate) throws FlowException {
-        this(inputFileName, sampleRate, false, false);
+        this(inputFileName, sampleRate, false, false, MapperType.AUTO);
     }
 
     /**
@@ -43,7 +45,7 @@ public class RomConverter extends AbstractFileConverter {
      * @throws FlowException If reading or validating the ROM fails
      */
     public RomConverter(String inputFileName, SampleRate sampleRate, boolean resetRom) throws FlowException {
-        this(inputFileName, sampleRate, resetRom, false);
+        this(inputFileName, sampleRate, resetRom, false, MapperType.AUTO);
     }
 
     /**
@@ -57,9 +59,29 @@ public class RomConverter extends AbstractFileConverter {
      */
     public RomConverter(String inputFileName, SampleRate sampleRate, boolean resetRom, boolean megaRam)
             throws FlowException {
+        this(inputFileName, sampleRate, resetRom, megaRam, MapperType.AUTO);
+    }
+
+    /**
+     * Constructor for RomConverter with ROM reset, MegaRAM, and mapper type options
+     *
+     * @param inputFileName Name of the input file
+     * @param sampleRate Sample rate to use for conversion
+     * @param resetRom True to reset the MSX after loading the ROM
+     * @param megaRam True to target a MegaRAM cartridge (port 0x8E)
+     * @param mapperType Source MegaROM mapper type ({@link MapperType#AUTO} by default)
+     * @throws FlowException If reading or validating the ROM fails
+     */
+    public RomConverter(
+            String inputFileName,
+            SampleRate sampleRate,
+            boolean resetRom,
+            boolean megaRam,
+            MapperType mapperType) throws FlowException {
         super(inputFileName, sampleRate);
         this.resetRom = resetRom;
         this.megaRam = megaRam;
+        this.mapperType = mapperType != null ? mapperType : MapperType.AUTO;
         validate();
     }
 
@@ -82,6 +104,17 @@ public class RomConverter extends AbstractFileConverter {
      */
     public RomConverter megaRam(boolean megaRam) {
         this.megaRam = megaRam;
+        return this;
+    }
+
+    /**
+     * Set the source MegaROM mapper type for MegaRAM conversion
+     *
+     * @param mapperType Source mapper type ({@link MapperType#AUTO} by default)
+     * @return This RomConverter instance
+     */
+    public RomConverter mapperType(MapperType mapperType) {
+        this.mapperType = mapperType != null ? mapperType : MapperType.AUTO;
         return this;
     }
 
@@ -198,6 +231,7 @@ public class RomConverter extends AbstractFileConverter {
     }
 
     private void convertMegaRam(WavEncoder encoder) throws FlowException {
+        inputMemPointer = MegaRomPatcher.patchToKonami4(inputMemPointer, mapperType);
         int fileSize = getFileSize();
         int total8kBanks = (fileSize + BANK_8K_SIZE - 1) / BANK_8K_SIZE;
         int maxBankIndex = total8kBanks - 1;
