@@ -78,6 +78,9 @@
                                         br.com.dod.vcas.Main
                                     </mainClass>
                                 </manifest>
+                                <manifestEntries>
+                                    <Enable-Native-Access>ALL-UNNAMED</Enable-Native-Access>
+                                </manifestEntries>
                             </archive>
                             <descriptorRefs>
                                 <descriptorRef>jar-with-dependencies</descriptorRef>
