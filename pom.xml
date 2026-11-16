@@ -36,7 +36,10 @@
                 <artifactId>maven-assembly-plugin</artifactId>
                 <version>3.7.1</version>
                 <configuration>
-                    <descriptors>${project.basedir}/src/assembly/release.xml</descriptors>
+                    <descriptors>
+                        <descriptor>${project.basedir}/src/assembly/release-linux.xml</descriptor>
+                        <descriptor>${project.basedir}/src/assembly/release-windows.xml</descriptor>
+                    </descriptors>
                 </configuration>
                 <executions>
                     <execution>
