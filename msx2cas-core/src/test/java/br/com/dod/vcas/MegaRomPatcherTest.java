@@ -120,6 +120,45 @@ public class MegaRomPatcherTest {
         assertEquals(0x40, patched[stubOff + 13] & 0xFF);
     }
 
+    @Test
+    public void detectsAscii16DespiteStrayDataSignaturesInLaterBanks() throws Exception, FlowException {
+        byte[] rom = new byte[512 * 1024];
+        rom[0] = 'A';
+        rom[1] = 'B';
+        rom[2] = 0x31;
+        rom[3] = 0x40;
+        // Real ASCII16 switches in Bank 0 (like Aleste / R-Type)
+        putLdNnA(rom, 0x0B00, 0x7000);
+        putLdNnA(rom, 0x186E, 0x7000);
+        // Stray data bytes matching LD (0x5000), A and LD (0x6800), A in later banks
+        putLdNnA(rom, 0x21BE6, 0x5000);
+        putLdNnA(rom, 0x40609, 0x6800);
+
+        assertEquals(MapperType.ASCII16, MegaRomPatcher.detectMapper(rom));
+        byte[] patched = MegaRomPatcher.patchToKonami4(rom, MapperType.AUTO);
+        assertEquals((byte) 0xCD, patched[0x0B00]);
+        assertEquals((byte) 0x6B, patched[0x0B01]);
+        assertEquals((byte) 0xF5, patched[0x0B02]);
+        assertEquals(0x50, patched[0x21BE8] & 0xFF);
+        assertEquals(0x68, patched[0x4060B] & 0xFF);
+    }
+
+    @Test
+    public void detectsMapperInLaterBanksWhenBank0OnlyTouches6000() {
+        byte[] rom = new byte[128 * 1024];
+        rom[0] = 'A';
+        rom[1] = 'B';
+        rom[2] = 0x20;
+        rom[3] = 0x40;
+        putLdNnA(rom, 0x20, 0x6000);
+        putLdNnA(rom, 0x24, 0x6000);
+        // Upper registers live outside Bank 0
+        putLdNnA(rom, 0x2100, 0x6800);
+        putLdNnA(rom, 0x2110, 0x7800);
+
+        assertEquals(MapperType.ASCII8, MegaRomPatcher.detectMapper(rom));
+    }
+
     private static void putLdNnA(byte[] rom, int offset, int addr) {
         rom[offset] = 0x32;
         rom[offset + 1] = (byte) (addr & 0xFF);

@@ -26,23 +26,32 @@ public final class MegaRomPatcher {
      * @return Detected {@link MapperType} (defaults to {@link MapperType#KONAMI4})
      */
     public static MapperType detectMapper(byte[] rom) {
-        Counts c = countMapperSignatures(rom);
+        int bank0Limit = Math.min(rom.length, BANK_0_SIZE);
+        Counts bank0 = countMapperSignatures(rom, 0x0010, bank0Limit);
+        if (bank0.hasDecisiveSignal()) {
+            return classifyMapper(bank0);
+        }
+        return classifyMapper(countMapperSignatures(rom, 0x0010, rom.length));
+    }
 
+    private static MapperType classifyMapper(Counts c) {
         int k4Score = c.b6000 + c.b8000 + c.bA000;
         int k5Score = c.b5000 + c.b7000 + c.b9000 + c.bB000;
-        int k5Exclusive = c.b5000 + c.b9000 + c.bB000;
+        int k5Upper = c.b9000 + c.bB000;
+        int k5Exclusive = c.b5000 + k5Upper;
         int a8Exclusive = c.b6800 + c.b7800;
         int a8Score = c.b6000 + c.b6800 + c.b7000 + c.b7800;
         int k4Upper = c.b8000 + c.bA000;
         int a16Switch = c.b7000 + c.b77FF;
 
-        if (k5Exclusive > 0 && k5Score > k4Score && k5Exclusive >= a8Exclusive) {
+        // Require at least one upper-page register (0x9000/0xB000) so stray 0x5000 data bytes don't mask ASCII16.
+        if (k5Upper > 0 && k5Score > k4Score && k5Exclusive >= a8Exclusive) {
             return MapperType.KONAMI5;
         }
-        if (a8Exclusive > 0 && a8Score > k4Upper) {
+        if (a8Exclusive > 0 && a8Score > k4Upper && a8Exclusive > c.b77FF) {
             return MapperType.ASCII8;
         }
-        if (a16Switch > 0 && (c.b6000 + a16Switch) >= 2 && a8Exclusive == 0 && k5Exclusive == 0
+        if (a16Switch > 0 && (c.b6000 + a16Switch) >= 2 && a8Exclusive <= c.b77FF && k5Upper == 0
                 && (c.b6000 + a16Switch) > k4Upper * 2) {
             return MapperType.ASCII16;
         }
@@ -274,9 +283,10 @@ public final class MegaRomPatcher {
         return false;
     }
 
-    private static Counts countMapperSignatures(byte[] rom) {
+    private static Counts countMapperSignatures(byte[] rom, int startOffset, int endExclusive) {
         Counts c = new Counts();
-        for (int i = 0x0010; i <= rom.length - 3; i++) {
+        int limit = Math.min(endExclusive, rom.length) - 3;
+        for (int i = startOffset; i <= limit; i++) {
             int op = rom[i] & 0xFF;
             if (op == 0x32) {
                 int lo = rom[i + 1] & 0xFF;
@@ -304,6 +314,11 @@ public final class MegaRomPatcher {
         int b9000;
         int bA000;
         int bB000;
+
+        boolean hasDecisiveSignal() {
+            int non6000 = b5000 + b6800 + b7000 + b77FF + b7800 + b8000 + b9000 + bA000 + bB000;
+            return non6000 > 0 && (b6000 + non6000) >= 2;
+        }
 
         void record(int lo, int hi) {
             if (lo == 0xFF && hi == 0x77) {
