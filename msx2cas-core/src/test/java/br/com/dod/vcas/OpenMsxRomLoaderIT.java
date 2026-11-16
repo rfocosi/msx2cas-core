@@ -202,8 +202,14 @@ public class OpenMsxRomLoaderIT {
         // 16K at 0x4000 (ROM_16K & ROM_16K_RST)
         byte[] rom16k = buildCheckRom(16384, 0x0000, 0x4010, List.of(new int[] { 0x7FFE, 0x5A }), "16", false);
         rom16k[0x3FFE] = 0x5A;
-        assertRomBoots(userData, machine, "rom16k_norm", rom16k, false, "OK16", expectedPage1Slot, null, holdCtrlOnBoot, extraArgs, typeDelaySec);
-        assertRomBoots(userData, machine, "rom16k_rst", rom16k, true, "OK16", expectedPage1Slot, null, holdCtrlOnBoot, extraArgs, typeDelaySec);
+        assertRomBoots(userData, machine, "rom16k_norm", rom16k, false, "OK16", expectedPage1Slot, null, null, holdCtrlOnBoot, extraArgs, typeDelaySec);
+        assertRomBoots(userData, machine, "rom16k_rst", rom16k, true, "OK16", expectedPage1Slot, null, null, holdCtrlOnBoot, extraArgs, typeDelaySec);
+
+        // 16K at 0x8000 (Page-2 direct load + INIT32 VDP R2/R5/R6 Screen-1 defaults, e.g. Pitfall!)
+        byte[] rom16kPg2 = buildCheckRom(16384, 0x0000, 0x8010,
+                List.of(new int[] { 0xBFFE, 0x99 }, new int[] { 0xFCAF, 0x01 }), "P2", false);
+        rom16kPg2[0x3FFE] = (byte) 0x99;
+        assertRomBoots(userData, machine, "rom16k_pg2", rom16kPg2, false, "OKP2", null, null, "063607", holdCtrlOnBoot, extraArgs, typeDelaySec);
 
         // 32K at 0x4000..0xBFFF (BLOCK_LOADER + ROM_32K / ROM_32K_RST)
         byte[] rom32k = buildCheckRom(32768, 0x0000, 0x4010,
@@ -240,6 +246,23 @@ public class OpenMsxRomLoaderIT {
             String expectedTag,
             String expectedPage1Slot,
             String expectedPage0Slot,
+            boolean holdCtrlOnBoot,
+            List<String> extraArgs,
+            int typeDelaySec) throws Exception, FlowException {
+        assertRomBoots(userData, machine, caseName, romBytes, reset, expectedTag, expectedPage1Slot,
+                expectedPage0Slot, null, holdCtrlOnBoot, extraArgs, typeDelaySec);
+    }
+
+    private void assertRomBoots(
+            Path userData,
+            String machine,
+            String caseName,
+            byte[] romBytes,
+            boolean reset,
+            String expectedTag,
+            String expectedPage1Slot,
+            String expectedPage0Slot,
+            String expectedVdp256,
             boolean holdCtrlOnBoot,
             List<String> extraArgs,
             int typeDelaySec) throws Exception, FlowException {
@@ -297,6 +320,10 @@ public class OpenMsxRomLoaderIT {
             assertTrue("Expected Page 0 slot '" + expectedPage0Slot + "' for " + machine + "/" + caseName + " but got: " + result,
                     result.contains("P0=" + expectedPage0Slot));
         }
+        if (expectedVdp256 != null) {
+            assertTrue("Expected VDP R2/R5/R6 '" + expectedVdp256 + "' for " + machine + "/" + caseName + " but got: " + result,
+                    result.contains("VDP256=" + expectedVdp256));
+        }
     }
 
     /**
@@ -323,9 +350,10 @@ public class OpenMsxRomLoaderIT {
                 + "    set b2 [debug read \"memory\" 0xD002]\n"
                 + "    set b3 [debug read \"memory\" 0xD003]\n"
                 + "    set fp [open $env(OUT_FILE) \"w\"]\n"
-                + "    puts $fp [format \"t=%.2f TAG=%c%c%c%c HEX=%02X%02X%02X%02X PC=%04X P0=%s P1=%s P2=%s P3=%s\" "
+                + "    puts $fp [format \"t=%.2f TAG=%c%c%c%c HEX=%02X%02X%02X%02X PC=%04X P0=%s P1=%s P2=%s P3=%s VDP256=%02X%02X%02X\" "
                 + "[machine_info time] $b0 $b1 $b2 $b3 $b0 $b1 $b2 $b3 [reg PC] "
-                + "[get_selected_slot 0] [get_selected_slot 1] [get_selected_slot 2] [get_selected_slot 3]]\n"
+                + "[get_selected_slot 0] [get_selected_slot 1] [get_selected_slot 2] [get_selected_slot 3] "
+                + "[debug read \"VDP regs\" 2] [debug read \"VDP regs\" 5] [debug read \"VDP regs\" 6]]\n"
                 + "    catch { get_screen } scr\n"
                 + "    puts $fp \"SCREEN:\\n$scr\"\n"
                 + "    close $fp\n"
@@ -428,7 +456,8 @@ public class OpenMsxRomLoaderIT {
         }
 
         byte[] code = makeCheckCode(checks, tag);
-        int codeOffset = initAddr - (abOffset == 0 && initAddr >= 0x4000 ? 0x4000 : 0);
+        int baseAddr = abOffset == 0 ? (initAddr & 0xC000) : 0;
+        int codeOffset = initAddr - baseAddr;
         System.arraycopy(code, 0, rom, codeOffset, code.length);
         return rom;
     }
