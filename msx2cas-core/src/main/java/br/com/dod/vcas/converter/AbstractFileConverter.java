@@ -97,8 +97,14 @@ public abstract class AbstractFileConverter implements Converter {
      * @return Formatted name buffer as a char array
      */
     private char[] formatNameBuffer(final String number, final int nameSize) {
-        return String.format("%-" + CAS_FILENAME_LENGTH + "s", String.format("%." + nameSize + "s%s", casName(), number))
-                .toCharArray();
+        int clampedSize = Math.max(0, nameSize);
+        String name = casName();
+        String prefix = name.substring(0, Math.min(name.length(), clampedSize));
+        String combined = prefix + number;
+        if (combined.length() > CAS_FILENAME_LENGTH) {
+            combined = combined.substring(0, CAS_FILENAME_LENGTH);
+        }
+        return String.format("%-" + CAS_FILENAME_LENGTH + "s", combined).toCharArray();
     }
 
     /**

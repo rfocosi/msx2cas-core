@@ -23,12 +23,13 @@ public class DefaultFileConverterFactory implements FileConverterFactory {
     public Converter createConverter(String filePath, SampleRate sampleRate, ConversionOptions options)
             throws FlowException {
         boolean resetRom = options != null && options.resetRom();
+        boolean megaRam = options != null && options.megaRam();
         FileType fileType = detectFileType(filePath);
         return switch (fileType) {
             case BAS -> new BasConverter(filePath, sampleRate);
             case BIN -> new BinConverter(filePath, sampleRate);
             case CAS -> new CasConverter(filePath, sampleRate);
-            case ROM -> new RomConverter(filePath, sampleRate, resetRom);
+            case ROM -> new RomConverter(filePath, sampleRate, resetRom, megaRam);
             default -> new AsciiConverter(filePath, sampleRate);
         };
     }

@@ -21,6 +21,7 @@ import br.com.dod.vcas.wav.WavOutput;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class VirtualCasRegressionTest {
@@ -194,6 +195,28 @@ public class VirtualCasRegressionTest {
         assertArrayEquals("adv   ".toCharArray(), converter.nameBuf());
         assertArrayEquals("adv2  ".toCharArray(), converter.numberedBuf(2));
         assertArrayEquals("adv3  ".toCharArray(), converter.numberedBuf(3));
+        assertArrayEquals("adv10 ".toCharArray(), converter.numberedBuf(10));
+        assertArrayEquals("adv100".toCharArray(), converter.numberedBuf(100));
+    }
+
+    @Test
+    public void megaRamConverts128kRomAndHandlesMultiDigitNames() throws Exception, FlowException {
+        File romFile = tempFolder.newFile("gradius.rom");
+        byte[] rom128k = new byte[128 * 1024];
+        rom128k[0] = 'A';
+        rom128k[1] = 'B';
+        rom128k[2] = 0x10;
+        rom128k[3] = 0x40;
+        Files.write(romFile.toPath(), rom128k);
+
+        assertFlowError(rom128k, "gradius_std.rom", "file_size_invalid");
+
+        byte[] wavBytes = new VirtualCas(SampleRate.sr33075)
+                .megaRam(true)
+                .resetRom(true)
+                .convert(romFile.getAbsolutePath())
+                .toBytes();
+        assertTrue(wavBytes.length > 44);
     }
 
     private void assertFlowError(byte[] data, String name, String expectedMessage) throws Exception {

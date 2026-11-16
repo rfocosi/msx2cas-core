@@ -1,0 +1,424 @@
+package br.com.dod.vcas;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
+
+import org.junit.Assume;
+import org.junit.BeforeClass;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+import br.com.dod.vcas.exception.FlowException;
+import br.com.dod.vcas.model.SampleRate;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+/**
+ * End-to-end integration tests verifying MegaRAM (port 0x8E, Konami4) cassette loading
+ * headless inside {@code openmsx}.
+ */
+public class OpenMsxMegaRamIT {
+
+    private static final int EMULATED_LOAD_WAIT_SEC = 1800;
+    private static final long WALL_TIMEOUT_SEC = 90L;
+
+    private static String openMsxBin;
+    private static Map<String, Path> availableRoms;
+
+    @Rule
+    public TemporaryFolder tempFolder = new TemporaryFolder();
+
+    @BeforeClass
+    public static void detectEnvironment() throws IOException {
+        openMsxBin = findOpenMsxExecutable();
+        Assume.assumeTrue("openmsx binary not found; skipping MegaRAM integration tests", openMsxBin != null);
+        availableRoms = discoverSystemRoms();
+    }
+
+    @Test
+    public void gradienteExpertWithMegaRam512kBoots128kKonami4WithReset() throws Exception, FlowException {
+        Assume.assumeTrue("Gradiente Expert GPC-1 BIOS ROM not found",
+                hasRom("expert_1.1_basic-bios1.rom", "d6720845928ee848cfa88a86accb067397685f02"));
+
+        byte[] rom128k = buildKonami4CheckRom(128 * 1024, "MR");
+        String result = runCase("Gradiente_Expert_GPC-1", List.of("-ext", "megaram"),
+                "mr128r", rom128k, true, false, false);
+        assertTrue("Expected OKMR signature but got: " + result, result.contains("TAG=OKMR"));
+    }
+
+    @Test
+    public void gradienteExpertWithMegaRam512kBoots128kKonami4Direct() throws Exception, FlowException {
+        Assume.assumeTrue("Gradiente Expert GPC-1 BIOS ROM not found",
+                hasRom("expert_1.1_basic-bios1.rom", "d6720845928ee848cfa88a86accb067397685f02"));
+
+        byte[] rom128k = buildKonami4CheckRom(128 * 1024, "MR");
+        String result = runCase("Gradiente_Expert_GPC-1", List.of("-ext", "megaram"),
+                "mr128d", rom128k, false, false, false);
+        assertTrue("Expected OKMR signature but got: " + result, result.contains("TAG=OKMR"));
+    }
+
+    @Test
+    public void yamahaAx200WithMegaRam512kBoots256kKonami4WithReset() throws Exception, FlowException {
+        Assume.assumeTrue("Yamaha AX200 system ROMs not found",
+                hasAllRoms("ax200_basic-bios1.rom", "ax200_arabic.rom")
+                        && (hasAllRoms("ax200_music.rom") || hasAllRoms("sfg-05.rom")));
+
+        byte[] rom256k = buildKonami4CheckRom(256 * 1024, "25");
+        String result = runCase("Yamaha_AX200", List.of("-ext", "megaram"),
+                "ax256r", rom256k, true, true, false);
+        assertTrue("Expected OK25 signature but got: " + result, result.contains("TAG=OK25"));
+    }
+
+    @Test
+    public void gradienteExpertWithoutMegaRamReportsError() throws Exception, FlowException {
+        Assume.assumeTrue("Gradiente Expert GPC-1 BIOS ROM not found",
+                hasRom("expert_1.1_basic-bios1.rom", "d6720845928ee848cfa88a86accb067397685f02"));
+
+        byte[] rom128k = buildKonami4CheckRom(128 * 1024, "MR");
+        String result = runCase("Gradiente_Expert_GPC-1", List.of(),
+                "nomram", rom128k, true, false, true);
+        assertTrue("Expected NO MEGARAM error on screen but got: " + result,
+                result.contains("Fail: NO MEGARAM!"));
+    }
+
+    @Test
+    public void nationalCf2000WithRam512kDoesNotFalselyDetectMegaRam() throws Exception, FlowException {
+        Assume.assumeTrue("National CF-2000 BIOS ROM not found",
+                hasRom("cf-2000_basic-bios1.rom", "302afb5d8be26c758309ca3df611ae69cced2821"));
+
+        byte[] rom128k = buildKonami4CheckRom(128 * 1024, "MR");
+        String result = runCase("National_CF-2000", List.of("-ext", "ram512k"),
+                "cf512", rom128k, true, false, true);
+        assertTrue("Expected NO MEGARAM error with standard 512K RAM mapper but got: " + result,
+                result.contains("Fail: NO MEGARAM!"));
+    }
+
+    private String runCase(
+            String machine,
+            List<String> extraArgs,
+            String caseName,
+            byte[] romBytes,
+            boolean reset,
+            boolean holdCtrlOnBoot,
+            boolean expectErrorScreen) throws Exception, FlowException {
+        Path userData = prepareUserData();
+        File romFile = tempFolder.newFile(caseName + ".rom");
+        Files.write(romFile.toPath(), romBytes);
+
+        byte[] wav = new VirtualCas(SampleRate.sr22050)
+                .resetRom(reset)
+                .megaRam(true)
+                .convert(romFile.getAbsolutePath())
+                .toBytes();
+        Path wavPath = tempFolder.newFile(caseName + ".wav").toPath();
+        Files.write(wavPath, wav);
+
+        Path outFile = tempFolder.getRoot().toPath().resolve(caseName + ".out");
+        Path tclFile = tempFolder.getRoot().toPath().resolve(caseName + ".tcl");
+        int waitAfterSec = expectErrorScreen ? 150 : EMULATED_LOAD_WAIT_SEC;
+        Files.writeString(tclFile, buildOpenMsxTclScript(holdCtrlOnBoot, waitAfterSec, expectErrorScreen),
+                StandardCharsets.UTF_8);
+
+        List<String> cmd = new ArrayList<>();
+        cmd.add(openMsxBin);
+        cmd.add("-machine");
+        cmd.add(machine);
+        cmd.addAll(extraArgs);
+        cmd.add("-script");
+        cmd.add(tclFile.toAbsolutePath().toString());
+
+        ProcessBuilder pb = new ProcessBuilder(cmd);
+        pb.redirectErrorStream(true);
+        Map<String, String> env = pb.environment();
+        env.put("OPENMSX_USER_DATA", userData.toAbsolutePath().toString());
+        env.put("TEST_WAV", wavPath.toAbsolutePath().toString());
+        env.put("OUT_FILE", outFile.toAbsolutePath().toString());
+
+        Process proc = pb.start();
+        if (!proc.waitFor(WALL_TIMEOUT_SEC, TimeUnit.SECONDS)) {
+            proc.destroyForcibly();
+            throw new AssertionError("openMSX timed out after " + WALL_TIMEOUT_SEC + "s for " + machine + "/" + caseName);
+        }
+
+        String procLog = new String(proc.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        assertEquals("openMSX exited non-zero for " + machine + "/" + caseName + ": " + procLog, 0, proc.exitValue());
+        assertTrue("Missing openMSX output file for " + machine + "/" + caseName, Files.exists(outFile));
+        return Files.readString(outFile, StandardCharsets.UTF_8).trim();
+    }
+
+    /**
+     * Builds a synthetic Konami4 MegaROM ({@code totalBanks * 8KB}): writes a unique tag byte at
+     * offset 0 of every 8 KB bank (except Bank 0 which starts with {@code AB}), switches banks at
+     * {@code 0x6000}, {@code 0x8000}, and {@code 0xA000} including the last bank, verifies Bank 0
+     * stays read-only, and writes {@code OK<tag>} or {@code ER<tag>} to {@code 0xD000..0xD003}.
+     */
+    private static byte[] buildKonami4CheckRom(int sizeBytes, String tag2Chars) {
+        byte[] rom = new byte[sizeBytes];
+        int totalBanks = sizeBytes / 8192;
+        for (int b = 1; b < totalBanks; b++) {
+            rom[b * 8192] = (byte) ((b * 17 + 0x11) & 0xFF);
+        }
+
+        int initAddr = 0x4020;
+        rom[0] = 'A';
+        rom[1] = 'B';
+        rom[2] = (byte) (initAddr & 0xFF);
+        rom[3] = (byte) ((initAddr >> 8) & 0xFF);
+
+        int bankA = Math.min(4, totalBanks - 1);
+        int bankB = Math.min(9, totalBanks - 1);
+        int bankLast = totalBanks - 1;
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        // Standard MSX cartridge prologue: map Page 2 (0x8000-0xBFFF) to Page 1's cartridge slot
+        // because BIOS cartridge boot enters INIT with only Page 1 mapped to the cartridge.
+        byte[] mapPage2ToCartSlot = {
+                (byte) 0xCD, 0x38, 0x01,                   // CALL 0x0138 (RSLREG)
+                0x0F, 0x0F,                                // RRCA; RRCA
+                (byte) 0xE6, 0x03,                         // AND 0x03
+                0x4F, 0x06, 0x00,                          // LD C, A; LD B, 0
+                0x21, (byte) 0xC1, (byte) 0xFC,            // LD HL, 0xFCC1 (EXPTBL)
+                0x09,                                      // ADD HL, BC
+                0x7E, (byte) 0xE6, (byte) 0x80, (byte) 0xB1, // LD A, (HL); AND 0x80; OR C
+                0x4F,                                      // LD C, A
+                0x23, 0x23, 0x23, 0x23,                    // INC HL x4 (SLTTBL)
+                0x7E, (byte) 0xE6, 0x0C, (byte) 0xB1,      // LD A, (HL); AND 0x0C; OR C
+                0x26, (byte) 0x80,                         // LD H, 0x80
+                (byte) 0xCD, 0x24, 0x00                    // CALL 0x0024 (ENASLT)
+        };
+        out.writeBytes(mapPage2ToCartSlot);
+        List<Integer> failPatchPositions = new ArrayList<>();
+
+        // Select bankA at 0x6000, read (0x6000)
+        emitCheckBank(out, 0x6000, bankA, (bankA * 17 + 0x11) & 0xFF, failPatchPositions);
+        // Select bankB at 0x8000, read (0x8000)
+        emitCheckBank(out, 0x8000, bankB, (bankB * 17 + 0x11) & 0xFF, failPatchPositions);
+        // Select bankLast at 0xA000, read (0xA000)
+        emitCheckBank(out, 0xA000, bankLast, (bankLast * 17 + 0x11) & 0xFF, failPatchPositions);
+
+        // Verify Bank 0 at 0x4000 still holds 'A' (Mode 0 writes did not corrupt ROM)
+        out.write(0x3A); // LD A, (0x4000)
+        out.write(0x00);
+        out.write(0x40);
+        out.write(0xFE); // CP 'A'
+        out.write('A');
+        out.write(0x20); // JR NZ, fail
+        failPatchPositions.add(out.size());
+        out.write(0x00);
+
+        writeSignatureLoop(out, "OK" + tag2Chars);
+        int failPos = out.size();
+        writeSignatureLoop(out, "ER" + tag2Chars);
+
+        byte[] code = out.toByteArray();
+        for (int idx : failPatchPositions) {
+            code[idx] = (byte) (failPos - (idx + 1));
+        }
+        System.arraycopy(code, 0, rom, initAddr - 0x4000, code.length);
+        return rom;
+    }
+
+    private static void emitCheckBank(
+            ByteArrayOutputStream out, int windowAddr, int bankIdx, int expectedVal, List<Integer> failPatches) {
+        out.write(0x3E); // LD A, bankIdx
+        out.write(bankIdx & 0xFF);
+        out.write(0x32); // LD (windowAddr), A
+        out.write(windowAddr & 0xFF);
+        out.write((windowAddr >> 8) & 0xFF);
+        out.write(0x3A); // LD A, (windowAddr)
+        out.write(windowAddr & 0xFF);
+        out.write((windowAddr >> 8) & 0xFF);
+        out.write(0xFE); // CP expectedVal
+        out.write(expectedVal & 0xFF);
+        out.write(0x20); // JR NZ, fail
+        failPatches.add(out.size());
+        out.write(0x00);
+    }
+
+    private static void writeSignatureLoop(ByteArrayOutputStream out, String sig) {
+        byte[] bytes = sig.getBytes(StandardCharsets.US_ASCII);
+        out.write(0x21); // LD HL, 0xD000
+        out.write(0x00);
+        out.write(0xD0);
+        for (int i = 0; i < 4; i++) {
+            out.write(0x36); // LD (HL), byte
+            out.write(bytes[i]);
+            if (i < 3) {
+                out.write(0x23); // INC HL
+            }
+        }
+        out.write(0xFB); // EI
+        out.write(0x18); // JR $
+        out.write(0xFE);
+    }
+
+    private static String buildOpenMsxTclScript(boolean holdCtrlOnBoot, int maxWaitSec, boolean expectErrorScreen) {
+        String bootSequence = holdCtrlOnBoot
+                ? "keymatrixdown 6 2\n"
+                        + "after time 12 { keymatrixup 6 2 }\n"
+                        + "after time 13 {\n"
+                        + "    type_via_keybuf \"BLOAD\\\"CAS:\\\",R\\r\"\n"
+                        + "}\n"
+                : "after time 10 {\n"
+                        + "    type_via_keybuf \"BLOAD\\\"CAS:\\\",R\\r\"\n"
+                        + "}\n";
+        return "set renderer none\n"
+                + "set throttle off\n"
+                + "set max_wait " + maxWaitSec + "\n"
+                + "proc write_result {} {\n"
+                + "    global env\n"
+                + "    set b0 [debug read \"memory\" 0xD000]\n"
+                + "    set b1 [debug read \"memory\" 0xD001]\n"
+                + "    set b2 [debug read \"memory\" 0xD002]\n"
+                + "    set b3 [debug read \"memory\" 0xD003]\n"
+                + "    set fp [open $env(OUT_FILE) \"w\"]\n"
+                + "    puts $fp [format \"t=%.2f TAG=%c%c%c%c HEX=%02X%02X%02X%02X PC=%04X\" "
+                + "[machine_info time] $b0 $b1 $b2 $b3 $b0 $b1 $b2 $b3 [reg PC]]\n"
+                + "    catch { get_screen } scr\n"
+                + "    puts $fp \"SCREEN:\\n$scr\"\n"
+                + "    close $fp\n"
+                + "}\n"
+                + "after time $max_wait {\n"
+                + "    write_result\n"
+                + "    quit\n"
+                + "}\n"
+                + "cassetteplayer insert $env(TEST_WAV)\n"
+                + bootSequence
+                + "proc poll_done {} {\n"
+                + "    set b0 [debug read \"memory\" 0xD000]\n"
+                + "    set b1 [debug read \"memory\" 0xD001]\n"
+                + "    if {($b0 == 0x4F && $b1 == 0x4B) || ($b0 == 0x45 && $b1 == 0x52)} {\n"
+                + "        write_result\n"
+                + "        quit\n"
+                + "    }\n"
+                + (expectErrorScreen
+                        ? "    catch { get_screen } scr\n"
+                                + "    if {[string first \"Fail:\" $scr] >= 0} {\n"
+                                + "        write_result\n"
+                                + "        quit\n"
+                                + "    }\n"
+                        : "")
+                + "    after time 5 poll_done\n"
+                + "}\n"
+                + "after time 20 poll_done\n";
+    }
+
+    private Path prepareUserData() throws IOException {
+        Path userData = tempFolder.newFolder("openmsx_data_" + System.nanoTime()).toPath();
+        Path romsDir = Files.createDirectories(userData.resolve("systemroms"));
+        for (Map.Entry<String, Path> entry : availableRoms.entrySet()) {
+            Files.copy(entry.getValue(), romsDir.resolve(entry.getKey()), StandardCopyOption.REPLACE_EXISTING);
+        }
+        return userData;
+    }
+
+    private static boolean hasAllRoms(String... names) {
+        for (String name : names) {
+            if (!availableRoms.containsKey(name)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean hasRom(String name, String... expectedSha1s) throws IOException {
+        if (availableRoms.containsKey(name)) {
+            return true;
+        }
+        for (Path path : availableRoms.values()) {
+            String sha1 = sha1Hex(Files.readAllBytes(path));
+            for (String expectedSha1 : expectedSha1s) {
+                if (sha1.equals(expectedSha1)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static String sha1Hex(byte[] data) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-1").digest(data);
+            StringBuilder sb = new StringBuilder(digest.length * 2);
+            for (byte b : digest) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private static Map<String, Path> discoverSystemRoms() throws IOException {
+        Map<String, Path> roms = new HashMap<>();
+        List<Path> roots = new ArrayList<>();
+        addIfNonBlank(roots, System.getProperty("openmsx.roms"));
+        addIfNonBlank(roots, System.getenv("OPENMSX_SYSTEM_ROMS"));
+        String userData = System.getenv("OPENMSX_USER_DATA");
+        if (userData != null && !userData.isBlank()) {
+            roots.add(Paths.get(userData, "systemroms"));
+        }
+        roots.add(Paths.get(System.getProperty("user.home"), ".openMSX", "share", "systemroms"));
+        roots.add(Paths.get("/usr/share/openmsx/systemroms"));
+
+        for (Path root : roots) {
+            if (!Files.isDirectory(root)) {
+                continue;
+            }
+            try (Stream<Path> walk = Files.walk(root)) {
+                walk.filter(Files::isRegularFile).forEach(p -> {
+                    String name = p.getFileName().toString();
+                    String lower = name.toLowerCase();
+                    if ((lower.endsWith(".rom") || lower.endsWith(".bin")) && !roms.containsKey(name)) {
+                        roms.put(name, p);
+                    }
+                });
+            }
+        }
+        return roms;
+    }
+
+    private static void addIfNonBlank(List<Path> list, String value) {
+        if (value != null && !value.isBlank()) {
+            list.add(Paths.get(value));
+        }
+    }
+
+    private static String findOpenMsxExecutable() {
+        String prop = System.getProperty("openmsx.bin");
+        if (prop != null && !prop.isBlank() && Files.isExecutable(Paths.get(prop))) {
+            return prop;
+        }
+        String env = System.getenv("OPENMSX_BIN");
+        if (env != null && !env.isBlank() && Files.isExecutable(Paths.get(env))) {
+            return env;
+        }
+        String path = System.getenv("PATH");
+        if (path != null) {
+            for (String dir : path.split(File.pathSeparator)) {
+                Path candidate = Paths.get(dir, "openmsx");
+                if (Files.isExecutable(candidate)) {
+                    return candidate.toAbsolutePath().toString();
+                }
+            }
+        }
+        Path usrBin = Paths.get("/usr/bin/openmsx");
+        return Files.isExecutable(usrBin) ? usrBin.toString() : null;
+    }
+}

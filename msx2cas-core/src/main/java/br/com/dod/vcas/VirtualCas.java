@@ -23,6 +23,7 @@ public class VirtualCas {
     private final SampleRate sampleRate;
     private final FileConverterFactory converterFactory;
     private boolean reset;
+    private boolean megaRam;
 
     /**
      * Constructor for VirtualCas
@@ -67,6 +68,17 @@ public class VirtualCas {
     }
 
     /**
+     * Set whether to convert ROMs for MegaRAM cartridges (port 0x8E)
+     *
+     * @param megaRam True to enable MegaRAM mode, false otherwise
+     * @return This VirtualCas instance
+     */
+    public VirtualCas megaRam(boolean megaRam) {
+        this.megaRam = megaRam;
+        return this;
+    }
+
+    /**
      * Convert a single file to WAV format
      *
      * @param filePath Path to the file
@@ -75,7 +87,7 @@ public class VirtualCas {
      */
     public WavOutput convert(String filePath) throws FlowException {
         Converter converter = converterFactory.createConverter(
-                filePath, sampleRate, new ConversionOptions(reset));
+                filePath, sampleRate, new ConversionOptions(reset, megaRam));
         return converter.convert();
     }
 
@@ -99,7 +111,7 @@ public class VirtualCas {
      */
     public List<WavOutput> convert() throws FlowException {
         final List<WavOutput> wavList = new LinkedList<>();
-        ConversionOptions options = new ConversionOptions(reset);
+        ConversionOptions options = new ConversionOptions(reset, megaRam);
 
         for (String fileName : fileList) {
             Converter converter = converterFactory.createConverter(fileName, sampleRate, options);

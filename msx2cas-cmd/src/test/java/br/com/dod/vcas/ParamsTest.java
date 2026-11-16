@@ -8,11 +8,12 @@ public class ParamsTest {
 
     @Test
     public void allParams() {
-        String args[] = { "-i", "-r", "-w", "out.wav", "2400", "my.rom" };
+        String args[] = { "-i", "-r", "-m", "-w", "out.wav", "2400", "my.rom" };
 
         Params params = new Params(args);
 
         assertTrue(params.resetRom());
+        assertTrue(params.megaRam());
         assertEquals("my.rom", params.getFiles().get(0).inputName());
         assertEquals("out.wav", params.getFiles().get(0).outputName());
     }
