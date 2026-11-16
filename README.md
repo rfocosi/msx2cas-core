@@ -18,11 +18,32 @@ You can just download the compiled files for use (to run it requires Java 17):
 
 ## Source requirements
 
-- Java 17 or higher
-- [dotnet-types](https://github.com/rfocosi/dotnet-types)
+- Java 17 or higher (tested up to JDK 25)
+- Maven 3.x
+- `dotnet-types` (bundled in `msx2cas-core/resources/lib/dotnet-types.jar` and installed automatically during `mvn initialize`; source at [dotnet-types](https://github.com/rfocosi/dotnet-types))
 
-## Before run
+## Building and testing
 
-Execute `FileEncodingTest.java` a first time, before editing source, to generate comparable WAV's
+Compile and package all artifacts (`jar-with-dependencies`, Linux `msx2cas`, Windows `msx2cas.exe`, and release archives) from the repository root:
 
-Compile with `mvn clean initialize && mvn package` at sources root (requires Java 17+)
+```bash
+mvn clean initialize && mvn package
+```
+
+To generate or validate waveform regression fixtures before/after editing audio code:
+
+```bash
+mvn -pl msx2cas-core -Dtest=FileEncodingTest test
+```
+
+## CLI usage
+
+```bash
+java -jar msx2cas-cmd/target/msx2cas-cmd-5.0.0-jar-with-dependencies.jar [-i] [-r] [-m] [-t <auto|konami4|konami5|ascii8|ascii16>] [-w [<output-file>]] <1200|2400|3000|3600> <input-file> [<input-file>...]
+```
+
+- `-i`: Invert waveform (fix playback on some soundcards)
+- `-r`: Reset MSX after loading a ROM
+- `-m`: Load MegaROM (> 49 KB) into a MegaRAM cartridge (port `0x8E`)
+- `-t`: Force MegaROM mapper type (`auto`, `konami4`, `konami5`, `ascii8`, `ascii16`; implies `-m`)
+- `-w`: Write a WAV file (`<output-file>` or first 6 characters of `<input-file>`), instead of playing to the default sound interface

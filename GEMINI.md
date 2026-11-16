@@ -30,13 +30,15 @@ mvn clean initialize && mvn package
 
 ### Running the CLI
 After building, you can find the artifacts in `msx2cas-cmd/target/`:
-- **JAR with dependencies**: `java -jar msx2cas-cmd/target/msx2cas-cmd-4.0.0-jar-with-dependencies.jar [options] <input-file>`
+- **JAR with dependencies**: `java -jar msx2cas-cmd/target/msx2cas-cmd-5.0.0-jar-with-dependencies.jar [options] <input-file>`
 - **Linux Binary**: `./msx2cas-cmd/target/msx2cas`
 - **Windows EXE**: `msx2cas-cmd/target/msx2cas.exe`
 
 ### CLI Options
 - `-w [<output-file>]`: Write to WAV file instead of playing audio.
 - `-r`: Reset MSX after loading a ROM.
+- `-m`: Load MegaROM (> 49 KB) into MegaRAM cartridge (port `0x8E`).
+- `-t <auto|konami4|konami5|ascii8|ascii16>`: Force MegaROM mapper type (implies `-m`).
 - `-i`: Inverted waveform (default is normal).
 - `<1200|2400|3000|3600>`: Playback speed in bps (required).
 
@@ -51,10 +53,11 @@ After building, you can find the artifacts in `msx2cas-cmd/target/`:
 - **Indentation**: 4 spaces.
 - **Encoding**: UTF-8.
 - **Naming**: `PascalCase` for classes, `camelCase` for methods/fields, `UPPER_SNAKE_CASE` for constants.
-- **Architecture**: Format-specific conversion logic lives in `br.com.dod.vcas.converter.impl` (created via `FileConverterFactory`), waveform generation lives in `br.com.dod.vcas.wav.WavEncoder`, and `VirtualCas` acts as the main orchestrator.
+- **Architecture**: Format-specific conversion logic lives in `br.com.dod.vcas.converter.impl` (created via `FileConverterFactory`), MegaROM mapper detection and MegaRAM patching live in `MegaRomPatcher` (with `MapperType` in `br.com.dod.vcas.model`), waveform generation lives in `br.com.dod.vcas.wav.WavEncoder`, and `VirtualCas` acts as the main orchestrator.
 
 ### Testing Practices
 - **Standard Tests**: Run `mvn test` (or `mvn -pl msx2cas-core test` for the core module).
+- **Integration Tests**: Run `mvn -pl msx2cas-core verify` to execute `*IT` openMSX integration tests (requires `openmsx` and system ROMs).
 - **Regression Testing**: `FileEncodingTest.java` is used to guard against waveform regressions. 
 - **Workflow**: Run `mvn -pl msx2cas-core -Dtest=FileEncodingTest test` before editing waveform code to generate reference artifacts, and again after changes to verify parity.
 
