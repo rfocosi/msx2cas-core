@@ -10,7 +10,6 @@ The project is structured as a Maven multi-module project:
 ### Key Technologies
 - **Java 17+**: Core language and runtime.
 - **Maven**: Build and dependency management.
-- **dotnet-types**: A custom dependency (provided as a JAR in `msx2cas-core/resources/lib/`).
 - **JNativeHook**: Used in the CLI for global keyboard shortcuts during playback.
 - **Launch4j**: Used to generate Windows executables.
 - **Apache Ant**: Used via Maven plugin to create self-executing Linux binaries.
@@ -22,11 +21,10 @@ The project is structured as a Maven multi-module project:
 - Maven 3.x.
 
 ### Build Commands
-To build the entire project, including installing the local `dotnet-types` dependency and generating executables:
+To build the entire project and generate executables:
 ```bash
-mvn clean initialize && mvn package
+mvn clean package
 ```
-*Note: The `initialize` phase is critical as it installs the local `dotnet-types.jar` into your local Maven repository.*
 
 ### Running the CLI
 After building, you can find the artifacts in `msx2cas-cmd/target/`:

@@ -1,6 +1,5 @@
 package br.com.dod.vcas.converter.impl;
 
-import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.cas.CasEncoder;
 import br.com.dod.vcas.cas.CasOutput;
 import br.com.dod.vcas.converter.AbstractFileConverter;
@@ -91,10 +90,10 @@ public class BinConverter extends AbstractFileConverter {
      * @throws FlowException If there's an error calculating the CRC
      */
     private void calculateBinCRC(char[] loader) throws FlowException {
-        char binBegin = (char) ((new DWORD(inputMemPointer[2]).getLow()).intValue() * 0x100 + 
-                               (new DWORD(inputMemPointer[1]).getLow()).intValue());
-        char binEnd = (char) ((new DWORD(inputMemPointer[4]).getLow()).intValue() * 0x100 + 
-                             (new DWORD(inputMemPointer[3]).getLow()).intValue());
+        char binBegin = (char) (Byte.toUnsignedInt(inputMemPointer[2]) * 0x100 +
+                               Byte.toUnsignedInt(inputMemPointer[1]));
+        char binEnd = (char) (Byte.toUnsignedInt(inputMemPointer[4]) * 0x100 +
+                             Byte.toUnsignedInt(inputMemPointer[3]));
         
         loader[9] = calculateCRC(FILE_OFFSET, (binEnd - binBegin) + FILE_OFFSET);
     }

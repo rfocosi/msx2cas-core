@@ -14,5 +14,4 @@ msx2cas-core/resources/generated/*
 .gradle/
 build/
 .idea
-!dotnet-types.jar
 bin/

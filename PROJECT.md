@@ -42,7 +42,6 @@ Command-line interface for the core library:
 
 - Java 17 or higher (tested up to JDK 25)
 - Maven 3.x
-- `dotnet-types` (`msx2cas-core/resources/lib/dotnet-types.jar`, installed into the local Maven repository during `mvn initialize`; source at [dotnet-types](https://github.com/rfocosi/dotnet-types))
 - `JNativeHook` (`com.1stleg:jnativehook`) for global playback hotkeys
 
 ## How to Build & Test
@@ -50,7 +49,7 @@ Command-line interface for the core library:
 1. Ensure Java 17+ JDK and Maven 3.x are installed.
 2. Build both modules and package the JAR, Linux `msx2cas` binary, Windows `msx2cas.exe`, and release archives:
    ```bash
-   mvn clean initialize && mvn package
+   mvn clean package
    ```
 3. Run unit tests:
    ```bash

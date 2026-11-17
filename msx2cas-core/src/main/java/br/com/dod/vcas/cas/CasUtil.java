@@ -5,7 +5,6 @@ import java.io.File;
 import java.util.LinkedList;
 import java.util.List;
 
-import br.com.dod.dotnet.types.DWORD;
 import br.com.dod.vcas.util.FileCommons;
 import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.exception.FlowException;
@@ -129,7 +128,7 @@ public class CasUtil {
         for (int h=curPos; h < inputHandler.length - HEADER.length; h++) {
             boolean headerFound = true;
             for (int c=0; c < HEADER.length; c++) {
-                if (new DWORD(inputHandler[h+c]).getLow().intValue() != HEADER[c]) {
+                if (Byte.toUnsignedInt(inputHandler[h+c]) != HEADER[c]) {
                     headerFound = false;
                     break;
                 }
@@ -144,7 +143,7 @@ public class CasUtil {
             return false;
         }
         for (int c=0; c < header.length; c++) {
-            if (new DWORD(inputFile[idx+c]).getLow().intValue() != header[c]) {
+            if (Byte.toUnsignedInt(inputFile[idx+c]) != header[c]) {
                 return false;
             }
         }
