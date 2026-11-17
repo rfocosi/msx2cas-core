@@ -30,7 +30,7 @@ mvn clean initialize && mvn package
 
 ### Running the CLI
 After building, you can find the artifacts in `msx2cas-cmd/target/`:
-- **JAR with dependencies**: `java -jar msx2cas-cmd/target/msx2cas-cmd-5.0.0-jar-with-dependencies.jar [options] <input-file>`
+- **JAR with dependencies**: `java -jar msx2cas-cmd/target/msx2cas-cmd-6.0.0-jar-with-dependencies.jar [options] <input-file>`
 - **Linux Binary**: `./msx2cas-cmd/target/msx2cas`
 - **Windows EXE**: `msx2cas-cmd/target/msx2cas.exe`
 
