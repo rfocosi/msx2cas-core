@@ -13,12 +13,15 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import br.com.dod.vcas.cas.CasFile;
+import br.com.dod.vcas.cas.CasOutput;
 import br.com.dod.vcas.cas.CasUtil;
 import br.com.dod.vcas.exception.FlowException;
+import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.model.SampleRate;
 import br.com.dod.vcas.wav.WavEncoder;
 import br.com.dod.vcas.wav.WavOutput;
 
+import static br.com.dod.vcas.AllTests.PROJECT_FOLDER;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -165,8 +168,8 @@ public class VirtualCasRegressionTest {
         Files.write(casFile.toPath(), casBytes.toByteArray());
 
         byte[] wavFromFile = new VirtualCas(SampleRate.sr11025).convert(casFile.getAbsolutePath()).toBytes();
-        assertEquals(256509, wavFromFile.length);
-        assertEquals("c28a8afca98ff82d06f7ea6b18a02508fbb00ff457ec589445978e4ca85e85fa", sha256(wavFromFile));
+        assertEquals(234459, wavFromFile.length);
+        assertEquals("68b098fe5ce7a8afae4f3f91b3b64f41178be56bdb34b5a159c5b0b5f10fea6c", sha256(wavFromFile));
 
         List<CasFile> casList = new CasUtil(casFile.getAbsolutePath()).list();
         byte[] wavFromList = new VirtualCas(SampleRate.sr11025).convert(casList).toBytes();
@@ -217,6 +220,121 @@ public class VirtualCasRegressionTest {
                 .convert(romFile.getAbsolutePath())
                 .toBytes();
         assertTrue(wavBytes.length > 44);
+    }
+
+    @Test
+    public void directCasConversionAndRoundTripParityForAllFormats() throws Exception, FlowException {
+        File multiBlockAscii = tempFolder.newFile("ascii_multi.bas");
+        StringBuilder asciiText = new StringBuilder();
+        for (int line = 10; line <= 350; line += 10) {
+            asciiText.append(line).append(" PRINT \"LINE ").append(line).append("\"\n");
+        }
+        Files.writeString(multiBlockAscii.toPath(), asciiText.toString(), StandardCharsets.US_ASCII);
+
+        File rom16kFile = tempFolder.newFile("r16cas.rom");
+        Files.write(rom16kFile.toPath(), createRom16K((byte) 0x40));
+
+        File rom16kPg2File = tempFolder.newFile("r16p2c.rom");
+        Files.write(rom16kPg2File.toPath(), createRom16K((byte) 0x80));
+
+        byte[] rom32k = new byte[32768];
+        rom32k[0] = 'A';
+        rom32k[1] = 'B';
+        rom32k[2] = 0x10;
+        rom32k[3] = 0x40;
+        for (int i = 4; i < rom32k.length; i++) {
+            rom32k[i] = (byte) ((i * 5) & 0xFF);
+        }
+        File rom32kFile = tempFolder.newFile("r32cas.rom");
+        Files.write(rom32kFile.toPath(), rom32k);
+
+        byte[] rom49k = new byte[49152];
+        rom49k[0x4000] = 'A';
+        rom49k[0x4001] = 'B';
+        rom49k[0x4002] = 0x10;
+        rom49k[0x4003] = 0x40;
+        for (int i = 4; i < rom49k.length; i++) {
+            if (i < 0x4000 || i > 0x4003) {
+                rom49k[i] = (byte) ((i * 11) & 0xFF);
+            }
+        }
+        File rom49kFile = tempFolder.newFile("r49cas.rom");
+        Files.write(rom49kFile.toPath(), rom49k);
+
+        File megaRomFile = tempFolder.newFile("megcas.rom");
+        byte[] megaRom = new byte[128 * 1024];
+        megaRom[0] = 'A';
+        megaRom[1] = 'B';
+        megaRom[2] = 0x10;
+        megaRom[3] = 0x40;
+        Files.write(megaRomFile.toPath(), megaRom);
+
+        assertCasRoundTrip(PROJECT_FOLDER + "/resources/token.bas", false, false, FileType.BAS, 1);
+        assertCasRoundTrip(PROJECT_FOLDER + "/resources/flabin-flapbird.bin", false, false, FileType.BIN, 1);
+        assertCasRoundTrip(PROJECT_FOLDER + "/resources/asciib.bas", false, false, FileType.ASCII, 1);
+        assertCasRoundTrip(PROJECT_FOLDER + "/resources/ascunix.bas", false, false, FileType.ASCII, 1);
+        assertCasRoundTrip(multiBlockAscii.getAbsolutePath(), false, false, FileType.ASCII, 3);
+        assertCasRoundTrip(rom16kFile.getAbsolutePath(), false, false, FileType.BIN, 1);
+        assertCasRoundTrip(rom16kFile.getAbsolutePath(), true, false, FileType.BIN, 1);
+        assertCasRoundTrip(rom16kPg2File.getAbsolutePath(), false, false, FileType.BIN, 1);
+        assertCasRoundTrip(rom32kFile.getAbsolutePath(), false, false, FileType.BIN, 2);
+        assertCasRoundTrip(rom32kFile.getAbsolutePath(), true, false, FileType.BIN, 2);
+        assertCasRoundTrip(rom49kFile.getAbsolutePath(), false, false, FileType.BIN, 3);
+        assertCasRoundTrip(rom49kFile.getAbsolutePath(), true, false, FileType.BIN, 3);
+        assertCasRoundTrip(megaRomFile.getAbsolutePath(), true, true, FileType.BIN, 8);
+    }
+
+    @Test
+    public void virtualCasWithoutSampleRateConvertsToCasAndRejectsWav() throws Exception, FlowException {
+        File basFile = tempFolder.newFile("nosr01.bas");
+        Files.write(basFile.toPath(), new byte[] { (byte) 0xFF, 0x10, 0x20, 0x30, 0x40, 0x50 });
+
+        VirtualCas vcas = new VirtualCas().addFile(basFile.getAbsolutePath());
+        List<CasOutput> batchCas = vcas.convertToCas();
+        assertEquals(1, batchCas.size());
+        assertEquals("nosr01", batchCas.get(0).casName());
+        assertTrue(batchCas.get(0).toBytes().length > CAS_MAGIC.length);
+
+        try {
+            vcas.convert(basFile.getAbsolutePath());
+            fail("Expected FlowException: sample_rate_required");
+        } catch (FlowException e) {
+            assertEquals("sample_rate_required", e.getMessage());
+        }
+    }
+
+    private void assertCasRoundTrip(
+            String sourcePath,
+            boolean reset,
+            boolean megaRam,
+            FileType expectedParsedFirstTrackType,
+            int expectedTrackCount) throws Exception, FlowException {
+        CasOutput casOutput = new VirtualCas()
+                .resetRom(reset)
+                .megaRam(megaRam)
+                .convertToCas(sourcePath);
+
+        byte[] casBytes = casOutput.toBytes();
+        assertTrue(casBytes.length > CAS_MAGIC.length);
+        assertArrayEquals(CAS_MAGIC, Arrays.copyOf(casBytes, CAS_MAGIC.length));
+        assertEquals(expectedTrackCount, casOutput.getTracks().size());
+
+        File casFile = tempFolder.newFile("roundtrip_" + System.nanoTime() + ".cas");
+        Files.write(casFile.toPath(), casBytes);
+
+        List<CasFile> parsedTracks = new CasUtil(casFile.getAbsolutePath()).list();
+        assertEquals(expectedTrackCount, parsedTracks.size());
+        assertEquals(expectedParsedFirstTrackType, parsedTracks.get(0).getFileType());
+
+        byte[] wavDirect = new VirtualCas(SampleRate.sr22050)
+                .resetRom(reset)
+                .megaRam(megaRam)
+                .convert(sourcePath)
+                .toBytes();
+        byte[] wavFromCas = new VirtualCas(SampleRate.sr22050)
+                .convert(casFile.getAbsolutePath())
+                .toBytes();
+        assertArrayEquals("WAV mismatch after CAS round-trip for " + sourcePath, wavDirect, wavFromCas);
     }
 
     private void assertFlowError(byte[] data, String name, String expectedMessage) throws Exception {

@@ -21,6 +21,7 @@ import org.jnativehook.NativeHookException;
 import org.jnativehook.keyboard.NativeKeyEvent;
 import org.jnativehook.keyboard.NativeKeyListener;
 
+import br.com.dod.vcas.cas.CasOutput;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.wav.WavOutput;
 
@@ -39,16 +40,25 @@ public class Main extends JFrame implements NativeKeyListener {
 
             for (ConvertFile file : params.getFiles()) {
                 try {
-                    VirtualCas vcas = new VirtualCas(file.sampleRate())
-                            .resetRom(params.resetRom())
-                            .megaRam(params.megaRam())
-                            .mapperType(params.mapperType());
-                    WavOutput wavFile = vcas.convert(file.inputName());
-
-                    if (file.write()) {
-                        writeWav(wavFile, file);
+                    if (file.writeCas()) {
+                        VirtualCas vcas = new VirtualCas()
+                                .resetRom(params.resetRom())
+                                .megaRam(params.megaRam())
+                                .mapperType(params.mapperType());
+                        CasOutput casFile = vcas.convertToCas(file.inputName());
+                        writeOutputFile(casFile.toBytes(), file);
                     } else {
-                        play(wavFile, file.sampleRate());
+                        VirtualCas vcas = new VirtualCas(file.sampleRate())
+                                .resetRom(params.resetRom())
+                                .megaRam(params.megaRam())
+                                .mapperType(params.mapperType());
+                        WavOutput wavFile = vcas.convert(file.inputName());
+
+                        if (file.write()) {
+                            writeOutputFile(wavFile.toBytes(), file);
+                        } else {
+                            play(wavFile, file.sampleRate());
+                        }
                     }
                 } catch (FlowException|IOException e) {
                     System.out.println("Error: "+e.getMessage());
@@ -73,11 +83,9 @@ public class Main extends JFrame implements NativeKeyListener {
         Arrays.stream(Logger.getLogger("").getHandlers()).forEach( h -> h.setLevel(Level.OFF));
     }
 
-    private static void writeWav(WavOutput wavFile, ConvertFile file) throws Exception {
+    private static void writeOutputFile(byte[] outputBytes, ConvertFile file) throws Exception {
         Date start = Calendar.getInstance().getTime();
         System.out.println("Input file: " + file.inputName());
-
-        byte[] wavBytes = wavFile.toBytes();
 
         File outputFile = new File(file.outputName());
         int count = 1;
@@ -86,7 +94,7 @@ public class Main extends JFrame implements NativeKeyListener {
         }
 
         FileOutputStream outputStream = new FileOutputStream(outputFile);
-        outputStream.write(wavBytes);
+        outputStream.write(outputBytes);
         outputStream.close();
 
         Date end = Calendar.getInstance().getTime();

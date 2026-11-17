@@ -3,7 +3,9 @@ package br.com.dod.vcas.converter.impl;
 import java.util.ArrayList;
 import java.util.List;
 
+import br.com.dod.vcas.cas.CasEncoder;
 import br.com.dod.vcas.cas.CasFile;
+import br.com.dod.vcas.cas.CasOutput;
 import br.com.dod.vcas.cas.CasUtil;
 import br.com.dod.vcas.converter.AbstractFileConverter;
 import br.com.dod.vcas.exception.FlowException;
@@ -12,11 +14,21 @@ import br.com.dod.vcas.wav.WavEncoder;
 import br.com.dod.vcas.wav.WavOutput;
 
 /**
- * Converter for CAS files
+ * Converter for CAS files (CAS parsing pass-through and CAS to WAV encoding)
  */
 public class CasConverter extends AbstractFileConverter {
 
     private final List<CasFile> casFiles;
+
+    /**
+     * Constructor for CasConverter without WAV sample rate.
+     *
+     * @param inputFileName Name of the input file
+     * @throws FlowException If there's an error reading the file
+     */
+    public CasConverter(String inputFileName) throws FlowException {
+        this(inputFileName, null);
+    }
 
     /**
      * Constructor for CasConverter
@@ -34,6 +46,16 @@ public class CasConverter extends AbstractFileConverter {
     }
 
     /**
+     * Constructor for CasConverter with pre-loaded CAS files and no WAV sample rate.
+     *
+     * @param casFiles List of CAS files
+     * @throws FlowException If there's an error with the CAS files
+     */
+    public CasConverter(List<CasFile> casFiles) throws FlowException {
+        this(casFiles, null, null);
+    }
+
+    /**
      * Constructor for CasConverter with pre-loaded CAS files
      *
      * @param casFiles List of CAS files
@@ -41,7 +63,19 @@ public class CasConverter extends AbstractFileConverter {
      * @throws FlowException If there's an error with the CAS files
      */
     public CasConverter(List<CasFile> casFiles, SampleRate sampleRate) throws FlowException {
-        super(sampleRate);
+        this(casFiles, sampleRate, null);
+    }
+
+    /**
+     * Constructor for CasConverter with pre-loaded CAS files and retained input filename.
+     *
+     * @param casFiles List of CAS files
+     * @param sampleRate Sample rate to use for conversion
+     * @param inputFileName Original input file name
+     * @throws FlowException If there's an error with the CAS files
+     */
+    public CasConverter(List<CasFile> casFiles, SampleRate sampleRate, String inputFileName) throws FlowException {
+        super(sampleRate, inputFileName);
         if (casFiles == null || casFiles.isEmpty()) {
             throw FlowException.error("cas_list_empty");
         }
@@ -49,16 +83,19 @@ public class CasConverter extends AbstractFileConverter {
     }
 
     @Override
-    public WavOutput convert() throws FlowException {
-        WavEncoder encoder = new WavEncoder(sampleRate, inputFileName);
+    public CasOutput convertToCas() throws FlowException {
+        return new CasEncoder(this.casFiles, this.inputFileName);
+    }
 
-        encoder.encodePause(WavEncoder.FIRST_PAUSE_LENGTH);
+    @Override
+    public WavOutput convert() throws FlowException {
+        if (sampleRate == null) {
+            throw FlowException.error("sample_rate_required");
+        }
+        WavEncoder encoder = new WavEncoder(sampleRate, inputFileName);
 
         for (int i = 0; i < casFiles.size(); i++) {
             CasFile casFile = casFiles.get(i);
-            if (i > 0) {
-                encoder.encodePause(WavEncoder.SEPARATOR_PAUSE_LENGTH);
-            }
             encodeFile(encoder, casFile, i == 0);
         }
 
@@ -68,19 +105,24 @@ public class CasConverter extends AbstractFileConverter {
     }
 
     private void encodeFile(WavEncoder encoder, CasFile casFile, boolean isFirstTrack) {
-        encoder.encodeLongHeader();
-
-        boolean hasName = casFile.getName() != null && !casFile.getName().isEmpty();
-        if (isFirstTrack || hasName) {
-            encoder.encodeData(casFile.getHeader());
-            encoder.encodeData(hasName ? casFile.getName().toCharArray() : new char[0]);
-            encoder.encodePause(WavEncoder.DEFAULT_PAUSE_LENGTH);
+        if (casFile.isAsciiContinuation()) {
             encoder.encodeShortHeader();
+        } else {
+            encoder.encodePause(WavEncoder.FIRST_PAUSE_LENGTH);
+            encoder.encodeLongHeader();
+
+            boolean hasName = casFile.getName() != null && !casFile.getName().isEmpty();
+            if (isFirstTrack || hasName) {
+                encoder.encodeData(casFile.getHeader());
+                encoder.encodeData(hasName ? casFile.getName().toCharArray() : new char[0]);
+                encoder.encodePause(WavEncoder.DEFAULT_PAUSE_LENGTH);
+                encoder.encodeShortHeader();
+            }
         }
 
-        Byte[] content = casFile.getContent();
+        byte[] content = casFile.getContentBytes();
         if (content != null) {
-            for (Byte b : content) {
+            for (byte b : content) {
                 encoder.writeDataByte((char) (b & 0xFF));
             }
         }

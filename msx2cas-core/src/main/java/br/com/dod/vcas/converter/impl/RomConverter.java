@@ -1,12 +1,12 @@
 package br.com.dod.vcas.converter.impl;
 
+import br.com.dod.vcas.cas.CasEncoder;
+import br.com.dod.vcas.cas.CasOutput;
 import br.com.dod.vcas.converter.AbstractFileConverter;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.model.MapperType;
 import br.com.dod.vcas.model.SampleRate;
-import br.com.dod.vcas.wav.WavEncoder;
-import br.com.dod.vcas.wav.WavOutput;
 
 /**
  * Converter for MSX ROM files (16K, 32K, 49K, and MegaRAM up to 2MB)
@@ -24,6 +24,56 @@ public class RomConverter extends AbstractFileConverter {
     private boolean resetRom;
     private boolean megaRam;
     private MapperType mapperType;
+
+    /**
+     * Constructor for RomConverter without WAV sample rate.
+     *
+     * @param inputFileName Name of the input file
+     * @throws FlowException If reading or validating the ROM fails
+     */
+    public RomConverter(String inputFileName) throws FlowException {
+        this(inputFileName, (SampleRate) null, false, false, MapperType.AUTO);
+    }
+
+    /**
+     * Constructor for RomConverter with ROM reset option and no WAV sample rate.
+     *
+     * @param inputFileName Name of the input file
+     * @param resetRom True to reset the MSX after loading the ROM
+     * @throws FlowException If reading or validating the ROM fails
+     */
+    public RomConverter(String inputFileName, boolean resetRom) throws FlowException {
+        this(inputFileName, (SampleRate) null, resetRom, false, MapperType.AUTO);
+    }
+
+    /**
+     * Constructor for RomConverter with ROM reset and MegaRAM options and no WAV sample rate.
+     *
+     * @param inputFileName Name of the input file
+     * @param resetRom True to reset the MSX after loading the ROM
+     * @param megaRam True to target a MegaRAM cartridge (port 0x8E)
+     * @throws FlowException If reading or validating the ROM fails
+     */
+    public RomConverter(String inputFileName, boolean resetRom, boolean megaRam) throws FlowException {
+        this(inputFileName, (SampleRate) null, resetRom, megaRam, MapperType.AUTO);
+    }
+
+    /**
+     * Constructor for RomConverter with ROM reset, MegaRAM, and mapper type options and no WAV sample rate.
+     *
+     * @param inputFileName Name of the input file
+     * @param resetRom True to reset the MSX after loading the ROM
+     * @param megaRam True to target a MegaRAM cartridge (port 0x8E)
+     * @param mapperType Source MegaROM mapper type ({@link MapperType#AUTO} by default)
+     * @throws FlowException If reading or validating the ROM fails
+     */
+    public RomConverter(
+            String inputFileName,
+            boolean resetRom,
+            boolean megaRam,
+            MapperType mapperType) throws FlowException {
+        this(inputFileName, (SampleRate) null, resetRom, megaRam, mapperType);
+    }
 
     /**
      * Constructor for RomConverter
@@ -139,8 +189,8 @@ public class RomConverter extends AbstractFileConverter {
     }
 
     @Override
-    public WavOutput convert() throws FlowException {
-        WavEncoder encoder = new WavEncoder(sampleRate, inputFileName);
+    public CasOutput convertToCas() throws FlowException {
+        CasEncoder encoder = new CasEncoder(inputFileName);
         int fileSize = getFileSize();
 
         if (megaRam) {
@@ -165,14 +215,14 @@ public class RomConverter extends AbstractFileConverter {
         return ch;
     }
 
-    private void convertRom16K(WavEncoder encoder) throws FlowException {
+    private void convertRom16K(CasEncoder encoder) throws FlowException {
         char headId = getRomTypeHeader();
         encodeBlockHeader(encoder, getNameBuffer());
 
         if (headId < 0x80) {
             encodeRomBlock(encoder, headId, 0, inputMemPointer.length, RomLoaders.rom16K(resetRom));
         } else {
-            encoder.encodeShortHeader();
+            encoder.beginDataBlock();
             int startAddr = (headId & 0xF0) << 8;
             int stubAddr = startAddr + inputMemPointer.length;
             boolean appendInit32Stub = stubAddr + INIT32_TRAMPOLINE_SIZE <= MSX_WORK_AREA_START;
@@ -202,7 +252,7 @@ public class RomConverter extends AbstractFileConverter {
         }
     }
 
-    private void convertRom32K(WavEncoder encoder) throws FlowException {
+    private void convertRom32K(CasEncoder encoder) throws FlowException {
         char headId = getRomTypeHeader();
         if (headId > 0x80) {
             headId = 0x40;
@@ -217,7 +267,7 @@ public class RomConverter extends AbstractFileConverter {
         encodeRomBlock(encoder, headId, ROM_16K_MAX_SIZE, inputMemPointer.length, RomLoaders.rom32K(resetRom));
     }
 
-    private void convertRom49K(WavEncoder encoder) throws FlowException {
+    private void convertRom49K(CasEncoder encoder) throws FlowException {
         char headId = 0;
 
         encodeBlockHeader(encoder, getNameBuffer());
@@ -230,9 +280,9 @@ public class RomConverter extends AbstractFileConverter {
         encodeRomBlock(encoder, headId, ROM_32K_MAX_SIZE, inputMemPointer.length, RomLoaders.rom49K(resetRom));
     }
 
-    private void convertMegaRam(WavEncoder encoder) throws FlowException {
-        inputMemPointer = MegaRomPatcher.patchToKonami4(inputMemPointer, mapperType);
-        int fileSize = getFileSize();
+    private void convertMegaRam(CasEncoder encoder) throws FlowException {
+        byte[] patchedRom = MegaRomPatcher.patchToKonami4(inputMemPointer, mapperType);
+        int fileSize = patchedRom.length;
         int total8kBanks = (fileSize + BANK_8K_SIZE - 1) / BANK_8K_SIZE;
         int maxBankIndex = total8kBanks - 1;
         int totalBlocks = (fileSize + ROM_16K_MAX_SIZE - 1) / ROM_16K_MAX_SIZE;
@@ -253,9 +303,9 @@ public class RomConverter extends AbstractFileConverter {
             int endAddr = 0x4000 + blockSize;
             loader[5] = (char) endAddr;
             loader[6] = (char) (endAddr >> 8);
-            loader[7] = (char) inputMemPointer[2];
-            loader[8] = (char) inputMemPointer[3];
-            loader[9] = calculateCRC(blockStart, blockEnd);
+            loader[7] = (char) patchedRom[2];
+            loader[8] = (char) patchedRom[3];
+            loader[9] = calculateCRC(patchedRom, blockStart, blockEnd);
             loader[10] = (char) (blockIdx * 2);
             loader[11] = (char) maxBankIndex;
             if (isLastBlock) {
@@ -263,29 +313,25 @@ public class RomConverter extends AbstractFileConverter {
             }
 
             encodeBlockHeader(encoder, nameBuffer);
-            encoder.encodeShortHeader();
+            encoder.beginDataBlock();
             encoder.encodeData(buildBinaryAddressBuffer(sizeof(loader) + blockSize));
             encoder.encodeData(loader);
 
             for (int i = blockStart; i < blockEnd; i++) {
-                encoder.writeDataByte((char) inputMemPointer[i]);
+                encoder.writeDataByte((char) patchedRom[i]);
             }
         }
     }
 
-    private void encodeBlockHeader(WavEncoder encoder, char[] nameBuffer) {
-        encoder.encodePause(WavEncoder.FIRST_PAUSE_LENGTH);
-        encoder.encodeLongHeader();
-        encoder.encodeData(FileType.ROM.getHeader());
-        encoder.encodeData(nameBuffer);
-        encoder.encodePause(WavEncoder.DEFAULT_PAUSE_LENGTH);
+    private void encodeBlockHeader(CasEncoder encoder, char[] nameBuffer) {
+        encoder.beginTrack(FileType.ROM, nameBuffer);
     }
 
-    private void encodeRomBlock(WavEncoder encoder, char headId, int blockStart, int blockEnd, char[] loader)
+    private void encodeRomBlock(CasEncoder encoder, char headId, int blockStart, int blockEnd, char[] loader)
             throws FlowException {
         char romCRC = calculateCRC(blockStart, blockEnd);
 
-        encoder.encodeShortHeader();
+        encoder.beginDataBlock();
         encoder.encodeData(buildBinaryAddressBuffer(sizeof(loader) + blockEnd - blockStart));
 
         char addr = (char) (((headId & 0xF0) << 8) + blockStart);

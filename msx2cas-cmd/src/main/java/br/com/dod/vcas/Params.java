@@ -28,11 +28,19 @@ class Params {
             if (args.length < 2) {
                 displayUsage();
             } else {
-                LinkedHashSet<String> arguments = getArguments(args);
-                LinkedHashSet<String> fileList = getFileList(args);
+                boolean hasBps = hasBpsToken(args);
+                LinkedHashSet<String> arguments = hasBps
+                        ? getArguments(args)
+                        : new LinkedHashSet<>(asList(args));
+                LinkedHashSet<String> fileList = hasBps
+                        ? getFileList(args)
+                        : new LinkedHashSet<>();
 
-                String bps = getBps(arguments);
-                SampleRate sampleRate = SampleRate.fromBps(bps);
+                SampleRate sampleRate = null;
+                if (hasBps) {
+                    String bps = getBps(arguments);
+                    sampleRate = SampleRate.fromBps(bps);
+                }
 
                 boolean inverted = arguments.remove("-i");
                 this.resetRom = arguments.remove("-r");
@@ -43,17 +51,52 @@ class Params {
                 }
 
                 boolean write = arguments.remove("-w");
-                String outputFileName = "";
-                if (fileList.size() == 1 && write && arguments.size() == 1) {
-                    outputFileName = arguments.iterator().next();
-                    arguments.remove(outputFileName);
+                boolean writeCas = arguments.remove("-c");
+                if (write && writeCas) {
+                    throw new IllegalArgumentException("Cannot combine -w and -c");
+                }
+                if (!hasBps && (!writeCas || write)) {
+                    throw new IllegalArgumentException("Missing bps");
                 }
 
-                setFileList(fileList, outputFileName, sampleRate.invertWaveForm(inverted), write);
+                String outputFileName = "";
+                if (hasBps) {
+                    if (fileList.size() == 1 && (write || writeCas) && arguments.size() == 1) {
+                        outputFileName = arguments.iterator().next();
+                        arguments.remove(outputFileName);
+                    }
+                    if (!writeCas) {
+                        sampleRate = sampleRate.invertWaveForm(inverted);
+                    }
+                } else {
+                    List<String> remaining = new ArrayList<>(arguments);
+                    if (remaining.size() >= 2) {
+                        String first = remaining.get(0);
+                        if (first.toLowerCase().endsWith(".cas") || !first.matches(".+\\..{3}$")) {
+                            outputFileName = first;
+                            remaining.remove(0);
+                        }
+                    }
+                    fileList.addAll(remaining);
+                    if (fileList.size() != 1) {
+                        outputFileName = "";
+                    }
+                }
+
+                setFileList(fileList, outputFileName, sampleRate, write, writeCas);
             }
         } catch (Throwable e) {
             displayUsage();
         }
+    }
+
+    private static boolean hasBpsToken(String[] args) {
+        for (String arg : args) {
+            if (arg.matches("\\d{4}")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private LinkedHashSet<String> getFileList(String[] args) {
@@ -128,34 +171,47 @@ class Params {
         return null;
     }
 
-    private void setFileList(LinkedHashSet<String> args, String outputFilename, SampleRate sampleRate, boolean write) {
+    private void setFileList(
+            LinkedHashSet<String> args,
+            String outputFilename,
+            SampleRate sampleRate,
+            boolean write,
+            boolean writeCas) {
+        String extension = writeCas ? ".cas" : ".wav";
         args.stream()
                 .filter(file -> file.matches(".+\\..{3}$"))
-                .forEachOrdered(file -> files.add(new ConvertFile(file, getOutputFilename(file, outputFilename), sampleRate, write)));
+                .filter(file -> !writeCas || !file.toLowerCase().endsWith(".cas"))
+                .forEachOrdered(file -> files.add(new ConvertFile(
+                        file,
+                        getOutputFilename(file, outputFilename, extension),
+                        sampleRate,
+                        write,
+                        writeCas)));
     }
 
-    private static String getOutputFilename(String inputFilename, String outputFilename) {
+    private static String getOutputFilename(String inputFilename, String outputFilename, String extension) {
         String out;
         if (outputFilename.isEmpty()) {
             out = FileCommons.getCasName(inputFilename);
         } else {
             out = outputFilename.replaceFirst("(.+)\\..{1,3}$", "$1");
         }
-        return out + ".wav";
+        return out + extension;
     }
 
     private static void displayUsage() {
         System.out.println("""
-                Usage: msx2cas [-i] [-r] [-m] [-t <auto|konami4|konami5|ascii8|ascii16>] [-w [<output-file>]] <%s> <input-file> [<input-file>...]
+                Usage: msx2cas [-i] [-r] [-m] [-t <auto|konami4|konami5|ascii8|ascii16>] [-c [<output-file>] | -w [<output-file>]] [<%s>] <input-file> [<input-file>...]
                 -i: Invert Waveform (fix playback on some soundboards)
                 -r: Reset MSX after loading a ROM
                 -m: Load MegaROM into MegaRAM cartridge (port 0x8E)
                 -t: Force MegaROM mapper type (auto, konami4, konami5, ascii8, ascii16; implies -m)
+                -c: Write a CAS file with <output-file> name OR with file token name (first 6 characters from <filename>); <bps> is optional
                 -w: Write a WAV file with <output-file> name OR with file token name (first 6 characters from <filename>)
-                <%s>: Playback speed in bps
+                <%s>: Playback speed in bps (required unless -c is used)
                 <input-file>: A ROM, BIN, LDR, MX1, MX2, CAS, BAS(tokenize or not) file
                 
-                If you do not use -w, MSX2Cas will play to default sound interface""".formatted(SPEEDS, SPEEDS));
+                If you do not use -c or -w, MSX2Cas will play to default sound interface""".formatted(SPEEDS, SPEEDS));
     }
 
     List<ConvertFile> getFiles() {

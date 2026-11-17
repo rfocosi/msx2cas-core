@@ -13,6 +13,29 @@ import br.com.dod.vcas.model.SampleRate;
 public interface FileConverterFactory {
 
     /**
+     * Create a converter for the specified file without a WAV sample rate
+     *
+     * @param filePath Path to the file
+     * @return Appropriate converter for the file type
+     * @throws FlowException If there's an error creating the converter
+     */
+    default Converter createConverter(String filePath) throws FlowException {
+        return createConverter(filePath, (SampleRate) null, ConversionOptions.defaults());
+    }
+
+    /**
+     * Create a converter for the specified file with conversion options and no WAV sample rate
+     *
+     * @param filePath Path to the file
+     * @param options Conversion options
+     * @return Appropriate converter for the file type
+     * @throws FlowException If there's an error creating the converter
+     */
+    default Converter createConverter(String filePath, ConversionOptions options) throws FlowException {
+        return createConverter(filePath, (SampleRate) null, options);
+    }
+
+    /**
      * Create a converter for the specified file using default options
      *
      * @param filePath Path to the file
@@ -44,6 +67,20 @@ public interface FileConverterFactory {
      * @throws FlowException If there's an error creating the converter
      */
     Converter createConverter(List<CasFile> casFiles, SampleRate sampleRate) throws FlowException;
+
+    /**
+     * Create a converter for pre-loaded CAS entries with retained input file name
+     *
+     * @param casFiles List of CAS files
+     * @param sampleRate Sample rate to use for conversion
+     * @param inputFileName Original input file name
+     * @return CAS converter
+     * @throws FlowException If there's an error creating the converter
+     */
+    default Converter createConverter(List<CasFile> casFiles, SampleRate sampleRate, String inputFileName)
+            throws FlowException {
+        return createConverter(casFiles, sampleRate);
+    }
 
     /**
      * Detect the file type for the given file path

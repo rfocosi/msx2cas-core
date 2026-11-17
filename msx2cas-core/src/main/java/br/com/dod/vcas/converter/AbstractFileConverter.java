@@ -1,8 +1,11 @@
 package br.com.dod.vcas.converter;
 
+import br.com.dod.vcas.cas.CasOutput;
+import br.com.dod.vcas.converter.impl.CasConverter;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.SampleRate;
 import br.com.dod.vcas.util.FileCommons;
+import br.com.dod.vcas.wav.WavOutput;
 
 /**
  * Abstract base class for file converters
@@ -18,12 +21,39 @@ public abstract class AbstractFileConverter implements Converter {
 
     /**
      * Constructor for converters backed by in-memory data rather than a file path.
+     */
+    protected AbstractFileConverter() {
+        this((SampleRate) null, null);
+    }
+
+    /**
+     * Constructor for converters backed by in-memory data rather than a file path.
      *
      * @param sampleRate Sample rate to use for conversion
      */
     protected AbstractFileConverter(SampleRate sampleRate) {
-        this.inputFileName = null;
+        this(sampleRate, null);
+    }
+
+    /**
+     * Constructor for converters backed by in-memory data while retaining an input file name.
+     *
+     * @param sampleRate Sample rate to use for conversion
+     * @param inputFileName Original input file name (optional)
+     */
+    protected AbstractFileConverter(SampleRate sampleRate, String inputFileName) {
+        this.inputFileName = inputFileName;
         this.sampleRate = sampleRate;
+    }
+
+    /**
+     * Constructor for AbstractFileConverter without a WAV sample rate.
+     *
+     * @param inputFileName Name of the input file
+     * @throws FlowException If there's an error reading the file
+     */
+    protected AbstractFileConverter(String inputFileName) throws FlowException {
+        this(inputFileName, null);
     }
     
     /**
@@ -38,6 +68,15 @@ public abstract class AbstractFileConverter implements Converter {
         this.sampleRate = sampleRate;
         this.inputMemPointer = FileCommons.readFile(inputFileName);
         validateMinFileSize();
+    }
+
+    @Override
+    public WavOutput convert() throws FlowException {
+        if (sampleRate == null) {
+            throw FlowException.error("sample_rate_required");
+        }
+        CasOutput casOutput = convertToCas();
+        return new CasConverter(casOutput.getTracks(), sampleRate, inputFileName).convert();
     }
     
     /**
@@ -116,12 +155,25 @@ public abstract class AbstractFileConverter implements Converter {
      * @throws FlowException If block bounds are invalid
      */
     protected char calculateCRC(int blockStart, int blockEnd) throws FlowException {
+        return calculateCRC(inputMemPointer, blockStart, blockEnd);
+    }
+
+    /**
+     * Calculate the CRC for a block of data in the supplied buffer
+     *
+     * @param data Source buffer
+     * @param blockStart Start of the block
+     * @param blockEnd End of the block
+     * @return Calculated CRC
+     * @throws FlowException If block bounds are invalid
+     */
+    protected static char calculateCRC(byte[] data, int blockStart, int blockEnd) throws FlowException {
         if (blockStart > blockEnd) {
             throw FlowException.error("header_conflicting_information");
         }
         char crc = 0;
         for (int i = blockStart; i < blockEnd; i++) {
-            crc += (char) inputMemPointer[i];
+            crc += (char) data[i];
         }
         return crc;
     }

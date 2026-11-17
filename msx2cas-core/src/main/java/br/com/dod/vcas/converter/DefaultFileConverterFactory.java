@@ -44,6 +44,12 @@ public class DefaultFileConverterFactory implements FileConverterFactory {
     }
 
     @Override
+    public Converter createConverter(List<CasFile> casFiles, SampleRate sampleRate, String inputFileName)
+            throws FlowException {
+        return new CasConverter(casFiles, sampleRate, inputFileName);
+    }
+
+    @Override
     public FileType detectFileType(String filePath) throws FlowException {
         try {
             return FileCommons.detectFile(filePath);
