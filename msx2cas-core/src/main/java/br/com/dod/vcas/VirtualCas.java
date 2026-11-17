@@ -13,6 +13,7 @@ import br.com.dod.vcas.converter.FileConverterFactory;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.MapperType;
 import br.com.dod.vcas.model.SampleRate;
+import br.com.dod.vcas.wav.CasPcmInputStream;
 import br.com.dod.vcas.wav.WavOutput;
 
 /**
@@ -139,6 +140,23 @@ public class VirtualCas {
     }
 
     /**
+     * Convert a CAS output to WAV format
+     *
+     * @param casOutput CAS output to convert
+     * @return WAV output
+     * @throws FlowException If there's an error during conversion
+     */
+    public WavOutput convert(CasOutput casOutput) throws FlowException {
+        if (sampleRate == null) {
+            throw FlowException.error("sample_rate_required");
+        }
+        if (casOutput == null) {
+            throw FlowException.error("cas_list_empty");
+        }
+        return converterFactory.createConverter(casOutput.getTracks(), sampleRate, casOutput.casName()).convert();
+    }
+
+    /**
      * Convert a single file to WAV format (via CAS conversion)
      *
      * @param filePath Path to the file
@@ -149,8 +167,35 @@ public class VirtualCas {
         if (sampleRate == null) {
             throw FlowException.error("sample_rate_required");
         }
-        CasOutput casOutput = convertToCas(filePath);
-        return converterFactory.createConverter(casOutput.getTracks(), sampleRate, filePath).convert();
+        return convert(convertToCas(filePath));
+    }
+
+    /**
+     * Open a streaming 8-bit unsigned mono PCM input stream directly from CAS output
+     *
+     * @param casOutput CAS output to stream as PCM audio
+     * @return Streaming PCM input stream
+     * @throws FlowException If sample rate is missing or CAS tracks are empty
+     */
+    public CasPcmInputStream openPcmStream(CasOutput casOutput) throws FlowException {
+        if (sampleRate == null) {
+            throw FlowException.error("sample_rate_required");
+        }
+        return new CasPcmInputStream(casOutput, sampleRate);
+    }
+
+    /**
+     * Open a streaming 8-bit unsigned mono PCM input stream directly from an input file via CAS conversion
+     *
+     * @param filePath Path to the file
+     * @return Streaming PCM input stream
+     * @throws FlowException If sample rate is missing or conversion fails
+     */
+    public CasPcmInputStream openPcmStream(String filePath) throws FlowException {
+        if (sampleRate == null) {
+            throw FlowException.error("sample_rate_required");
+        }
+        return openPcmStream(convertToCas(filePath));
     }
 
     /**

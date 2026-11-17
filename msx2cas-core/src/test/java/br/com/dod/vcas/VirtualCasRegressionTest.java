@@ -18,6 +18,7 @@ import br.com.dod.vcas.cas.CasUtil;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.model.SampleRate;
+import br.com.dod.vcas.wav.CasPcmInputStream;
 import br.com.dod.vcas.wav.WavEncoder;
 import br.com.dod.vcas.wav.WavOutput;
 
@@ -301,6 +302,197 @@ public class VirtualCasRegressionTest {
         } catch (FlowException e) {
             assertEquals("sample_rate_required", e.getMessage());
         }
+    }
+
+    @Test
+    public void pcmStreamMatchesWavPayloadAndSupportsReset() throws Exception, FlowException {
+        File multiBlockAscii = tempFolder.newFile("ascii_stream.bas");
+        StringBuilder asciiText = new StringBuilder();
+        for (int line = 10; line <= 350; line += 10) {
+            asciiText.append(line).append(" PRINT \"STREAM ").append(line).append("\"\n");
+        }
+        Files.writeString(multiBlockAscii.toPath(), asciiText.toString(), StandardCharsets.US_ASCII);
+
+        File rom16kFile = tempFolder.newFile("s16cas.rom");
+        Files.write(rom16kFile.toPath(), createRom16K((byte) 0x40));
+
+        byte[] rom32k = new byte[32768];
+        rom32k[0] = 'A';
+        rom32k[1] = 'B';
+        rom32k[2] = 0x10;
+        rom32k[3] = 0x40;
+        for (int i = 4; i < rom32k.length; i++) {
+            rom32k[i] = (byte) ((i * 5) & 0xFF);
+        }
+        File rom32kFile = tempFolder.newFile("s32cas.rom");
+        Files.write(rom32kFile.toPath(), rom32k);
+
+        byte[] rom49k = new byte[49152];
+        rom49k[0x4000] = 'A';
+        rom49k[0x4001] = 'B';
+        rom49k[0x4002] = 0x10;
+        rom49k[0x4003] = 0x40;
+        for (int i = 4; i < rom49k.length; i++) {
+            if (i < 0x4000 || i > 0x4003) {
+                rom49k[i] = (byte) ((i * 11) & 0xFF);
+            }
+        }
+        File rom49kFile = tempFolder.newFile("s49cas.rom");
+        Files.write(rom49kFile.toPath(), rom49k);
+
+        File megaRomFile = tempFolder.newFile("smegac.rom");
+        byte[] megaRom = new byte[128 * 1024];
+        megaRom[0] = 'A';
+        megaRom[1] = 'B';
+        megaRom[2] = 0x10;
+        megaRom[3] = 0x40;
+        Files.write(megaRomFile.toPath(), megaRom);
+
+        ByteArrayOutputStream multiCasBytes = new ByteArrayOutputStream();
+        multiCasBytes.write(CAS_MAGIC);
+        byte[] binHeader = new byte[10];
+        Arrays.fill(binHeader, (byte) 0xD0);
+        multiCasBytes.write(binHeader);
+        multiCasBytes.write("GAME01".getBytes(StandardCharsets.US_ASCII));
+        multiCasBytes.write(CAS_MAGIC);
+        multiCasBytes.write(new byte[] { 1, 2, 3, 4, 5, 6 });
+        multiCasBytes.write(CAS_MAGIC);
+        multiCasBytes.write(new byte[] { 0x10, 0x20, 0x30, 0x40 });
+        File multiCasFile = tempFolder.newFile("smulti.cas");
+        Files.write(multiCasFile.toPath(), multiCasBytes.toByteArray());
+
+        try {
+            assertPcmStreamMatchesWav(PROJECT_FOLDER + "/resources/token.bas", false, false,
+                    SampleRate.sr11025.invertWaveForm(false));
+            assertPcmStreamMatchesWav(PROJECT_FOLDER + "/resources/flabin-flapbird.bin", false, false,
+                    SampleRate.sr11025.invertWaveForm(true));
+            assertPcmStreamMatchesWav(PROJECT_FOLDER + "/resources/asciib.bas", false, false,
+                    SampleRate.sr27563.invertWaveForm(false));
+            assertPcmStreamMatchesWav(multiBlockAscii.getAbsolutePath(), false, false,
+                    SampleRate.sr27563.invertWaveForm(true));
+            assertPcmStreamMatchesWav(rom16kFile.getAbsolutePath(), true, false,
+                    SampleRate.sr22050.invertWaveForm(false));
+            assertPcmStreamMatchesWav(rom32kFile.getAbsolutePath(), false, false,
+                    SampleRate.sr22050.invertWaveForm(true));
+            assertPcmStreamMatchesWav(rom49kFile.getAbsolutePath(), true, false,
+                    SampleRate.sr11025.invertWaveForm(false));
+            assertPcmStreamMatchesWav(megaRomFile.getAbsolutePath(), true, true,
+                    SampleRate.sr33075.invertWaveForm(false));
+            assertPcmStreamMatchesWav(multiCasFile.getAbsolutePath(), false, false,
+                    SampleRate.sr11025.invertWaveForm(true));
+        } finally {
+            for (SampleRate rate : SampleRate.values()) {
+                rate.invertWaveForm(false);
+            }
+        }
+
+        // Reset mid-stream, reset at EOF, and compare single-byte read() vs chunked read()
+        VirtualCas vcas = new VirtualCas(SampleRate.sr11025);
+        CasOutput basCas = vcas.convertToCas(PROJECT_FOLDER + "/resources/token.bas");
+        byte[] expectedPayload = extractWavPayload(vcas.convert(basCas).toBytes());
+
+        try (CasPcmInputStream stream = vcas.openPcmStream(basCas)) {
+            assertTrue(stream.markSupported());
+            assertEquals("token", stream.casName());
+            assertEquals(expectedPayload.length, stream.getTotalSamples());
+
+            byte[] midRead = new byte[12345];
+            int n = stream.read(midRead, 0, midRead.length);
+            assertEquals(midRead.length, n);
+            assertEquals(midRead.length, stream.getPosition());
+            assertArrayEquals(Arrays.copyOf(expectedPayload, midRead.length), midRead);
+
+            stream.reset();
+            assertEquals(0L, stream.getPosition());
+            assertEquals(expectedPayload.length, stream.available());
+
+            ByteArrayOutputStream singleByteOut = new ByteArrayOutputStream(expectedPayload.length);
+            int sample;
+            while ((sample = stream.read()) != -1) {
+                singleByteOut.write(sample);
+            }
+            assertEquals(expectedPayload.length, stream.getPosition());
+            assertEquals(0, stream.available());
+            assertArrayEquals(expectedPayload, singleByteOut.toByteArray());
+
+            stream.reset();
+            assertEquals(0L, stream.getPosition());
+            byte[] replayed = readAllChunked(stream, 137);
+            assertArrayEquals(expectedPayload, replayed);
+        }
+
+        // Validation checks for missing sampleRate and empty/null CAS input
+        VirtualCas noRateVcas = new VirtualCas();
+        try {
+            noRateVcas.openPcmStream(basCas);
+            fail("Expected FlowException: sample_rate_required");
+        } catch (FlowException e) {
+            assertEquals("sample_rate_required", e.getMessage());
+        }
+        try {
+            noRateVcas.openPcmStream(PROJECT_FOLDER + "/resources/token.bas");
+            fail("Expected FlowException: sample_rate_required");
+        } catch (FlowException e) {
+            assertEquals("sample_rate_required", e.getMessage());
+        }
+        try {
+            vcas.convert((CasOutput) null);
+            fail("Expected FlowException: cas_list_empty");
+        } catch (FlowException e) {
+            assertEquals("cas_list_empty", e.getMessage());
+        }
+        try {
+            vcas.openPcmStream((CasOutput) null);
+            fail("Expected FlowException: cas_list_empty");
+        } catch (FlowException e) {
+            assertEquals("cas_list_empty", e.getMessage());
+        }
+        try {
+            new CasPcmInputStream(List.of(), SampleRate.sr11025);
+            fail("Expected FlowException: cas_list_empty");
+        } catch (FlowException e) {
+            assertEquals("cas_list_empty", e.getMessage());
+        }
+    }
+
+    private void assertPcmStreamMatchesWav(
+            String sourcePath,
+            boolean reset,
+            boolean megaRam,
+            SampleRate sampleRate) throws Exception, FlowException {
+        VirtualCas vcas = new VirtualCas(sampleRate)
+                .resetRom(reset)
+                .megaRam(megaRam);
+        CasOutput casOutput = vcas.convertToCas(sourcePath);
+        byte[] expectedPayload = extractWavPayload(vcas.convert(casOutput).toBytes());
+
+        try (CasPcmInputStream stream = vcas.openPcmStream(casOutput)) {
+            assertEquals(casOutput.casName(), stream.casName());
+            assertEquals(expectedPayload.length, stream.getTotalSamples());
+            byte[] actualPayload = readAllChunked(stream, 137);
+            assertEquals(stream.getTotalSamples(), stream.getPosition());
+            assertEquals(0, stream.available());
+            assertArrayEquals("PCM mismatch for " + sourcePath + " at " + sampleRate.bps(), expectedPayload, actualPayload);
+        }
+
+        try (CasPcmInputStream fromPath = vcas.openPcmStream(sourcePath)) {
+            byte[] actualFromPath = readAllChunked(fromPath, 4096);
+            assertArrayEquals("PCM mismatch from path for " + sourcePath, expectedPayload, actualFromPath);
+        }
+    }
+
+    private static byte[] extractWavPayload(byte[] wavBytes) {
+        return Arrays.copyOfRange(wavBytes, 44, wavBytes.length);
+    }
+
+    private static byte[] readAllChunked(CasPcmInputStream stream, int chunkSize) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream((int) stream.getTotalSamples());
+        byte[] buffer = new byte[chunkSize];
+        int read;
+        while ((read = stream.read(buffer, 0, buffer.length)) != -1) {
+            out.write(buffer, 0, read);
+        }
+        return out.toByteArray();
     }
 
     private void assertCasRoundTrip(

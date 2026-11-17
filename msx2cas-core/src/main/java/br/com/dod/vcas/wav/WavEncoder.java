@@ -1,8 +1,5 @@
 package br.com.dod.vcas.wav;
 
-import java.util.LinkedList;
-import java.util.List;
-
 import br.com.dod.vcas.model.SampleRate;
 import br.com.dod.vcas.util.FileCommons;
 import br.com.dod.vcas.util.WavHeader;
@@ -14,28 +11,34 @@ public class WavEncoder implements WavOutput {
     
     private static final int START_BIT = 0;
     private static final int STOP_BIT = 1;
-    private static final char SILENCE = 0x80;
-    private static final char HIGH_AMPLITUDE = 0xFF;
-    private static final char LOW_AMPLITUDE = 0;
+    private static final int BIT_SAMPLES = 10;
+    static final int SAMPLES_PER_BYTE = 11 * BIT_SAMPLES;
+    static final char SILENCE = 0x80;
+    static final byte SILENCE_BYTE = (byte) SILENCE;
+    private static final byte HIGH_AMPLITUDE_BYTE = (byte) 0xFF;
+    private static final byte LOW_AMPLITUDE_BYTE = 0;
     
-    private static final long LENGTH_CORRECTION = 25;
+    static final long LENGTH_CORRECTION = 25;
     
-    private static final double LONG_HEADER_LENGTH = 20d/3d;
-    private static final double SHORT_HEADER_LENGTH = 5d/3d;
+    static final double LONG_HEADER_LENGTH = 20d/3d;
+    static final double SHORT_HEADER_LENGTH = 5d/3d;
     
     public static final char SEPARATOR_PAUSE_LENGTH = 4;  // Seconds
     public static final char FIRST_PAUSE_LENGTH = 2;      // Seconds
     public static final char DEFAULT_PAUSE_LENGTH = 1;    // Second
     
-    private static final char[] ZERO_BIT = {LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, 
-                                           HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
-    private static final char[] SET_BIT = {LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, 
-                                          LOW_AMPLITUDE, LOW_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE};
+    private static final byte[] ZERO_BIT_BYTES = {LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, 
+                                           HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE};
+    private static final byte[] SET_BIT_BYTES = {LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, 
+                                          LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE};
     
-    private static final char[] ZERO_BIT_I = {HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, HIGH_AMPLITUDE, 
-                                             LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE};
-    private static final char[] SET_BIT_I = {HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, 
-                                            HIGH_AMPLITUDE, HIGH_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE, LOW_AMPLITUDE};
+    private static final byte[] ZERO_BIT_I_BYTES = {HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, 
+                                             LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE};
+    private static final byte[] SET_BIT_I_BYTES = {HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, 
+                                            HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE};
+
+    private static final byte[][] BYTE_SAMPLES_NORMAL = buildByteSampleTable(false);
+    private static final byte[][] BYTE_SAMPLES_INVERTED = buildByteSampleTable(true);
     
     private final SampleRate sampleRate;
     private final StringBuilder outputBuffer = new StringBuilder();
@@ -50,6 +53,82 @@ public class WavEncoder implements WavOutput {
     public WavEncoder(SampleRate sampleRate, String inputFileName) {
         this.sampleRate = sampleRate;
         this.inputFileName = inputFileName;
+    }
+
+    /**
+     * Calculate the exact number of header bit repetitions for a sample rate and header length.
+     *
+     * @param sampleRate Target sample rate
+     * @param length Header duration in seconds
+     * @return Number of 10-sample set-bit repetitions
+     */
+    public static int headerIterations(SampleRate sampleRate, double length) {
+        return Math.max(0, (int) Math.ceil(sampleRate.headerEncodingLength(length)));
+    }
+
+    /**
+     * Calculate the exact number of silence samples for a pause duration.
+     *
+     * @param sampleRate Target sample rate
+     * @param pauseLength Pause duration in seconds
+     * @param lengthCorrection Additional sample count correction
+     * @return Number of silence PCM samples
+     */
+    public static int pauseSampleCount(SampleRate sampleRate, int pauseLength, long lengthCorrection) {
+        return (int) (sampleRate.intValue() * pauseLength + lengthCorrection);
+    }
+
+    /**
+     * Get the 10-sample set-bit waveform array for the requested polarity.
+     *
+     * @param inverted True for inverted waveform polarity
+     * @return Copy of the 10-byte set-bit waveform pattern
+     */
+    public static byte[] setBitPattern(boolean inverted) {
+        return setBitSlice(inverted).clone();
+    }
+
+    /**
+     * Get the 110-sample waveform array for an unsigned byte (start bit, 8 LSB-first data bits, 2 stop bits).
+     *
+     * @param unsignedByte Byte value to encode (low 8 bits used)
+     * @param inverted True for inverted waveform polarity
+     * @return Copy of the 110-byte PCM waveform pattern
+     */
+    public static byte[] encodeByteSamples(int unsignedByte, boolean inverted) {
+        return dataByteSlice(unsignedByte, inverted).clone();
+    }
+
+    static byte[] setBitSlice(boolean inverted) {
+        return inverted ? SET_BIT_I_BYTES : SET_BIT_BYTES;
+    }
+
+    static byte[] dataByteSlice(int unsignedByte, boolean inverted) {
+        byte[][] table = inverted ? BYTE_SAMPLES_INVERTED : BYTE_SAMPLES_NORMAL;
+        return table[unsignedByte & 0xFF];
+    }
+
+    private static byte[][] buildByteSampleTable(boolean inverted) {
+        byte[][] table = new byte[256][SAMPLES_PER_BYTE];
+        byte[] zeroBit = inverted ? ZERO_BIT_I_BYTES : ZERO_BIT_BYTES;
+        byte[] setBit = inverted ? SET_BIT_I_BYTES : SET_BIT_BYTES;
+
+        for (int value = 0; value < 256; value++) {
+            byte[] samples = table[value];
+            System.arraycopy(START_BIT == 0 ? zeroBit : setBit, 0, samples, 0, BIT_SAMPLES);
+
+            int bitMask = 1;
+            for (int bitIndex = 1; bitIndex < 9; bitIndex++) {
+                byte[] pattern = (value & bitMask) != 0 ? setBit : zeroBit;
+                System.arraycopy(pattern, 0, samples, bitIndex * BIT_SAMPLES, BIT_SAMPLES);
+                bitMask <<= 1;
+            }
+
+            byte[] stopPattern = STOP_BIT == 0 ? zeroBit : setBit;
+            System.arraycopy(stopPattern, 0, samples, 9 * BIT_SAMPLES, BIT_SAMPLES);
+            System.arraycopy(stopPattern, 0, samples, 10 * BIT_SAMPLES, BIT_SAMPLES);
+        }
+        return table;
     }
     
     /**
@@ -67,37 +146,16 @@ public class WavEncoder implements WavOutput {
     }
     
     /**
-     * Get the appropriate bit pattern for a set bit based on wave inversion
-     * 
-     * @return Bit pattern for a set bit
-     */
-    private char[] setBit() {
-        return sampleRate.isInverted() ? SET_BIT_I : SET_BIT;
-    }
-    
-    /**
-     * Get the appropriate bit pattern for a zero bit based on wave inversion
-     * 
-     * @return Bit pattern for a zero bit
-     */
-    private char[] zeroBit() {
-        return sampleRate.isInverted() ? ZERO_BIT_I : ZERO_BIT;
-    }
-    
-    /**
      * Encode a header of the specified length
      * 
      * @param length Length of the header
      */
     private void encodeHeader(double length) {
-        final List<Character> chars = new LinkedList<>();
-        
-        for (int j = 0; j < sampleRate.headerEncodingLength(length); j++) {
-            for (char b : setBit()) {
-                chars.add(b);
-            }
+        byte[] setBit = setBitSlice(sampleRate.isInverted());
+        int iterations = headerIterations(sampleRate, length);
+        for (int j = 0; j < iterations; j++) {
+            writeSampleBytes(setBit);
         }
-        writeByteChars(chars);
     }
     
     /**
@@ -130,13 +188,10 @@ public class WavEncoder implements WavOutput {
      * @param lengthCorrection Correction to apply to the pause length
      */
     public void encodePause(int pauseLength, long lengthCorrection) {
-        int charLength = (int) (sampleRate.intValue() * pauseLength + lengthCorrection);
-        final List<Character> chars = new LinkedList<>();
-        
+        int charLength = pauseSampleCount(sampleRate, pauseLength, lengthCorrection);
         for (int j = 0; j < charLength; j++) {
-            chars.add(SILENCE);
+            outputBuffer.append(SILENCE);
         }
-        writeByteChars(chars);
     }
     
     /**
@@ -145,51 +200,12 @@ public class WavEncoder implements WavOutput {
      * @param ch Byte to write
      */
     public void writeDataByte(char ch) {
-        final List<Integer> bitStream = fillBitStream(ch);
-        final List<Character> dataByte = new LinkedList<>();
-        
-        for (Integer b : bitStream) {
-            char[] bit = (b == 0 ? zeroBit() : setBit());
-            for (char c : bit) {
-                dataByte.add(c);
-            }
-        }
-        
-        writeByteChars(dataByte);
+        writeSampleBytes(dataByteSlice(ch & 0xFF, sampleRate.isInverted()));
     }
-    
-    /**
-     * Fill a bit stream with the bits from a character
-     * 
-     * @param ch Character to convert to bits
-     * @return List of bits (0 or 1)
-     */
-    private List<Integer> fillBitStream(char ch) {
-        final List<Integer> bitStream = new LinkedList<>();
-        
-        bitStream.add(START_BIT);
-        
-        char bitMask = 1;
-        for (int i = 1; i < 9; i++) {
-            if ((ch & bitMask) != 0) bitStream.add(1);
-            else bitStream.add(0);
-            bitMask = (char) (bitMask << 1);
-        }
-        
-        bitStream.add(STOP_BIT);
-        bitStream.add(STOP_BIT);
-        
-        return bitStream;
-    }
-    
-    /**
-     * Write a list of characters to the output buffer
-     * 
-     * @param ch List of characters to write
-     */
-    private void writeByteChars(List<Character> ch) {
-        for (char c : ch) {
-            outputBuffer.append(c);
+
+    private void writeSampleBytes(byte[] samples) {
+        for (byte b : samples) {
+            outputBuffer.append((char) (b & 0xFF));
         }
     }
     

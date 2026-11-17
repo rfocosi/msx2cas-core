@@ -8,7 +8,7 @@
     <groupId>br.com.dod.msx2cas</groupId>
     <artifactId>msx2cas-cmd</artifactId>
     <packaging>jar</packaging>
-    <version>6.0.0</version>
+    <version>6.1.0</version>
     
     <description>MSX2CAS command-line tool that converts MSX files to cassette audio WAV files</description>
     <inceptionYear>2020</inceptionYear>
@@ -22,7 +22,7 @@
         <dependency>
             <groupId>br.com.dod.msx2cas</groupId>
             <artifactId>core</artifactId>
-            <version>6.0.0</version>
+            <version>6.1.0</version>
         </dependency>
 
         <dependency>
