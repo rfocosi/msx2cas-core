@@ -28,6 +28,7 @@ public class VirtualCas {
     private boolean reset;
     private boolean megaRam;
     private MapperType mapperType = MapperType.AUTO;
+    private boolean turbo;
 
     /**
      * Constructor for VirtualCas when targeting CAS output only
@@ -110,6 +111,17 @@ public class VirtualCas {
     }
 
     /**
+     * Set whether to use the Stage-2 Z80 turbo loader for supported formats (ROM, BIN)
+     *
+     * @param turbo True to enable the custom Z80 turbo loader, false for standard BIOS loading
+     * @return This VirtualCas instance
+     */
+    public VirtualCas turbo(boolean turbo) {
+        this.turbo = turbo;
+        return this;
+    }
+
+    /**
      * Convert a single file to CAS format
      *
      * @param filePath Path to the file
@@ -118,7 +130,7 @@ public class VirtualCas {
      */
     public CasOutput convertToCas(String filePath) throws FlowException {
         Converter converter = converterFactory.createConverter(
-                filePath, new ConversionOptions(reset, megaRam, mapperType));
+                filePath, new ConversionOptions(reset, megaRam, mapperType, turbo));
         return converter.convertToCas();
     }
 
@@ -130,7 +142,7 @@ public class VirtualCas {
      */
     public List<CasOutput> convertToCas() throws FlowException {
         final List<CasOutput> casList = new LinkedList<>();
-        ConversionOptions options = new ConversionOptions(reset, megaRam, mapperType);
+        ConversionOptions options = new ConversionOptions(reset, megaRam, mapperType, turbo);
 
         for (String fileName : fileList) {
             Converter converter = converterFactory.createConverter(fileName, options);

@@ -15,6 +15,7 @@ public class ParamsTest {
 
         assertTrue(params.resetRom());
         assertTrue(params.megaRam());
+        assertFalse(params.turbo());
         assertEquals("my.rom", params.getFiles().get(0).inputName());
         assertEquals("out.wav", params.getFiles().get(0).outputName());
     }
@@ -151,6 +152,28 @@ public class ParamsTest {
         Params params = new Params(args);
 
         assertEquals(0, params.getFiles().size());
+    }
+
+    @Test
+    public void turboFlagEnablesTurboMode() {
+        String[] args = { "-f", "-r", "-w", "out.wav", "2400", "my.rom" };
+
+        Params params = new Params(args);
+
+        assertTrue(params.turbo());
+        assertTrue(params.resetRom());
+        assertEquals(1, params.getFiles().size());
+        assertEquals("my.rom", params.getFiles().get(0).inputName());
+        assertEquals("out.wav", params.getFiles().get(0).outputName());
+    }
+
+    @Test
+    public void turboFlagRejectsCasOutputCombination() {
+        Params withoutBps = new Params(new String[] { "-f", "-c", "my.rom" });
+        assertEquals(0, withoutBps.getFiles().size());
+
+        Params withBps = new Params(new String[] { "-f", "-c", "2400", "my.rom" });
+        assertEquals(0, withBps.getFiles().size());
     }
 
 }

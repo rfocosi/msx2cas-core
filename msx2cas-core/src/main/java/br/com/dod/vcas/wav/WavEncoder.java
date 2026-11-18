@@ -12,7 +12,9 @@ public class WavEncoder implements WavOutput {
     private static final int START_BIT = 0;
     private static final int STOP_BIT = 1;
     private static final int BIT_SAMPLES = 10;
+    private static final int TURBO_BOOT_3600_BIT_SAMPLES = 16;
     static final int SAMPLES_PER_BYTE = 11 * BIT_SAMPLES;
+    static final int SAMPLES_PER_BYTE_16 = 11 * TURBO_BOOT_3600_BIT_SAMPLES;
     static final char SILENCE = 0x80;
     static final byte SILENCE_BYTE = (byte) SILENCE;
     private static final byte HIGH_AMPLITUDE_BYTE = (byte) 0xFF;
@@ -22,6 +24,9 @@ public class WavEncoder implements WavOutput {
     
     static final double LONG_HEADER_LENGTH = 20d/3d;
     static final double SHORT_HEADER_LENGTH = 5d/3d;
+    static final int TURBO_PILOT_CYCLES = 512;
+    static final int TURBO_SYNC_BYTE = 0xA5;
+    static final int TURBO_PAUSE_DIVISOR = 4;
     
     public static final char SEPARATOR_PAUSE_LENGTH = 4;  // Seconds
     public static final char FIRST_PAUSE_LENGTH = 2;      // Seconds
@@ -37,8 +42,54 @@ public class WavEncoder implements WavOutput {
     private static final byte[] SET_BIT_I_BYTES = {HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, 
                                             HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE};
 
-    private static final byte[][] BYTE_SAMPLES_NORMAL = buildByteSampleTable(false);
-    private static final byte[][] BYTE_SAMPLES_INVERTED = buildByteSampleTable(true);
+    // Symmetric 16-sample BIOS patterns (~2067 bps) for Stage-1 bootstrap at 33075 Hz (3600 bps)
+    // so MSX1 BIOS TAPION/TAPIN (~238 T-state loop) loads Stage 1 before switching to 33075 Hz Stage 2.
+    private static final byte[] ZERO_BIT_16_BYTES = {
+            LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE,
+            LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE,
+            HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE,
+            HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE
+    };
+    private static final byte[] SET_BIT_16_BYTES = {
+            LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE,
+            HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE,
+            LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE,
+            HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE
+    };
+    private static final byte[] ZERO_BIT_16_I_BYTES = {
+            HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE,
+            HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE,
+            LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE,
+            LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE
+    };
+    private static final byte[] SET_BIT_16_I_BYTES = {
+            HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE,
+            LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE,
+            HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE,
+            LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE
+    };
+
+    private static final byte[] TURBO_ZERO_BIT_BYTES = {
+            LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE
+    };
+    private static final byte[] TURBO_ONE_BIT_BYTES = {
+            LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE,
+            HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE
+    };
+    private static final byte[] TURBO_ZERO_BIT_I_BYTES = {
+            HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE
+    };
+    private static final byte[] TURBO_ONE_BIT_I_BYTES = {
+            HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE, HIGH_AMPLITUDE_BYTE,
+            LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE, LOW_AMPLITUDE_BYTE
+    };
+
+    private static final byte[][] BYTE_SAMPLES_NORMAL = buildByteSampleTable(BIT_SAMPLES, ZERO_BIT_BYTES, SET_BIT_BYTES);
+    private static final byte[][] BYTE_SAMPLES_INVERTED = buildByteSampleTable(BIT_SAMPLES, ZERO_BIT_I_BYTES, SET_BIT_I_BYTES);
+    private static final byte[][] BYTE_SAMPLES_16_NORMAL = buildByteSampleTable(TURBO_BOOT_3600_BIT_SAMPLES, ZERO_BIT_16_BYTES, SET_BIT_16_BYTES);
+    private static final byte[][] BYTE_SAMPLES_16_INVERTED = buildByteSampleTable(TURBO_BOOT_3600_BIT_SAMPLES, ZERO_BIT_16_I_BYTES, SET_BIT_16_I_BYTES);
+    private static final byte[][] TURBO_BYTE_SAMPLES_NORMAL = buildTurboByteSampleTable(false);
+    private static final byte[][] TURBO_BYTE_SAMPLES_INVERTED = buildTurboByteSampleTable(true);
     
     private final SampleRate sampleRate;
     private final StringBuilder outputBuffer = new StringBuilder();
@@ -66,6 +117,17 @@ public class WavEncoder implements WavOutput {
         return Math.max(0, (int) Math.ceil(sampleRate.headerEncodingLength(length)));
     }
 
+    static boolean use16SampleBootstrap(SampleRate sampleRate, boolean hasTurboPayload) {
+        return hasTurboPayload && sampleRate == SampleRate.sr33075;
+    }
+
+    static int headerIterations(SampleRate sampleRate, double length, boolean hasTurboPayload) {
+        if (use16SampleBootstrap(sampleRate, hasTurboPayload)) {
+            return Math.max(0, (int) Math.ceil(sampleRate.intValue() * length / TURBO_BOOT_3600_BIT_SAMPLES));
+        }
+        return headerIterations(sampleRate, length);
+    }
+
     /**
      * Calculate the exact number of silence samples for a pause duration.
      *
@@ -76,6 +138,16 @@ public class WavEncoder implements WavOutput {
      */
     public static int pauseSampleCount(SampleRate sampleRate, int pauseLength, long lengthCorrection) {
         return (int) (sampleRate.intValue() * pauseLength + lengthCorrection);
+    }
+
+    /**
+     * Calculate the exact number of silence samples for the inter-stage pause before a Stage-2 turbo block.
+     *
+     * @param sampleRate Target sample rate
+     * @return Number of silence PCM samples (0.25 seconds)
+     */
+    public static int turboPauseSampleCount(SampleRate sampleRate) {
+        return sampleRate.intValue() / TURBO_PAUSE_DIVISOR;
     }
 
     /**
@@ -100,33 +172,79 @@ public class WavEncoder implements WavOutput {
     }
 
     static byte[] setBitSlice(boolean inverted) {
+        return setBitSlice(inverted, false);
+    }
+
+    static byte[] setBitSlice(boolean inverted, boolean use16Sample) {
+        if (use16Sample) {
+            return inverted ? SET_BIT_16_I_BYTES : SET_BIT_16_BYTES;
+        }
         return inverted ? SET_BIT_I_BYTES : SET_BIT_BYTES;
     }
 
     static byte[] dataByteSlice(int unsignedByte, boolean inverted) {
-        byte[][] table = inverted ? BYTE_SAMPLES_INVERTED : BYTE_SAMPLES_NORMAL;
+        return dataByteSlice(unsignedByte, inverted, false);
+    }
+
+    static byte[] dataByteSlice(int unsignedByte, boolean inverted, boolean use16Sample) {
+        byte[][] table;
+        if (use16Sample) {
+            table = inverted ? BYTE_SAMPLES_16_INVERTED : BYTE_SAMPLES_16_NORMAL;
+        } else {
+            table = inverted ? BYTE_SAMPLES_INVERTED : BYTE_SAMPLES_NORMAL;
+        }
         return table[unsignedByte & 0xFF];
     }
 
-    private static byte[][] buildByteSampleTable(boolean inverted) {
-        byte[][] table = new byte[256][SAMPLES_PER_BYTE];
-        byte[] zeroBit = inverted ? ZERO_BIT_I_BYTES : ZERO_BIT_BYTES;
-        byte[] setBit = inverted ? SET_BIT_I_BYTES : SET_BIT_BYTES;
+    static byte[] turboZeroBitSlice(boolean inverted) {
+        return inverted ? TURBO_ZERO_BIT_I_BYTES : TURBO_ZERO_BIT_BYTES;
+    }
+
+    static byte[] turboOneBitSlice(boolean inverted) {
+        return inverted ? TURBO_ONE_BIT_I_BYTES : TURBO_ONE_BIT_BYTES;
+    }
+
+    static byte[] turboByteSlice(int unsignedByte, boolean inverted) {
+        byte[][] table = inverted ? TURBO_BYTE_SAMPLES_INVERTED : TURBO_BYTE_SAMPLES_NORMAL;
+        return table[unsignedByte & 0xFF];
+    }
+
+    private static byte[][] buildTurboByteSampleTable(boolean inverted) {
+        byte[][] table = new byte[256][];
+        byte[] zeroBit = turboZeroBitSlice(inverted);
+        byte[] oneBit = turboOneBitSlice(inverted);
+
+        for (int value = 0; value < 256; value++) {
+            int setBits = Integer.bitCount(value);
+            byte[] samples = new byte[(8 - setBits) * zeroBit.length + setBits * oneBit.length];
+            int offset = 0;
+            for (int bitIndex = 0; bitIndex < 8; bitIndex++) {
+                byte[] pattern = ((value >> bitIndex) & 1) != 0 ? oneBit : zeroBit;
+                System.arraycopy(pattern, 0, samples, offset, pattern.length);
+                offset += pattern.length;
+            }
+            table[value] = samples;
+        }
+        return table;
+    }
+
+    private static byte[][] buildByteSampleTable(int bitSamples, byte[] zeroBit, byte[] setBit) {
+        byte[][] table = new byte[256][11 * bitSamples];
 
         for (int value = 0; value < 256; value++) {
             byte[] samples = table[value];
-            System.arraycopy(START_BIT == 0 ? zeroBit : setBit, 0, samples, 0, BIT_SAMPLES);
+            System.arraycopy(START_BIT == 0 ? zeroBit : setBit, 0, samples, 0, bitSamples);
 
             int bitMask = 1;
             for (int bitIndex = 1; bitIndex < 9; bitIndex++) {
                 byte[] pattern = (value & bitMask) != 0 ? setBit : zeroBit;
-                System.arraycopy(pattern, 0, samples, bitIndex * BIT_SAMPLES, BIT_SAMPLES);
+                System.arraycopy(pattern, 0, samples, bitIndex * bitSamples, bitSamples);
                 bitMask <<= 1;
             }
 
             byte[] stopPattern = STOP_BIT == 0 ? zeroBit : setBit;
-            System.arraycopy(stopPattern, 0, samples, 9 * BIT_SAMPLES, BIT_SAMPLES);
-            System.arraycopy(stopPattern, 0, samples, 10 * BIT_SAMPLES, BIT_SAMPLES);
+            System.arraycopy(stopPattern, 0, samples, 9 * bitSamples, bitSamples);
+            System.arraycopy(stopPattern, 0, samples, 10 * bitSamples, bitSamples);
         }
         return table;
     }
@@ -135,24 +253,44 @@ public class WavEncoder implements WavOutput {
      * Encode a long header
      */
     public void encodeLongHeader() {
-        encodeHeader(LONG_HEADER_LENGTH);
+        encodeLongHeader(false);
+    }
+
+    /**
+     * Encode a long header, scaling Stage-1 bootstrap bits when needed for 3600 bps turbo mode.
+     *
+     * @param hasTurboPayload True when this track carries a Stage-2 turbo payload
+     */
+    public void encodeLongHeader(boolean hasTurboPayload) {
+        encodeHeader(LONG_HEADER_LENGTH, hasTurboPayload);
     }
     
     /**
      * Encode a short header
      */
     public void encodeShortHeader() {
-        encodeHeader(SHORT_HEADER_LENGTH);
+        encodeShortHeader(false);
+    }
+
+    /**
+     * Encode a short header, scaling Stage-1 bootstrap bits when needed for 3600 bps turbo mode.
+     *
+     * @param hasTurboPayload True when this track carries a Stage-2 turbo payload
+     */
+    public void encodeShortHeader(boolean hasTurboPayload) {
+        encodeHeader(SHORT_HEADER_LENGTH, hasTurboPayload);
     }
     
     /**
      * Encode a header of the specified length
      * 
      * @param length Length of the header
+     * @param hasTurboPayload True when this track carries a Stage-2 turbo payload
      */
-    private void encodeHeader(double length) {
-        byte[] setBit = setBitSlice(sampleRate.isInverted());
-        int iterations = headerIterations(sampleRate, length);
+    private void encodeHeader(double length, boolean hasTurboPayload) {
+        boolean use16Sample = use16SampleBootstrap(sampleRate, hasTurboPayload);
+        byte[] setBit = setBitSlice(sampleRate.isInverted(), use16Sample);
+        int iterations = headerIterations(sampleRate, length, hasTurboPayload);
         for (int j = 0; j < iterations; j++) {
             writeSampleBytes(setBit);
         }
@@ -164,11 +302,21 @@ public class WavEncoder implements WavOutput {
      * @param data Data to encode
      */
     public void encodeData(char[] data) {
+        encodeData(data, false);
+    }
+
+    /**
+     * Encode data as a series of bytes, scaling Stage-1 bootstrap bits when needed for 3600 bps turbo mode.
+     *
+     * @param data Data to encode
+     * @param hasTurboPayload True when this track carries a Stage-2 turbo payload
+     */
+    public void encodeData(char[] data, boolean hasTurboPayload) {
         if (data == null) {
             return;
         }
         for (char datum : data) {
-            writeDataByte(datum);
+            writeDataByte(datum, hasTurboPayload);
         }
     }
     
@@ -195,12 +343,50 @@ public class WavEncoder implements WavOutput {
     }
     
     /**
+     * Encode a Stage-2 Z80 turbo payload block (0.25s pause, 512-cycle pilot, sync pulse + 0xA5,
+     * LSB-first PWM payload bytes, and trailing 0-bit transition).
+     *
+     * @param payload Raw payload bytes to encode
+     */
+    public void encodeTurboBlock(byte[] payload) {
+        if (payload == null || payload.length == 0) {
+            return;
+        }
+        int pauseSamples = turboPauseSampleCount(sampleRate);
+        for (int i = 0; i < pauseSamples; i++) {
+            outputBuffer.append(SILENCE);
+        }
+        boolean inverted = sampleRate.isInverted();
+        byte[] pilotBit = turboZeroBitSlice(inverted);
+        for (int i = 0; i < TURBO_PILOT_CYCLES; i++) {
+            writeSampleBytes(pilotBit);
+        }
+        writeSampleBytes(turboOneBitSlice(inverted));
+        writeSampleBytes(turboByteSlice(TURBO_SYNC_BYTE, inverted));
+        for (byte b : payload) {
+            writeSampleBytes(turboByteSlice(b & 0xFF, inverted));
+        }
+        writeSampleBytes(pilotBit);
+    }
+
+    /**
      * Write a data byte to the output buffer
      * 
      * @param ch Byte to write
      */
     public void writeDataByte(char ch) {
-        writeSampleBytes(dataByteSlice(ch & 0xFF, sampleRate.isInverted()));
+        writeDataByte(ch, false);
+    }
+
+    /**
+     * Write a data byte to the output buffer, scaling Stage-1 bootstrap bits when needed for 3600 bps turbo mode.
+     *
+     * @param ch Byte to write
+     * @param hasTurboPayload True when this track carries a Stage-2 turbo payload
+     */
+    public void writeDataByte(char ch, boolean hasTurboPayload) {
+        boolean use16Sample = use16SampleBootstrap(sampleRate, hasTurboPayload);
+        writeSampleBytes(dataByteSlice(ch & 0xFF, sampleRate.isInverted(), use16Sample));
     }
 
     private void writeSampleBytes(byte[] samples) {

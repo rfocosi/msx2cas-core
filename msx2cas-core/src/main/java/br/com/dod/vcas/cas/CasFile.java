@@ -13,6 +13,7 @@ public class CasFile implements Serializable {
     private FileType fileType;
     private char[] header;
     private boolean asciiContinuation;
+    private byte[] turboPayload;
 
     public String getDisplayName() {
         return (getName() == null || "".equals(getName()) ? "------" : getName());
@@ -80,6 +81,33 @@ public class CasFile implements Serializable {
     }
     public void setAsciiContinuation(boolean asciiContinuation) {
         this.asciiContinuation = asciiContinuation;
+    }
+
+    /**
+     * Get the optional Stage-2 Z80 turbo payload attached to this track.
+     *
+     * @return Raw turbo payload bytes, or {@code null} when none is present
+     */
+    public byte[] getTurboPayload() {
+        return turboPayload;
+    }
+
+    /**
+     * Attach an optional Stage-2 Z80 turbo payload to this track.
+     *
+     * @param turboPayload Raw turbo payload bytes
+     */
+    public void setTurboPayload(byte[] turboPayload) {
+        this.turboPayload = turboPayload;
+    }
+
+    /**
+     * Check whether this track carries a Stage-2 Z80 turbo payload.
+     *
+     * @return {@code true} if a non-empty turbo payload is attached
+     */
+    public boolean hasTurboPayload() {
+        return turboPayload != null && turboPayload.length > 0;
     }
 
     @Override

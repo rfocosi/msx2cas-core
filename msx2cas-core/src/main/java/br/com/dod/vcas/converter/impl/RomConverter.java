@@ -1,5 +1,7 @@
 package br.com.dod.vcas.converter.impl;
 
+import java.util.Arrays;
+
 import br.com.dod.vcas.cas.CasEncoder;
 import br.com.dod.vcas.cas.CasOutput;
 import br.com.dod.vcas.converter.AbstractFileConverter;
@@ -24,6 +26,7 @@ public class RomConverter extends AbstractFileConverter {
     private boolean resetRom;
     private boolean megaRam;
     private MapperType mapperType;
+    private boolean turbo;
 
     /**
      * Constructor for RomConverter without WAV sample rate.
@@ -128,10 +131,32 @@ public class RomConverter extends AbstractFileConverter {
             boolean resetRom,
             boolean megaRam,
             MapperType mapperType) throws FlowException {
+        this(inputFileName, sampleRate, resetRom, megaRam, mapperType, false);
+    }
+
+    /**
+     * Constructor for RomConverter with ROM reset, MegaRAM, mapper type, and turbo options
+     *
+     * @param inputFileName Name of the input file
+     * @param sampleRate Sample rate to use for conversion
+     * @param resetRom True to reset the MSX after loading the ROM
+     * @param megaRam True to target a MegaRAM cartridge (port 0x8E)
+     * @param mapperType Source MegaROM mapper type ({@link MapperType#AUTO} by default)
+     * @param turbo True to enable the Stage-2 Z80 turbo loader
+     * @throws FlowException If reading or validating the ROM fails
+     */
+    public RomConverter(
+            String inputFileName,
+            SampleRate sampleRate,
+            boolean resetRom,
+            boolean megaRam,
+            MapperType mapperType,
+            boolean turbo) throws FlowException {
         super(inputFileName, sampleRate);
         this.resetRom = resetRom;
         this.megaRam = megaRam;
         this.mapperType = mapperType != null ? mapperType : MapperType.AUTO;
+        this.turbo = turbo;
         validate();
     }
 
@@ -165,6 +190,17 @@ public class RomConverter extends AbstractFileConverter {
      */
     public RomConverter mapperType(MapperType mapperType) {
         this.mapperType = mapperType != null ? mapperType : MapperType.AUTO;
+        return this;
+    }
+
+    /**
+     * Set whether to use the Stage-2 Z80 turbo loader
+     *
+     * @param turbo True for turbo mode, false otherwise
+     * @return This RomConverter instance
+     */
+    public RomConverter turbo(boolean turbo) {
+        this.turbo = turbo;
         return this;
     }
 
@@ -221,6 +257,18 @@ public class RomConverter extends AbstractFileConverter {
 
         if (headId < 0x80) {
             encodeRomBlock(encoder, headId, 0, inputMemPointer.length, RomLoaders.rom16K(resetRom));
+        } else if (turbo) {
+            int startAddr = (headId & 0xF0) << 8;
+            int initAddr = Byte.toUnsignedInt(inputMemPointer[2])
+                    | (Byte.toUnsignedInt(inputMemPointer[3]) << 8);
+            int stubAddr = startAddr + inputMemPointer.length;
+            boolean appendInit32Stub = stubAddr + INIT32_TRAMPOLINE_SIZE <= MSX_WORK_AREA_START;
+            char[] page2Loader = RomLoaders.rom16KPage2(
+                    startAddr, inputMemPointer.length, initAddr, appendInit32Stub);
+            encoder.beginDataBlock();
+            encoder.encodeData(buildBinaryAddressBuffer(sizeof(page2Loader)));
+            encoder.encodeData(page2Loader);
+            encoder.encodeTurboPayload(inputMemPointer);
         } else {
             encoder.beginDataBlock();
             int startAddr = (headId & 0xF0) << 8;
@@ -313,13 +361,7 @@ public class RomConverter extends AbstractFileConverter {
             }
 
             encodeBlockHeader(encoder, nameBuffer);
-            encoder.beginDataBlock();
-            encoder.encodeData(buildBinaryAddressBuffer(sizeof(loader) + blockSize));
-            encoder.encodeData(loader);
-
-            for (int i = blockStart; i < blockEnd; i++) {
-                encoder.writeDataByte((char) patchedRom[i]);
-            }
+            writeBlockPayload(encoder, loader, patchedRom, blockStart, blockEnd);
         }
     }
 
@@ -330,9 +372,6 @@ public class RomConverter extends AbstractFileConverter {
     private void encodeRomBlock(CasEncoder encoder, char headId, int blockStart, int blockEnd, char[] loader)
             throws FlowException {
         char romCRC = calculateCRC(blockStart, blockEnd);
-
-        encoder.beginDataBlock();
-        encoder.encodeData(buildBinaryAddressBuffer(sizeof(loader) + blockEnd - blockStart));
 
         char addr = (char) (((headId & 0xF0) << 8) + blockStart);
         loader[3] = 0;
@@ -353,10 +392,28 @@ public class RomConverter extends AbstractFileConverter {
         }
         loader[9] = romCRC;
 
-        encoder.encodeData(loader);
+        writeBlockPayload(encoder, loader, inputMemPointer, blockStart, blockEnd);
+    }
 
-        for (int i = blockStart; i < blockEnd; i++) {
-            encoder.writeDataByte((char) inputMemPointer[i]);
+    private void writeBlockPayload(
+            CasEncoder encoder,
+            char[] loader,
+            byte[] source,
+            int blockStart,
+            int blockEnd) {
+        int blockSize = blockEnd - blockStart;
+        encoder.beginDataBlock();
+        if (turbo) {
+            char[] turboLoader = RomLoaders.withTurboStub(loader, blockSize);
+            encoder.encodeData(buildBinaryAddressBuffer(sizeof(turboLoader)));
+            encoder.encodeData(turboLoader);
+            encoder.encodeTurboPayload(Arrays.copyOfRange(source, blockStart, blockEnd));
+        } else {
+            encoder.encodeData(buildBinaryAddressBuffer(sizeof(loader) + blockSize));
+            encoder.encodeData(loader);
+            for (int i = blockStart; i < blockEnd; i++) {
+                encoder.writeDataByte((char) source[i]);
+            }
         }
     }
 }

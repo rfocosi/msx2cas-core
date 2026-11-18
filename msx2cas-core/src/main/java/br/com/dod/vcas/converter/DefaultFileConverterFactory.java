@@ -28,12 +28,13 @@ public class DefaultFileConverterFactory implements FileConverterFactory {
         MapperType mapperType = options != null && options.mapperType() != null
                 ? options.mapperType()
                 : MapperType.AUTO;
+        boolean turbo = options != null && options.turbo();
         FileType fileType = detectFileType(filePath);
         return switch (fileType) {
             case BAS -> new BasConverter(filePath, sampleRate);
-            case BIN -> new BinConverter(filePath, sampleRate);
+            case BIN -> new BinConverter(filePath, sampleRate, turbo);
             case CAS -> new CasConverter(filePath, sampleRate);
-            case ROM -> new RomConverter(filePath, sampleRate, resetRom, megaRam, mapperType);
+            case ROM -> new RomConverter(filePath, sampleRate, resetRom, megaRam, mapperType, turbo);
             default -> new AsciiConverter(filePath, sampleRate);
         };
     }

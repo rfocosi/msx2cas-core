@@ -105,26 +105,30 @@ public class CasConverter extends AbstractFileConverter {
     }
 
     private void encodeFile(WavEncoder encoder, CasFile casFile, boolean isFirstTrack) {
+        boolean turboTrack = casFile.hasTurboPayload();
         if (casFile.isAsciiContinuation()) {
-            encoder.encodeShortHeader();
+            encoder.encodeShortHeader(turboTrack);
         } else {
             encoder.encodePause(WavEncoder.FIRST_PAUSE_LENGTH);
-            encoder.encodeLongHeader();
+            encoder.encodeLongHeader(turboTrack);
 
             boolean hasName = casFile.getName() != null && !casFile.getName().isEmpty();
             if (isFirstTrack || hasName) {
-                encoder.encodeData(casFile.getHeader());
-                encoder.encodeData(hasName ? casFile.getName().toCharArray() : new char[0]);
+                encoder.encodeData(casFile.getHeader(), turboTrack);
+                encoder.encodeData(hasName ? casFile.getName().toCharArray() : new char[0], turboTrack);
                 encoder.encodePause(WavEncoder.DEFAULT_PAUSE_LENGTH);
-                encoder.encodeShortHeader();
+                encoder.encodeShortHeader(turboTrack);
             }
         }
 
         byte[] content = casFile.getContentBytes();
         if (content != null) {
             for (byte b : content) {
-                encoder.writeDataByte((char) (b & 0xFF));
+                encoder.writeDataByte((char) (b & 0xFF), turboTrack);
             }
+        }
+        if (turboTrack) {
+            encoder.encodeTurboBlock(casFile.getTurboPayload());
         }
     }
 }

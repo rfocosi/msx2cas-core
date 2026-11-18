@@ -18,6 +18,7 @@ class Params {
     private boolean resetRom;
     private boolean megaRam;
     private MapperType mapperType = MapperType.AUTO;
+    private boolean turbo;
 
     private final List<ConvertFile> files = new LinkedList<>();
 
@@ -45,6 +46,7 @@ class Params {
                 boolean inverted = arguments.remove("-i");
                 this.resetRom = arguments.remove("-r");
                 this.megaRam = arguments.remove("-m");
+                this.turbo = arguments.remove("-f");
                 this.mapperType = extractMapperType(arguments);
                 if (this.mapperType != MapperType.AUTO) {
                     this.megaRam = true;
@@ -54,6 +56,9 @@ class Params {
                 boolean writeCas = arguments.remove("-c");
                 if (write && writeCas) {
                     throw new IllegalArgumentException("Cannot combine -w and -c");
+                }
+                if (this.turbo && writeCas) {
+                    throw new IllegalArgumentException("Cannot combine -f and -c");
                 }
                 if (!hasBps && (!writeCas || write)) {
                     throw new IllegalArgumentException("Missing bps");
@@ -201,10 +206,11 @@ class Params {
 
     private static void displayUsage() {
         System.out.println("""
-                Usage: msx2cas [-i] [-r] [-m] [-t <auto|konami4|konami5|ascii8|ascii16>] [-c [<output-file>] | -w [<output-file>]] [<%s>] <input-file> [<input-file>...]
+                Usage: msx2cas [-i] [-r] [-m] [-f] [-t <auto|konami4|konami5|ascii8|ascii16>] [-c [<output-file>] | -w [<output-file>]] [<%s>] <input-file> [<input-file>...]
                 -i: Invert Waveform (fix playback on some soundboards)
                 -r: Reset MSX after loading a ROM
                 -m: Load MegaROM into MegaRAM cartridge (port 0x8E)
+                -f: Use custom Z80 turbo loader for ROM and BIN files (cannot combine with -c)
                 -t: Force MegaROM mapper type (auto, konami4, konami5, ascii8, ascii16; implies -m)
                 -c: Write a CAS file with <output-file> name OR with file token name (first 6 characters from <filename>); <bps> is optional
                 -w: Write a WAV file with <output-file> name OR with file token name (first 6 characters from <filename>)
@@ -224,6 +230,10 @@ class Params {
 
     public boolean megaRam() {
         return this.megaRam;
+    }
+
+    public boolean turbo() {
+        return this.turbo;
     }
 
     public MapperType mapperType() {

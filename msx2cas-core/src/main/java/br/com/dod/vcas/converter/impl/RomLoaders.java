@@ -32,6 +32,126 @@ final class RomLoaders {
         return MEGA_BOOT.clone();
     }
 
+    /**
+     * Wrap a standard {@code 0x9000}-based loader with a Stage-2 Z80 turbo receiver stub.
+     * Stage 1 loads {@code baseLoader} plus the relocatable receiver into {@code 0x9000}, copies the
+     * receiver worker to {@code 0xF560}, streams {@code payloadSize} bytes directly over the stub at
+     * {@code 0x9000 + baseLoader.length}, and jumps to the original loader entry point.
+     *
+     * @param baseLoader Standard loader starting at {@code 0x9000} with {@code JP entry} at byte 0..2
+     * @param payloadSize Number of Stage-2 turbo bytes to receive
+     * @return Combined Stage-1 loader + relocable Z80 turbo receiver
+     */
+    static char[] withTurboStub(char[] baseLoader, int payloadSize) {
+        if (baseLoader == null || baseLoader.length < 3 || baseLoader[0] != 0xC3) {
+            throw new IllegalArgumentException("Base loader must start with JP entry at 0x9000");
+        }
+        if (payloadSize <= 0 || payloadSize > 0x10000) {
+            throw new IllegalArgumentException("Invalid turbo payload size: " + payloadSize);
+        }
+
+        int originalEntry = (baseLoader[1] & 0xFF) | ((baseLoader[2] & 0xFF) << 8);
+        int payloadAddr = 0x9000 + baseLoader.length;
+        char[] worker = buildTurboWorker(payloadAddr, payloadSize, originalEntry);
+        char[] relocator = buildRelocator(payloadAddr + RELOCATOR_SIZE, worker.length);
+
+        char[] wrapped = new char[baseLoader.length + relocator.length + worker.length];
+        System.arraycopy(baseLoader, 0, wrapped, 0, baseLoader.length);
+        wrapped[1] = (char) (payloadAddr & 0xFF);
+        wrapped[2] = (char) ((payloadAddr >> 8) & 0xFF);
+        System.arraycopy(relocator, 0, wrapped, baseLoader.length, relocator.length);
+        System.arraycopy(worker, 0, wrapped, baseLoader.length + relocator.length, worker.length);
+        return wrapped;
+    }
+
+    /**
+     * Build a Stage-1 loader at {@code 0x9000} for 16K Page-2 ROMs ({@code headId >= 0x80}).
+     * Relocates the turbo receiver and post-load launcher to {@code 0xF560}, streams the ROM payload
+     * directly into {@code startAddr}, restores interrupts, optionally runs {@code INIT32 (0x006F)},
+     * and jumps to {@code initAddr}.
+     *
+     * @param startAddr Target ROM load address (e.g. {@code 0x8000})
+     * @param payloadSize ROM payload length in bytes
+     * @param initAddr Cartridge INIT entry point
+     * @param callInit32 True to invoke BIOS {@code INIT32} before booting
+     * @return Stage-1 loader + relocated turbo receiver and trampoline
+     */
+    static char[] rom16KPage2(int startAddr, int payloadSize, int initAddr, boolean callInit32) {
+        if (payloadSize <= 0 || payloadSize > 0x10000) {
+            throw new IllegalArgumentException("Invalid Page-2 turbo payload size: " + payloadSize);
+        }
+
+        int exitAddr = TURBO_WORKER_ORG + TURBO_WORKER.length;
+        char[] worker = buildTurboWorker(startAddr, payloadSize, exitAddr);
+        char[] trampoline = callInit32
+                ? new char[] {
+                        0xFB,
+                        0xCD, 0x6F, 0x00,
+                        0xC3, (char) (initAddr & 0xFF), (char) ((initAddr >> 8) & 0xFF)
+                }
+                : new char[] {
+                        0xFB,
+                        0xC3, (char) (initAddr & 0xFF), (char) ((initAddr >> 8) & 0xFF)
+                };
+
+        char[] relocator = buildRelocator(0x9000 + RELOCATOR_SIZE, worker.length + trampoline.length);
+        char[] loader = new char[relocator.length + worker.length + trampoline.length];
+        System.arraycopy(relocator, 0, loader, 0, relocator.length);
+        System.arraycopy(worker, 0, loader, relocator.length, worker.length);
+        System.arraycopy(trampoline, 0, loader, relocator.length + worker.length, trampoline.length);
+        return loader;
+    }
+
+    private static char[] buildRelocator(int workerSrcAddr, int copyLength) {
+        return new char[] {
+                0xF3,                                                               // DI
+                0x21, (char) (workerSrcAddr & 0xFF), (char) ((workerSrcAddr >> 8) & 0xFF), // LD HL, src
+                0x11, (char) (TURBO_WORKER_ORG & 0xFF), (char) ((TURBO_WORKER_ORG >> 8) & 0xFF), // LD DE, 0xF560
+                0x01, (char) (copyLength & 0xFF), (char) ((copyLength >> 8) & 0xFF), // LD BC, len
+                0xED, 0xB0,                                                         // LDIR
+                0xC3, (char) (TURBO_WORKER_ORG & 0xFF), (char) ((TURBO_WORKER_ORG >> 8) & 0xFF) // JP 0xF560
+        };
+    }
+
+    private static char[] buildTurboWorker(int destAddr, int payloadSize, int exitAddr) {
+        char[] worker = TURBO_WORKER.clone();
+        int highCount = ((payloadSize - 1) >> 8) + 1;
+        int lowCount = payloadSize & 0xFF;
+        worker[WORKER_DEST_OFFSET] = (char) (destAddr & 0xFF);
+        worker[WORKER_DEST_OFFSET + 1] = (char) ((destAddr >> 8) & 0xFF);
+        worker[WORKER_HIGH_COUNT_OFFSET] = (char) (highCount & 0xFF);
+        worker[WORKER_LOW_COUNT_OFFSET] = (char) (lowCount & 0xFF);
+        worker[WORKER_EXIT_OFFSET] = (char) (exitAddr & 0xFF);
+        worker[WORKER_EXIT_OFFSET + 1] = (char) ((exitAddr >> 8) & 0xFF);
+        return worker;
+    }
+
+    private static final int RELOCATOR_SIZE = 15;
+    private static final int TURBO_WORKER_ORG = 0xF560;
+    private static final int WORKER_DEST_OFFSET = 111;
+    private static final int WORKER_HIGH_COUNT_OFFSET = 115;
+    private static final int WORKER_LOW_COUNT_OFFSET = 117;
+    private static final int WORKER_EXIT_OFFSET = 211;
+
+    // Self-calibrating, polarity-independent Z80 turbo receiver assembled for ORG 0xF560 (213 bytes).
+    private static final char[] TURBO_WORKER = {
+            0x3E, 0x08, 0xD3, 0xAB, 0x3E, 0x0E, 0xD3, 0xA0, 0x0E, 0xA2, 0xED, 0x78, 0x57, 0x1E, 0x40,
+            0x06, 0x00, 0x04, 0xED, 0x78, 0xAA, 0xF2, 0x71, 0xF5, 0x7A, 0x2F, 0x57, 0x78, 0xFE, 0x03,
+            0x38, 0xED, 0xFE, 0x50, 0x30, 0xE9, 0x1D, 0x20, 0xE8, 0x06, 0x00, 0x1E, 0x04, 0x04, 0xED,
+            0x78, 0xAA, 0xF2, 0x8B, 0xF5, 0x7A, 0x2F, 0x57, 0x1D, 0xC2, 0x8B, 0xF5, 0x78, 0xCB, 0x3F,
+            0x5F, 0xCB, 0x3F, 0x83, 0x5F, 0xCB, 0x3F, 0x67, 0x1D, 0x06, 0x00, 0x04, 0xED, 0x78, 0xAA,
+            0xF2, 0xA7, 0xF5, 0x7A, 0x2F, 0x57, 0x78, 0xBC, 0x38, 0xF0, 0xFE, 0x80, 0x30, 0xB4, 0x06,
+            0x00, 0x04, 0xED, 0x78, 0xAA, 0xF2, 0xBB, 0xF5, 0x7A, 0x2F, 0x57, 0x78, 0xBC, 0x38, 0xDC,
+            0xFE, 0x80, 0x30, 0xA0, 0xDD, 0x21, 0x00, 0x00, 0xD9, 0x06, 0x00, 0x0E, 0x00, 0xD9, 0x2E,
+            0x80, 0x06, 0x00, 0x04, 0xED, 0x78, 0xAA, 0xF2, 0xDB, 0xF5, 0x7A, 0x2F, 0x57, 0x04, 0xED,
+            0x78, 0xAA, 0xF2, 0xE5, 0xF5, 0x7A, 0x2F, 0x57, 0x7B, 0x90, 0xCB, 0x1D, 0x30, 0xE4, 0x7D,
+            0xFE, 0xA5, 0xC2, 0x6D, 0xF5, 0x2E, 0x80, 0x06, 0x00, 0x04, 0xED, 0x78, 0xAA, 0xF2, 0xFF,
+            0xF5, 0x7A, 0x2F, 0x57, 0x04, 0xED, 0x78, 0xAA, 0xF2, 0x09, 0xF6, 0x7A, 0x2F, 0x57, 0x7B,
+            0x90, 0xCB, 0x1D, 0x30, 0xE4, 0xDD, 0x75, 0x00, 0xDD, 0x23, 0x2E, 0x80, 0xD9, 0x0D, 0xC2,
+            0x29, 0xF6, 0x05, 0xCA, 0x2D, 0xF6, 0xD9, 0xC3, 0xFD, 0xF5, 0xD9, 0x3E, 0x09, 0xD3, 0xAB,
+            0xC3, 0x00, 0x00
+    };
+
     private static final char[] BLOCK_LOADER = {
             0xC3, 0x82, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1E, 0x62, 0x6C,
             0x6F, 0x61, 0x64, 0x22, 0x63, 0x61, 0x73, 0x3A, 0x22, 0x2C, 0x72, 0x0D, 0x00,
