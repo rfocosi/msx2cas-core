@@ -20,14 +20,13 @@ You can just download the compiled files for use (to run it requires Java 17):
 
 - Java 17 or higher (tested up to JDK 25)
 - Maven 3.x
-- `dotnet-types` (bundled in `msx2cas-core/resources/lib/dotnet-types.jar` and installed automatically during `mvn initialize`; source at [dotnet-types](https://github.com/rfocosi/dotnet-types))
 
 ## Building and testing
 
 Compile and package all artifacts (`jar-with-dependencies`, Linux `msx2cas`, Windows `msx2cas.exe`, and release archives) from the repository root:
 
 ```bash
-mvn clean initialize && mvn package
+mvn clean package
 ```
 
 To generate or validate waveform regression fixtures before/after editing audio code:
@@ -39,7 +38,7 @@ mvn -pl msx2cas-core -Dtest=FileEncodingTest test
 ## CLI usage
 
 ```bash
-java -jar msx2cas-cmd/target/msx2cas-cmd-5.0.0-jar-with-dependencies.jar [-i] [-r] [-m] [-t <auto|konami4|konami5|ascii8|ascii16>] [-w [<output-file>]] <1200|2400|3000|3600> <input-file> [<input-file>...]
+java -jar msx2cas-cmd/target/msx2cas-cmd-6.1.0-jar-with-dependencies.jar [-i] [-r] [-m] [-t <auto|konami4|konami5|ascii8|ascii16>] [-w [<output-file>]] <1200|2400|3000|3600> <input-file> [<input-file>...]
 ```
 
 - `-i`: Invert waveform (fix playback on some soundcards)

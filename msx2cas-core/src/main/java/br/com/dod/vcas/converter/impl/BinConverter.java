@@ -1,12 +1,11 @@
 package br.com.dod.vcas.converter.impl;
 
-import br.com.dod.dotnet.types.DWORD;
+import br.com.dod.vcas.cas.CasEncoder;
+import br.com.dod.vcas.cas.CasOutput;
 import br.com.dod.vcas.converter.AbstractFileConverter;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.model.SampleRate;
-import br.com.dod.vcas.wav.WavEncoder;
-import br.com.dod.vcas.wav.WavOutput;
 
 /**
  * Converter for binary files
@@ -14,6 +13,16 @@ import br.com.dod.vcas.wav.WavOutput;
 public class BinConverter extends AbstractFileConverter {
     
     private static final int FILE_OFFSET = 7;
+
+    /**
+     * Constructor for BinConverter without WAV sample rate.
+     *
+     * @param inputFileName Name of the input file
+     * @throws FlowException If there's an error reading the file
+     */
+    public BinConverter(String inputFileName) throws FlowException {
+        super(inputFileName);
+    }
     
     /**
      * Constructor for BinConverter
@@ -27,41 +36,33 @@ public class BinConverter extends AbstractFileConverter {
     }
     
     @Override
-    public WavOutput convert() throws FlowException {
-        WavEncoder encoder = new WavEncoder(sampleRate, inputFileName);
-        
-        encoder.encodePause(WavEncoder.FIRST_PAUSE_LENGTH);
-        encoder.encodeLongHeader();
-        
-        // Write header and filename
-        encoder.encodeData(FileType.BIN.getHeader());
-        encoder.encodeData(getNameBuffer());
-        
-        encoder.encodePause(WavEncoder.DEFAULT_PAUSE_LENGTH);
-        encoder.encodeShortHeader();
-        
+    public CasOutput convertToCas() throws FlowException {
+        CasEncoder encoder = new CasEncoder(inputFileName);
+
+        encoder.beginTrack(FileType.BIN, getNameBuffer());
+        encoder.beginDataBlock();
+
         // Encode the loader
         encodeLoader(encoder, getLoader());
-        
+
         // Write file content
         for (int i = FILE_OFFSET; i < inputMemPointer.length; i++) {
             encoder.writeDataByte((char) inputMemPointer[i]);
         }
-        
-        // Finish the WAV encoding
+
         encoder.finish();
-        
+
         return encoder;
     }
     
     /**
      * Encode the loader for the binary file
      * 
-     * @param encoder WAV encoder to use
+     * @param encoder CAS encoder to use
      * @param loader Loader code
      * @throws FlowException If there's an error calculating the CRC
      */
-    private void encodeLoader(WavEncoder encoder, char[] loader) throws FlowException {
+    private void encodeLoader(CasEncoder encoder, char[] loader) throws FlowException {
         encoder.encodeData(buildBinaryAddressBuffer(sizeof(loader) + inputMemPointer.length - FILE_OFFSET));
         
         calculateBinCRC(loader);
@@ -89,10 +90,10 @@ public class BinConverter extends AbstractFileConverter {
      * @throws FlowException If there's an error calculating the CRC
      */
     private void calculateBinCRC(char[] loader) throws FlowException {
-        char binBegin = (char) ((new DWORD(inputMemPointer[2]).getLow()).intValue() * 0x100 + 
-                               (new DWORD(inputMemPointer[1]).getLow()).intValue());
-        char binEnd = (char) ((new DWORD(inputMemPointer[4]).getLow()).intValue() * 0x100 + 
-                             (new DWORD(inputMemPointer[3]).getLow()).intValue());
+        char binBegin = (char) (Byte.toUnsignedInt(inputMemPointer[2]) * 0x100 +
+                               Byte.toUnsignedInt(inputMemPointer[1]));
+        char binEnd = (char) (Byte.toUnsignedInt(inputMemPointer[4]) * 0x100 +
+                             Byte.toUnsignedInt(inputMemPointer[3]));
         
         loader[9] = calculateCRC(FILE_OFFSET, (binEnd - binBegin) + FILE_OFFSET);
     }

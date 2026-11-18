@@ -2,12 +2,12 @@ package br.com.dod.vcas.converter.impl;
 
 import java.io.ByteArrayOutputStream;
 
+import br.com.dod.vcas.cas.CasEncoder;
+import br.com.dod.vcas.cas.CasOutput;
 import br.com.dod.vcas.converter.AbstractFileConverter;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.model.SampleRate;
-import br.com.dod.vcas.wav.WavEncoder;
-import br.com.dod.vcas.wav.WavOutput;
 
 /**
  * Converter for ASCII files
@@ -16,6 +16,17 @@ public class AsciiConverter extends AbstractFileConverter {
 
     private static final int BLOCK_SIZE = 256;
     private static final char EOF_BYTE = 0x1A;
+
+    /**
+     * Constructor for AsciiConverter without WAV sample rate.
+     *
+     * @param inputFileName Name of the input file
+     * @throws FlowException If there's an error reading or validating the file
+     */
+    public AsciiConverter(String inputFileName) throws FlowException {
+        super(inputFileName);
+        setup();
+    }
 
     /**
      * Constructor for AsciiConverter
@@ -61,19 +72,13 @@ public class AsciiConverter extends AbstractFileConverter {
     }
 
     @Override
-    public WavOutput convert() throws FlowException {
-        WavEncoder encoder = new WavEncoder(sampleRate, inputFileName);
+    public CasOutput convertToCas() throws FlowException {
+        CasEncoder encoder = new CasEncoder(inputFileName);
 
-        encoder.encodePause(WavEncoder.FIRST_PAUSE_LENGTH);
-        encoder.encodeLongHeader();
-
-        encoder.encodeData(FileType.ASCII.getHeader());
-        encoder.encodeData(getNameBuffer());
-
-        encoder.encodePause(WavEncoder.DEFAULT_PAUSE_LENGTH);
+        encoder.beginTrack(FileType.ASCII, getNameBuffer());
 
         for (int offset = 0; offset < inputMemPointer.length; offset += BLOCK_SIZE) {
-            encoder.encodeShortHeader();
+            encoder.beginDataBlock();
             int chunkSize = Math.min(BLOCK_SIZE, inputMemPointer.length - offset);
             for (int i = 0; i < chunkSize; i++) {
                 encoder.writeDataByte((char) inputMemPointer[offset + i]);

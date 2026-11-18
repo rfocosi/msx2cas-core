@@ -1,87 +1,51 @@
 package br.com.dod.vcas.util;
 
-import java.util.LinkedList;
-import java.util.List;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
 
-import br.com.dod.dotnet.types.DWORD;
-import br.com.dod.dotnet.types.WORD;
-import br.com.dod.types.IntegerType;
 import br.com.dod.vcas.model.SampleRate;
 
 public class WavHeader {
 
-    private static final DWORD WAV_HEADER_ID = new DWORD("RIFF".toCharArray());
-    private static final DWORD MM_FILE_TYPE = new DWORD("WAVE".toCharArray());
-    private static final DWORD FORMAT_ID = new DWORD("fmt ".toCharArray());
-    private static final DWORD DATA_ID = new DWORD("data".toCharArray());
-    private static final DWORD FORMAT_SIZE = new DWORD(16);
-    private static final WORD FORMAT_TAG = new WORD(1); // PCM
-    private static final WORD NUM_CHANNELS = new WORD(1); // Mono
-    private static final WORD BITS_PER_SAMPLE = new WORD(8);
+    private static final int HEADER_SIZE = 44;
+    private static final byte[] WAV_HEADER_ID = "RIFF".getBytes(StandardCharsets.US_ASCII);
+    private static final byte[] MM_FILE_TYPE = "WAVE".getBytes(StandardCharsets.US_ASCII);
+    private static final byte[] FORMAT_ID = "fmt ".getBytes(StandardCharsets.US_ASCII);
+    private static final byte[] DATA_ID = "data".getBytes(StandardCharsets.US_ASCII);
+    private static final int FORMAT_SIZE = 16;
+    private static final short FORMAT_TAG = 1; // PCM
+    private static final short NUM_CHANNELS = 1; // Mono
+    private static final short BITS_PER_SAMPLE = 8;
 
-    private DWORD sampleRate;
-    private long dataSize;
+    private final int sampleRate;
+    private final long dataSize;
 
     public WavHeader(SampleRate sampleRate, long dataSize) {
-        this.sampleRate = new DWORD(sampleRate.intValue());
+        this.sampleRate = sampleRate.intValue();
         this.dataSize = dataSize;
     }
 
-    private List<IntegerType> getHeader() {
-        final List<IntegerType> charList = new LinkedList<>();
-
-        charList.add(WAV_HEADER_ID);
-        charList.add(getFileSize());
-        charList.add(MM_FILE_TYPE);
-        charList.add(FORMAT_ID);
-        charList.add(FORMAT_SIZE);
-        charList.add(FORMAT_TAG);
-        charList.add(NUM_CHANNELS);
-        charList.add(sampleRate);
-        charList.add(getBytesPerSec());
-        charList.add(getBlkAlign());
-        charList.add(BITS_PER_SAMPLE);
-        charList.add(DATA_ID);
-        charList.add(getDataSize());
-
-        return charList;
-    }
-
-    private DWORD getFileSize() {
-        return new DWORD(dataSize + 36);
-    }
-
-    private DWORD getDataSize() {
-        return new DWORD(dataSize);
-    }
-
-    private WORD getBlkAlign() {
-        return new WORD((BITS_PER_SAMPLE.longValue() * NUM_CHANNELS.longValue()) / 8);
-    }
-
-    private DWORD getBytesPerSec() {
-        return new DWORD((sampleRate.longValue() * BITS_PER_SAMPLE.longValue() * NUM_CHANNELS.longValue()) / 8);
-    }
-
     public byte[] toBytes() {
-        final List<IntegerType> charList = getHeader();
+        short blkAlign = (short) ((BITS_PER_SAMPLE * NUM_CHANNELS) / 8);
+        int bytesPerSec = (sampleRate * BITS_PER_SAMPLE * NUM_CHANNELS) / 8;
 
-        List<Byte> bytesList = new LinkedList<>();
-
-        for (IntegerType integerType : charList) {
-            byte[] cur = integerType.getBytes();
-
-            for (byte b : cur) {
-                bytesList.add(b);
-            }
-        }
-
-        byte[] bytes = new byte[bytesList.size()];
-        for (int i = 0; i < bytes.length; i++) {
-            bytes[i] = bytesList.get(i);
-        }
-
-        return bytes;
+        return ByteBuffer.allocate(HEADER_SIZE)
+                .order(ByteOrder.LITTLE_ENDIAN)
+                .put(WAV_HEADER_ID)
+                .putInt((int) (dataSize + 36))
+                .put(MM_FILE_TYPE)
+                .put(FORMAT_ID)
+                .putInt(FORMAT_SIZE)
+                .putShort(FORMAT_TAG)
+                .putShort(NUM_CHANNELS)
+                .putInt(sampleRate)
+                .putInt(bytesPerSec)
+                .putShort(blkAlign)
+                .putShort(BITS_PER_SAMPLE)
+                .put(DATA_ID)
+                .putInt((int) dataSize)
+                .array();
     }
 }
 

@@ -91,4 +91,66 @@ public class ParamsTest {
         assertEquals(0, params.getFiles().size());
     }
 
+    @Test
+    public void writeCasSingleFileDefaultNameWithoutBps() {
+        String[] args = { "-r", "-c", "my.rom" };
+
+        Params params = new Params(args);
+
+        assertTrue(params.resetRom());
+        assertEquals(1, params.getFiles().size());
+        assertEquals("my.rom", params.getFiles().get(0).inputName());
+        assertEquals("my.cas", params.getFiles().get(0).outputName());
+        assertTrue(params.getFiles().get(0).writeCas());
+        assertFalse(params.getFiles().get(0).write());
+        assertNull(params.getFiles().get(0).sampleRate());
+    }
+
+    @Test
+    public void writeCasSingleFileCustomNameWithoutBps() {
+        String[] args = { "-r", "-m", "-c", "out.cas", "my.rom" };
+
+        Params params = new Params(args);
+
+        assertTrue(params.resetRom());
+        assertTrue(params.megaRam());
+        assertEquals(1, params.getFiles().size());
+        assertEquals("my.rom", params.getFiles().get(0).inputName());
+        assertEquals("out.cas", params.getFiles().get(0).outputName());
+        assertTrue(params.getFiles().get(0).writeCas());
+    }
+
+    @Test
+    public void writeCasMultipleFilesWithoutBps() {
+        String[] args = { "-r", "-c", "my.rom", "another.rom", "more.rom" };
+
+        Params params = new Params(args);
+
+        assertTrue(params.resetRom());
+        assertEquals(3, params.getFiles().size());
+        assertEquals("my.cas", params.getFiles().get(0).outputName());
+        assertEquals("anothe.cas", params.getFiles().get(1).outputName());
+        assertEquals("more.cas", params.getFiles().get(2).outputName());
+    }
+
+    @Test
+    public void writeCasMultipleFilesIgnoresCustomOutputName() {
+        String[] args = { "-c", "out.cas", "my.rom", "another.rom" };
+
+        Params params = new Params(args);
+
+        assertEquals(2, params.getFiles().size());
+        assertEquals("my.cas", params.getFiles().get(0).outputName());
+        assertEquals("anothe.cas", params.getFiles().get(1).outputName());
+    }
+
+    @Test
+    public void writeCasSkipsCasInputFiles() {
+        String[] args = { "-c", "game.cas" };
+
+        Params params = new Params(args);
+
+        assertEquals(0, params.getFiles().size());
+    }
+
 }

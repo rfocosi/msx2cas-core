@@ -144,6 +144,29 @@ public class OpenMsxMegaRamIT {
         assertTrue("Expected OK16 signature for patched ASCII16 ROM but got: " + result, result.contains("TAG=OK16"));
     }
 
+    @Test
+    public void gradienteExpertWithMegaRam512kBoots128kKonami4FromCasWithReset() throws Exception, FlowException {
+        Assume.assumeTrue("Gradiente Expert GPC-1 BIOS ROM not found",
+                hasRom("expert_1.1_basic-bios1.rom", "d6720845928ee848cfa88a86accb067397685f02"));
+
+        byte[] rom128k = buildKonami4CheckRom(128 * 1024, "MR");
+        String result = runCase("Gradiente_Expert_GPC-1", List.of("-ext", "megaram"),
+                "mr128c", rom128k, true, false, false, true);
+        assertTrue("Expected OKMR signature from CAS but got: " + result, result.contains("TAG=OKMR"));
+    }
+
+    @Test
+    public void gradienteExpertAutoPatchesAndBoots128kAscii16FromCasWithReset() throws Exception, FlowException {
+        Assume.assumeTrue("Gradiente Expert GPC-1 BIOS ROM not found",
+                hasRom("expert_1.1_basic-bios1.rom", "d6720845928ee848cfa88a86accb067397685f02"));
+
+        byte[] romA16 = buildAscii16CheckRom(128 * 1024, "16");
+        String result = runCase("Gradiente_Expert_GPC-1", List.of("-ext", "megaram"),
+                "a16cas", romA16, true, false, false, true);
+        assertTrue("Expected OK16 signature from CAS for patched ASCII16 ROM but got: " + result,
+                result.contains("TAG=OK16"));
+    }
+
     private String runCase(
             String machine,
             List<String> extraArgs,
@@ -152,17 +175,40 @@ public class OpenMsxMegaRamIT {
             boolean reset,
             boolean holdCtrlOnBoot,
             boolean expectErrorScreen) throws Exception, FlowException {
+        return runCase(machine, extraArgs, caseName, romBytes, reset, holdCtrlOnBoot, expectErrorScreen, false);
+    }
+
+    private String runCase(
+            String machine,
+            List<String> extraArgs,
+            String caseName,
+            byte[] romBytes,
+            boolean reset,
+            boolean holdCtrlOnBoot,
+            boolean expectErrorScreen,
+            boolean useCas) throws Exception, FlowException {
         Path userData = prepareUserData();
         File romFile = tempFolder.newFile(caseName + ".rom");
         Files.write(romFile.toPath(), romBytes);
 
-        byte[] wav = new VirtualCas(SampleRate.sr22050)
-                .resetRom(reset)
-                .megaRam(true)
-                .convert(romFile.getAbsolutePath())
-                .toBytes();
-        Path wavPath = tempFolder.newFile(caseName + ".wav").toPath();
-        Files.write(wavPath, wav);
+        Path tapePath;
+        if (useCas) {
+            byte[] cas = new VirtualCas()
+                    .resetRom(reset)
+                    .megaRam(true)
+                    .convertToCas(romFile.getAbsolutePath())
+                    .toBytes();
+            tapePath = tempFolder.newFile(caseName + ".cas").toPath();
+            Files.write(tapePath, cas);
+        } else {
+            byte[] wav = new VirtualCas(SampleRate.sr22050)
+                    .resetRom(reset)
+                    .megaRam(true)
+                    .convert(romFile.getAbsolutePath())
+                    .toBytes();
+            tapePath = tempFolder.newFile(caseName + ".wav").toPath();
+            Files.write(tapePath, wav);
+        }
 
         Path outFile = tempFolder.getRoot().toPath().resolve(caseName + ".out");
         Path tclFile = tempFolder.getRoot().toPath().resolve(caseName + ".tcl");
@@ -182,7 +228,7 @@ public class OpenMsxMegaRamIT {
         pb.redirectErrorStream(true);
         Map<String, String> env = pb.environment();
         env.put("OPENMSX_USER_DATA", userData.toAbsolutePath().toString());
-        env.put("TEST_WAV", wavPath.toAbsolutePath().toString());
+        env.put("TEST_WAV", tapePath.toAbsolutePath().toString());
         env.put("OUT_FILE", outFile.toAbsolutePath().toString());
 
         Process proc = pb.start();

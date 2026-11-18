@@ -42,7 +42,6 @@ Command-line interface for the core library:
 
 - Java 17 or higher (tested up to JDK 25)
 - Maven 3.x
-- `dotnet-types` (`msx2cas-core/resources/lib/dotnet-types.jar`, installed into the local Maven repository during `mvn initialize`; source at [dotnet-types](https://github.com/rfocosi/dotnet-types))
 - `JNativeHook` (`com.1stleg:jnativehook`) for global playback hotkeys
 
 ## How to Build & Test
@@ -50,7 +49,7 @@ Command-line interface for the core library:
 1. Ensure Java 17+ JDK and Maven 3.x are installed.
 2. Build both modules and package the JAR, Linux `msx2cas` binary, Windows `msx2cas.exe`, and release archives:
    ```bash
-   mvn clean initialize && mvn package
+   mvn clean package
    ```
 3. Run unit tests:
    ```bash
@@ -72,7 +71,7 @@ Command-line interface for the core library:
 After building, run the shaded CLI JAR from `msx2cas-cmd/target/`:
 
 ```bash
-java -jar msx2cas-cmd/target/msx2cas-cmd-5.0.0-jar-with-dependencies.jar [options] <1200|2400|3000|3600> <input-file> [<input-file>...]
+java -jar msx2cas-cmd/target/msx2cas-cmd-6.1.0-jar-with-dependencies.jar [options] <1200|2400|3000|3600> <input-file> [<input-file>...]
 ```
 
 *(The JAR manifest includes `Enable-Native-Access: ALL-UNNAMED` so Java 24+ runs without `JNativeHook` native-access warnings.)*
@@ -94,22 +93,22 @@ Pre-compiled binaries (`msx2cas` for Linux, `msx2cas.exe` for Windows) are built
 
 Convert a BASIC file to audio and play it at 2400 bps:
 ```bash
-java -jar msx2cas-cmd/target/msx2cas-cmd-5.0.0-jar-with-dependencies.jar 2400 GAME.BAS
+java -jar msx2cas-cmd/target/msx2cas-cmd-6.1.0-jar-with-dependencies.jar 2400 GAME.BAS
 ```
 
 Convert a ROM file to a WAV file with reset enabled at 3600 bps:
 ```bash
-java -jar msx2cas-cmd/target/msx2cas-cmd-5.0.0-jar-with-dependencies.jar -r -w 3600 GAME.ROM
+java -jar msx2cas-cmd/target/msx2cas-cmd-6.1.0-jar-with-dependencies.jar -r -w 3600 GAME.ROM
 ```
 
 Convert a MegaROM to WAV for MegaRAM with auto-detected mapper at 2400 bps:
 ```bash
-java -jar msx2cas-cmd/target/msx2cas-cmd-5.0.0-jar-with-dependencies.jar -m -w aleste.wav 2400 aleste.rom
+java -jar msx2cas-cmd/target/msx2cas-cmd-6.1.0-jar-with-dependencies.jar -m -w aleste.wav 2400 aleste.rom
 ```
 
 Convert a MegaROM forcing `ascii16` mapper:
 ```bash
-java -jar msx2cas-cmd/target/msx2cas-cmd-5.0.0-jar-with-dependencies.jar -t ascii16 -w 2400 aleste.rom
+java -jar msx2cas-cmd/target/msx2cas-cmd-6.1.0-jar-with-dependencies.jar -t ascii16 -w 2400 aleste.rom
 ```
 
 ## Playback Controls
