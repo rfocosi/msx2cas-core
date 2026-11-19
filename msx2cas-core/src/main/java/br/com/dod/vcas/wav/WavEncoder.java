@@ -1,5 +1,7 @@
 package br.com.dod.vcas.wav;
 
+import java.util.List;
+
 import br.com.dod.vcas.model.SampleRate;
 import br.com.dod.vcas.util.FileCommons;
 import br.com.dod.vcas.util.WavHeader;
@@ -27,6 +29,7 @@ public class WavEncoder implements WavOutput {
     static final int TURBO_PILOT_CYCLES = 512;
     static final int TURBO_SYNC_BYTE = 0xA5;
     static final int TURBO_PAUSE_DIVISOR = 4;
+    static final int TURBO_INTER_BLOCK_PAUSE_SECONDS = 1;
     
     public static final char SEPARATOR_PAUSE_LENGTH = 4;  // Seconds
     public static final char FIRST_PAUSE_LENGTH = 2;      // Seconds
@@ -148,6 +151,19 @@ public class WavEncoder implements WavOutput {
      */
     public static int turboPauseSampleCount(SampleRate sampleRate) {
         return sampleRate.intValue() / TURBO_PAUSE_DIVISOR;
+    }
+
+    /**
+     * Calculate the exact number of silence samples before a Stage-2 turbo block by block index.
+     *
+     * @param sampleRate Target sample rate
+     * @param blockIndex Zero-based Stage-2 block index on the track
+     * @return Number of silence PCM samples (0.25s before block 0, 1.0s before subsequent blocks)
+     */
+    public static int turboBlockPauseSampleCount(SampleRate sampleRate, int blockIndex) {
+        return blockIndex == 0
+                ? turboPauseSampleCount(sampleRate)
+                : pauseSampleCount(sampleRate, TURBO_INTER_BLOCK_PAUSE_SECONDS, 0L);
     }
 
     /**
@@ -352,7 +368,29 @@ public class WavEncoder implements WavOutput {
         if (payload == null || payload.length == 0) {
             return;
         }
-        int pauseSamples = turboPauseSampleCount(sampleRate);
+        encodeTurboBlocks(List.of(payload));
+    }
+
+    /**
+     * Append one or more Stage-2 Z80 turbo blocks with inter-stage / inter-block silence pauses.
+     *
+     * @param payloads Ordered list of turbo payload byte arrays
+     */
+    public void encodeTurboBlocks(List<byte[]> payloads) {
+        if (payloads == null || payloads.isEmpty()) {
+            return;
+        }
+        int blockIndex = 0;
+        for (byte[] payload : payloads) {
+            if (payload == null || payload.length == 0) {
+                continue;
+            }
+            encodeSingleTurboBlock(payload, turboBlockPauseSampleCount(sampleRate, blockIndex));
+            blockIndex++;
+        }
+    }
+
+    private void encodeSingleTurboBlock(byte[] payload, int pauseSamples) {
         for (int i = 0; i < pauseSamples; i++) {
             outputBuffer.append(SILENCE);
         }

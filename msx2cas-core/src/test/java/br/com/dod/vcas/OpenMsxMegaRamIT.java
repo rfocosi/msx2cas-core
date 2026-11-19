@@ -98,6 +98,18 @@ public class OpenMsxMegaRamIT {
     }
 
     @Test
+    public void gradienteExpertWithoutMegaRamTurboReportsError() throws Exception, FlowException {
+        Assume.assumeTrue("Gradiente Expert GPC-1 BIOS ROM not found",
+                hasRom("expert_1.1_basic-bios1.rom", "d6720845928ee848cfa88a86accb067397685f02"));
+
+        byte[] rom128k = buildKonami4CheckRom(128 * 1024, "MR");
+        String result = runCase("Gradiente_Expert_GPC-1", List.of(),
+                "nomramt", rom128k, true, false, true, false, true, SampleRate.sr22050);
+        assertTrue("Expected NO MEGARAM error on screen in turbo mode but got: " + result,
+                result.contains("Fail: NO MEGARAM!"));
+    }
+
+    @Test
     public void nationalCf2000WithRam512kDoesNotFalselyDetectMegaRam() throws Exception, FlowException {
         Assume.assumeTrue("National CF-2000 BIOS ROM not found",
                 hasRom("cf-2000_basic-bios1.rom", "302afb5d8be26c758309ca3df611ae69cced2821"));

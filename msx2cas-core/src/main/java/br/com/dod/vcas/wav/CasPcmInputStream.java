@@ -111,7 +111,7 @@ public class CasPcmInputStream extends InputStream {
             }
             addDataSegment(segments, casFile.getContentBytes(), inverted, use16Sample);
             if (turboTrack) {
-                addTurboSegments(segments, sampleRate, casFile.getTurboPayload(), inverted);
+                addTurboSegments(segments, sampleRate, casFile.getTurboPayloads(), inverted);
             }
         }
         addPauseSegment(segments, sampleRate, WavEncoder.DEFAULT_PAUSE_LENGTH, WavEncoder.LENGTH_CORRECTION);
@@ -155,20 +155,28 @@ public class CasPcmInputStream extends InputStream {
         }
     }
 
-    private static void addTurboSegments(List<Segment> segments, SampleRate sampleRate, byte[] payload, boolean inverted) {
-        int pauseCount = WavEncoder.turboPauseSampleCount(sampleRate);
-        if (pauseCount > 0) {
-            segments.add(new PauseSegment(pauseCount));
-        }
+    private static void addTurboSegments(List<Segment> segments, SampleRate sampleRate, List<byte[]> payloads, boolean inverted) {
         byte[] pilotBit = WavEncoder.turboZeroBitSlice(inverted);
-        segments.add(new HeaderSegment(WavEncoder.TURBO_PILOT_CYCLES, pilotBit));
-        segments.add(new HeaderSegment(1, WavEncoder.turboOneBitSlice(inverted)));
+        byte[] syncOneBit = WavEncoder.turboOneBitSlice(inverted);
+        int blockIndex = 0;
+        for (byte[] payload : payloads) {
+            if (payload == null || payload.length == 0) {
+                continue;
+            }
+            int pauseCount = WavEncoder.turboBlockPauseSampleCount(sampleRate, blockIndex);
+            if (pauseCount > 0) {
+                segments.add(new PauseSegment(pauseCount));
+            }
+            segments.add(new HeaderSegment(WavEncoder.TURBO_PILOT_CYCLES, pilotBit));
+            segments.add(new HeaderSegment(1, syncOneBit));
 
-        byte[] syncAndPayload = new byte[1 + payload.length];
-        syncAndPayload[0] = (byte) WavEncoder.TURBO_SYNC_BYTE;
-        System.arraycopy(payload, 0, syncAndPayload, 1, payload.length);
-        segments.add(new TurboDataSegment(syncAndPayload, inverted));
-        segments.add(new HeaderSegment(1, pilotBit));
+            byte[] syncAndPayload = new byte[1 + payload.length];
+            syncAndPayload[0] = (byte) WavEncoder.TURBO_SYNC_BYTE;
+            System.arraycopy(payload, 0, syncAndPayload, 1, payload.length);
+            segments.add(new TurboDataSegment(syncAndPayload, inverted));
+            segments.add(new HeaderSegment(1, pilotBit));
+            blockIndex++;
+        }
     }
 
     /**

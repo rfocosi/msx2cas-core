@@ -1,7 +1,5 @@
 package br.com.dod.vcas.converter.impl;
 
-import java.util.Arrays;
-
 import br.com.dod.vcas.cas.CasEncoder;
 import br.com.dod.vcas.cas.CasOutput;
 import br.com.dod.vcas.converter.AbstractFileConverter;
@@ -256,19 +254,21 @@ public class RomConverter extends AbstractFileConverter {
         encodeBlockHeader(encoder, getNameBuffer());
 
         if (headId < 0x80) {
-            encodeRomBlock(encoder, headId, 0, inputMemPointer.length, RomLoaders.rom16K(resetRom));
+            if (turbo) {
+                startTurboSupervisor(encoder);
+            }
+            encodeRomBlock(encoder, headId, 0, inputMemPointer.length, RomLoaders.rom16K(resetRom), true);
         } else if (turbo) {
             int startAddr = (headId & 0xF0) << 8;
             int initAddr = Byte.toUnsignedInt(inputMemPointer[2])
                     | (Byte.toUnsignedInt(inputMemPointer[3]) << 8);
             int stubAddr = startAddr + inputMemPointer.length;
             boolean appendInit32Stub = stubAddr + INIT32_TRAMPOLINE_SIZE <= MSX_WORK_AREA_START;
-            char[] page2Loader = RomLoaders.rom16KPage2(
-                    startAddr, inputMemPointer.length, initAddr, appendInit32Stub);
+            char[] supervisor = RomLoaders.turboSupervisorPage2(initAddr, appendInit32Stub);
             encoder.beginDataBlock();
-            encoder.encodeData(buildBinaryAddressBuffer(sizeof(page2Loader)));
-            encoder.encodeData(page2Loader);
-            encoder.encodeTurboPayload(inputMemPointer);
+            encoder.encodeData(buildBinaryAddressBuffer(sizeof(supervisor)));
+            encoder.encodeData(supervisor);
+            encoder.encodeTurboPayload(RomLoaders.buildPage2TurboFrame(startAddr, inputMemPointer));
         } else {
             encoder.beginDataBlock();
             int startAddr = (headId & 0xF0) << 8;
@@ -309,23 +309,35 @@ public class RomConverter extends AbstractFileConverter {
         }
 
         encodeBlockHeader(encoder, getNameBuffer());
-        encodeRomBlock(encoder, headId, 0, ROM_16K_MAX_SIZE, RomLoaders.blockLoader());
+        if (turbo) {
+            startTurboSupervisor(encoder);
+        }
+        encodeRomBlock(encoder, headId, 0, ROM_16K_MAX_SIZE, RomLoaders.blockLoader(), false);
 
-        encodeBlockHeader(encoder, getNumberedNameBuffer(2));
-        encodeRomBlock(encoder, headId, ROM_16K_MAX_SIZE, inputMemPointer.length, RomLoaders.rom32K(resetRom));
+        if (!turbo) {
+            encodeBlockHeader(encoder, getNumberedNameBuffer(2));
+        }
+        encodeRomBlock(encoder, headId, ROM_16K_MAX_SIZE, inputMemPointer.length, RomLoaders.rom32K(resetRom), true);
     }
 
     private void convertRom49K(CasEncoder encoder) throws FlowException {
         char headId = 0;
 
         encodeBlockHeader(encoder, getNameBuffer());
-        encodeRomBlock(encoder, headId, 0, ROM_16K_MAX_SIZE, RomLoaders.blockLoader());
+        if (turbo) {
+            startTurboSupervisor(encoder);
+        }
+        encodeRomBlock(encoder, headId, 0, ROM_16K_MAX_SIZE, RomLoaders.blockLoader(), false);
 
-        encodeBlockHeader(encoder, getNumberedNameBuffer(2));
-        encodeRomBlock(encoder, headId, ROM_16K_MAX_SIZE, ROM_32K_MAX_SIZE, RomLoaders.blockLoader());
+        if (!turbo) {
+            encodeBlockHeader(encoder, getNumberedNameBuffer(2));
+        }
+        encodeRomBlock(encoder, headId, ROM_16K_MAX_SIZE, ROM_32K_MAX_SIZE, RomLoaders.blockLoader(), false);
 
-        encodeBlockHeader(encoder, getNumberedNameBuffer(3));
-        encodeRomBlock(encoder, headId, ROM_32K_MAX_SIZE, inputMemPointer.length, RomLoaders.rom49K(resetRom));
+        if (!turbo) {
+            encodeBlockHeader(encoder, getNumberedNameBuffer(3));
+        }
+        encodeRomBlock(encoder, headId, ROM_32K_MAX_SIZE, inputMemPointer.length, RomLoaders.rom49K(resetRom), true);
     }
 
     private void convertMegaRam(CasEncoder encoder) throws FlowException {
@@ -335,15 +347,17 @@ public class RomConverter extends AbstractFileConverter {
         int maxBankIndex = total8kBanks - 1;
         int totalBlocks = (fileSize + ROM_16K_MAX_SIZE - 1) / ROM_16K_MAX_SIZE;
 
+        if (turbo) {
+            encodeBlockHeader(encoder, getNameBuffer());
+            startTurboSupervisor(encoder);
+        }
+
         for (int blockIdx = 0; blockIdx < totalBlocks; blockIdx++) {
             int blockStart = blockIdx * ROM_16K_MAX_SIZE;
             int blockEnd = Math.min(fileSize, blockStart + ROM_16K_MAX_SIZE);
             int blockSize = blockEnd - blockStart;
             boolean isLastBlock = blockIdx == totalBlocks - 1;
 
-            char[] nameBuffer = blockIdx == 0
-                    ? getNameBuffer()
-                    : getNumberedNameBuffer(blockIdx + 1);
             char[] loader = isLastBlock ? RomLoaders.megaBoot() : RomLoaders.megaBlock();
 
             loader[3] = 0x00;
@@ -360,17 +374,34 @@ public class RomConverter extends AbstractFileConverter {
                 loader[12] = (char) (resetRom ? 1 : 0);
             }
 
-            encodeBlockHeader(encoder, nameBuffer);
-            writeBlockPayload(encoder, loader, patchedRom, blockStart, blockEnd);
+            if (!turbo) {
+                char[] nameBuffer = blockIdx == 0
+                        ? getNameBuffer()
+                        : getNumberedNameBuffer(blockIdx + 1);
+                encodeBlockHeader(encoder, nameBuffer);
+            }
+            writeBlockPayload(encoder, loader, patchedRom, blockStart, blockEnd, isLastBlock);
         }
+    }
+
+    private void startTurboSupervisor(CasEncoder encoder) {
+        char[] supervisor = RomLoaders.turboSupervisor(0x9000);
+        encoder.beginDataBlock();
+        encoder.encodeData(buildBinaryAddressBuffer(sizeof(supervisor)));
+        encoder.encodeData(supervisor);
     }
 
     private void encodeBlockHeader(CasEncoder encoder, char[] nameBuffer) {
         encoder.beginTrack(FileType.ROM, nameBuffer);
     }
 
-    private void encodeRomBlock(CasEncoder encoder, char headId, int blockStart, int blockEnd, char[] loader)
-            throws FlowException {
+    private void encodeRomBlock(
+            CasEncoder encoder,
+            char headId,
+            int blockStart,
+            int blockEnd,
+            char[] loader,
+            boolean isLastBlock) throws FlowException {
         char romCRC = calculateCRC(blockStart, blockEnd);
 
         char addr = (char) (((headId & 0xF0) << 8) + blockStart);
@@ -392,7 +423,7 @@ public class RomConverter extends AbstractFileConverter {
         }
         loader[9] = romCRC;
 
-        writeBlockPayload(encoder, loader, inputMemPointer, blockStart, blockEnd);
+        writeBlockPayload(encoder, loader, inputMemPointer, blockStart, blockEnd, isLastBlock);
     }
 
     private void writeBlockPayload(
@@ -400,15 +431,13 @@ public class RomConverter extends AbstractFileConverter {
             char[] loader,
             byte[] source,
             int blockStart,
-            int blockEnd) {
+            int blockEnd,
+            boolean isLastBlock) {
         int blockSize = blockEnd - blockStart;
-        encoder.beginDataBlock();
         if (turbo) {
-            char[] turboLoader = RomLoaders.withTurboStub(loader, blockSize);
-            encoder.encodeData(buildBinaryAddressBuffer(sizeof(turboLoader)));
-            encoder.encodeData(turboLoader);
-            encoder.encodeTurboPayload(Arrays.copyOfRange(source, blockStart, blockEnd));
+            encoder.encodeTurboPayload(RomLoaders.buildTurboFrame(loader, source, blockStart, blockEnd, isLastBlock));
         } else {
+            encoder.beginDataBlock();
             encoder.encodeData(buildBinaryAddressBuffer(sizeof(loader) + blockSize));
             encoder.encodeData(loader);
             for (int i = blockStart; i < blockEnd; i++) {

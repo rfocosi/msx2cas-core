@@ -1,6 +1,9 @@
 package br.com.dod.vcas.cas;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import br.com.dod.vcas.model.FileType;
 
@@ -13,7 +16,7 @@ public class CasFile implements Serializable {
     private FileType fileType;
     private char[] header;
     private boolean asciiContinuation;
-    private byte[] turboPayload;
+    private final List<byte[]> turboPayloads = new ArrayList<>();
 
     public String getDisplayName() {
         return (getName() == null || "".equals(getName()) ? "------" : getName());
@@ -84,30 +87,51 @@ public class CasFile implements Serializable {
     }
 
     /**
-     * Get the optional Stage-2 Z80 turbo payload attached to this track.
+     * Get the first Stage-2 Z80 turbo payload attached to this track, if any.
      *
-     * @return Raw turbo payload bytes, or {@code null} when none is present
+     * @return First raw turbo payload bytes, or {@code null} when none is present
      */
     public byte[] getTurboPayload() {
-        return turboPayload;
+        return turboPayloads.isEmpty() ? null : turboPayloads.get(0);
     }
 
     /**
-     * Attach an optional Stage-2 Z80 turbo payload to this track.
+     * Get all Stage-2 Z80 turbo payloads attached to this track in playback order.
+     *
+     * @return Unmodifiable list of turbo payload byte arrays
+     */
+    public List<byte[]> getTurboPayloads() {
+        return Collections.unmodifiableList(turboPayloads);
+    }
+
+    /**
+     * Replace all Stage-2 Z80 turbo payloads on this track with a single payload.
      *
      * @param turboPayload Raw turbo payload bytes
      */
     public void setTurboPayload(byte[] turboPayload) {
-        this.turboPayload = turboPayload;
+        this.turboPayloads.clear();
+        addTurboPayload(turboPayload);
     }
 
     /**
-     * Check whether this track carries a Stage-2 Z80 turbo payload.
+     * Append a Stage-2 Z80 turbo payload to this track.
      *
-     * @return {@code true} if a non-empty turbo payload is attached
+     * @param payload Raw turbo payload bytes
+     */
+    public void addTurboPayload(byte[] payload) {
+        if (payload != null && payload.length > 0) {
+            this.turboPayloads.add(payload);
+        }
+    }
+
+    /**
+     * Check whether this track carries at least one Stage-2 Z80 turbo payload.
+     *
+     * @return {@code true} if one or more non-empty turbo payloads are attached
      */
     public boolean hasTurboPayload() {
-        return turboPayload != null && turboPayload.length > 0;
+        return !turboPayloads.isEmpty();
     }
 
     @Override

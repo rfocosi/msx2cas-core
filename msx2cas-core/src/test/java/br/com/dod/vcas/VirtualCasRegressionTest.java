@@ -519,12 +519,44 @@ public class VirtualCasRegressionTest {
         byte[] standardWav = new VirtualCas(SampleRate.sr22050)
                 .convert(rom32kFile.getAbsolutePath())
                 .toBytes();
+        CasOutput turboCas32 = new VirtualCas(SampleRate.sr22050)
+                .turbo(true)
+                .convertToCas(rom32kFile.getAbsolutePath());
+        assertEquals(1, turboCas32.getTracks().size());
+        assertEquals(2, turboCas32.getTracks().get(0).getTurboPayloads().size());
+
+        CasOutput turboCas49 = new VirtualCas(SampleRate.sr22050)
+                .turbo(true)
+                .convertToCas(rom49kFile.getAbsolutePath());
+        assertEquals(1, turboCas49.getTracks().size());
+        assertEquals(3, turboCas49.getTracks().get(0).getTurboPayloads().size());
+
+        CasOutput turboCasMega = new VirtualCas(SampleRate.sr22050)
+                .megaRam(true)
+                .turbo(true)
+                .convertToCas(megaRomFile.getAbsolutePath());
+        assertEquals(1, turboCasMega.getTracks().size());
+        assertEquals(8, turboCasMega.getTracks().get(0).getTurboPayloads().size());
+
         byte[] turboWav = new VirtualCas(SampleRate.sr22050)
                 .turbo(true)
-                .convert(rom32kFile.getAbsolutePath())
+                .convert(turboCas32)
                 .toBytes();
         assertTrue("Expected turbo WAV (" + turboWav.length + ") to be much smaller than standard WAV ("
                 + standardWav.length + ")", turboWav.length < standardWav.length * 0.65);
+
+        byte[] megaStandardWav = new VirtualCas(SampleRate.sr22050)
+                .megaRam(true)
+                .convert(megaRomFile.getAbsolutePath())
+                .toBytes();
+        byte[] megaTurboWav = new VirtualCas(SampleRate.sr22050)
+                .megaRam(true)
+                .turbo(true)
+                .convert(turboCasMega)
+                .toBytes();
+        assertTrue("Expected MegaRAM turbo WAV (" + megaTurboWav.length
+                + ") to be less than half of standard WAV (" + megaStandardWav.length + ")",
+                megaTurboWav.length < megaStandardWav.length * 0.50);
     }
 
     private void assertPcmStreamMatchesWav(

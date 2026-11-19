@@ -128,7 +128,7 @@ public class CasConverter extends AbstractFileConverter {
             }
         }
         if (turboTrack) {
-            encoder.encodeTurboBlock(casFile.getTurboPayload());
+            encoder.encodeTurboBlocks(casFile.getTurboPayloads());
         }
     }
 }

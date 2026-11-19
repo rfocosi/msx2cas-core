@@ -1,7 +1,5 @@
 package br.com.dod.vcas.converter.impl;
 
-import java.util.Arrays;
-
 import br.com.dod.vcas.cas.CasEncoder;
 import br.com.dod.vcas.cas.CasOutput;
 import br.com.dod.vcas.converter.AbstractFileConverter;
@@ -87,10 +85,11 @@ public class BinConverter extends AbstractFileConverter {
 
         int payloadLength = inputMemPointer.length - FILE_OFFSET;
         if (turbo && payloadLength > 0) {
-            char[] turboLoader = RomLoaders.withTurboStub(loader, payloadLength);
-            encoder.encodeData(buildBinaryAddressBuffer(sizeof(turboLoader)));
-            encoder.encodeData(turboLoader);
-            encoder.encodeTurboPayload(Arrays.copyOfRange(inputMemPointer, FILE_OFFSET, inputMemPointer.length));
+            char[] supervisor = RomLoaders.turboSupervisor(0x9000);
+            encoder.encodeData(buildBinaryAddressBuffer(sizeof(supervisor)));
+            encoder.encodeData(supervisor);
+            encoder.encodeTurboPayload(
+                    RomLoaders.buildTurboFrame(loader, inputMemPointer, FILE_OFFSET, inputMemPointer.length, true));
         } else {
             encoder.encodeData(buildBinaryAddressBuffer(sizeof(loader) + payloadLength));
             encoder.encodeData(loader);
