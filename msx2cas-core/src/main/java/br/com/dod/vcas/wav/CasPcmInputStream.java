@@ -91,7 +91,7 @@ public class CasPcmInputStream extends InputStream {
             CasFile casFile = casFiles.get(i);
             boolean isFirstTrack = (i == 0);
             boolean turboTrack = casFile.hasTurboPayload();
-            boolean use16Sample = WavEncoder.use16SampleBootstrap(sampleRate, turboTrack);
+            boolean useTurbo3600Boot = WavEncoder.useTurbo3600Bootstrap(sampleRate, turboTrack);
             if (casFile.isAsciiContinuation()) {
                 addHeaderSegment(segments, sampleRate, WavEncoder.SHORT_HEADER_LENGTH, inverted, turboTrack);
             } else {
@@ -101,15 +101,15 @@ public class CasPcmInputStream extends InputStream {
                 String name = casFile.getName();
                 boolean hasName = name != null && !name.isEmpty();
                 if (isFirstTrack || hasName) {
-                    addDataSegment(segments, casFile.getHeader(), inverted, use16Sample);
+                    addDataSegment(segments, casFile.getHeader(), inverted, useTurbo3600Boot);
                     if (hasName) {
-                        addDataSegment(segments, name.toCharArray(), inverted, use16Sample);
+                        addDataSegment(segments, name.toCharArray(), inverted, useTurbo3600Boot);
                     }
                     addPauseSegment(segments, sampleRate, WavEncoder.DEFAULT_PAUSE_LENGTH, 0L);
                     addHeaderSegment(segments, sampleRate, WavEncoder.SHORT_HEADER_LENGTH, inverted, turboTrack);
                 }
             }
-            addDataSegment(segments, casFile.getContentBytes(), inverted, use16Sample);
+            addDataSegment(segments, casFile.getContentBytes(), inverted, useTurbo3600Boot);
             if (turboTrack) {
                 addTurboSegments(segments, sampleRate, casFile.getTurboPayloads(), inverted);
             }
@@ -131,10 +131,10 @@ public class CasPcmInputStream extends InputStream {
             double length,
             boolean inverted,
             boolean turboTrack) {
-        boolean use16Sample = WavEncoder.use16SampleBootstrap(sampleRate, turboTrack);
+        boolean useTurbo3600Boot = WavEncoder.useTurbo3600Bootstrap(sampleRate, turboTrack);
         int iterations = WavEncoder.headerIterations(sampleRate, length, turboTrack);
         if (iterations > 0) {
-            segments.add(new HeaderSegment(iterations, WavEncoder.setBitSlice(inverted, use16Sample)));
+            segments.add(new HeaderSegment(iterations, WavEncoder.setBitSlice(inverted, useTurbo3600Boot)));
         }
     }
 
@@ -342,7 +342,7 @@ public class CasPcmInputStream extends InputStream {
             this.data = data;
             this.inverted = inverted;
             this.use16Sample = use16Sample;
-            this.samplesPerByte = use16Sample ? WavEncoder.SAMPLES_PER_BYTE_16 : WavEncoder.SAMPLES_PER_BYTE;
+            this.samplesPerByte = use16Sample ? WavEncoder.SAMPLES_PER_BYTE_3600 : WavEncoder.SAMPLES_PER_BYTE;
             this.totalLength = (long) data.length * this.samplesPerByte;
         }
 

@@ -169,6 +169,11 @@ public class OpenMsxRomLoaderIT {
                     binFile, "OKBN", SampleRate.sr22050.invertWaveForm(false), true);
             assertBinBoots(userData, "Gradiente_Expert_GPC-1", "turbo_bin_3600i",
                     binFile, "OKBN", SampleRate.sr33075.invertWaveForm(true), true);
+            assertRomBoots(userData, "Gradiente_Expert_GPC-1", "std_3000_norm",
+                    rom16k, false, "OK16", "2 X", null, null, false, List.of(), 7, false,
+                    false, SampleRate.sr27563.invertWaveForm(false));
+            assertBinBoots(userData, "Gradiente_Expert_GPC-1", "std_bin_3000i",
+                    binFile, "OKBN", SampleRate.sr27563.invertWaveForm(true), false);
         } finally {
             for (SampleRate rate : SampleRate.values()) {
                 rate.invertWaveForm(false);
