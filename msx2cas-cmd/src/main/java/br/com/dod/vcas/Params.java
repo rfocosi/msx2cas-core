@@ -14,7 +14,8 @@ import java.util.stream.Collectors;
 import static java.util.Arrays.*;
 
 class Params {
-    private static final String SPEEDS = "1200|2400|3000|3600";
+    private static final String SPEEDS = "1200|2400|3000";
+    private static final int MAX_STANDARD_BPS = 3000;
     private boolean resetRom;
     private boolean megaRam;
     private MapperType mapperType = MapperType.AUTO;
@@ -41,6 +42,9 @@ class Params {
                 if (hasBps) {
                     String bps = getBps(arguments);
                     sampleRate = SampleRate.fromBps(bps);
+                    if (sampleRate == null) {
+                        throw new IllegalArgumentException("Invalid bps: " + bps);
+                    }
                 }
 
                 boolean inverted = arguments.remove("-i");
@@ -60,8 +64,15 @@ class Params {
                 if (this.turbo && writeCas) {
                     throw new IllegalArgumentException("Cannot combine -f and -c");
                 }
-                if (!hasBps && (!writeCas || write)) {
-                    throw new IllegalArgumentException("Missing bps");
+                if (this.turbo) {
+                    sampleRate = SampleRate.sr33075;
+                } else {
+                    if (!hasBps && (!writeCas || write)) {
+                        throw new IllegalArgumentException("Missing bps");
+                    }
+                    if (!writeCas && sampleRate != null && sampleRate.bps() > MAX_STANDARD_BPS) {
+                        throw new IllegalArgumentException("Max speed without -f is " + MAX_STANDARD_BPS + " bps");
+                    }
                 }
 
                 String outputFileName = "";
@@ -70,14 +81,12 @@ class Params {
                         outputFileName = arguments.iterator().next();
                         arguments.remove(outputFileName);
                     }
-                    if (!writeCas) {
-                        sampleRate = sampleRate.invertWaveForm(inverted);
-                    }
                 } else {
                     List<String> remaining = new ArrayList<>(arguments);
-                    if (remaining.size() >= 2) {
+                    if ((write || writeCas) && remaining.size() >= 2) {
                         String first = remaining.get(0);
-                        if (first.toLowerCase().endsWith(".cas") || !first.matches(".+\\..{3}$")) {
+                        String expectedExt = writeCas ? ".cas" : ".wav";
+                        if (first.toLowerCase().endsWith(expectedExt) || !first.matches(".+\\..{3}$")) {
                             outputFileName = first;
                             remaining.remove(0);
                         }
@@ -86,6 +95,10 @@ class Params {
                     if (fileList.size() != 1) {
                         outputFileName = "";
                     }
+                }
+
+                if (!writeCas && sampleRate != null) {
+                    sampleRate = sampleRate.invertWaveForm(inverted);
                 }
 
                 setFileList(fileList, outputFileName, sampleRate, write, writeCas);
@@ -210,11 +223,11 @@ class Params {
                 -i: Invert Waveform (fix playback on some soundboards)
                 -r: Reset MSX after loading a ROM
                 -m: Load MegaROM into MegaRAM cartridge (port 0x8E)
-                -f: Use custom Z80 turbo loader for ROM and BIN files (cannot combine with -c)
+                -f: Use custom Z80 turbo loader for ROM and BIN files (always uses 3600 bps; cannot combine with -c)
                 -t: Force MegaROM mapper type (auto, konami4, konami5, ascii8, ascii16; implies -m)
                 -c: Write a CAS file with <output-file> name OR with file token name (first 6 characters from <filename>); <bps> is optional
                 -w: Write a WAV file with <output-file> name OR with file token name (first 6 characters from <filename>)
-                <%s>: Playback speed in bps (required unless -c is used)
+                <%s>: Playback speed in bps (required unless -c or -f is used; max 3000 without -f)
                 <input-file>: A ROM, BIN, LDR, MX1, MX2, CAS, BAS(tokenize or not) file
                 
                 If you do not use -c or -w, MSX2Cas will play to default sound interface""".formatted(SPEEDS, SPEEDS));

@@ -34,11 +34,13 @@ After building, you can find the artifacts in `msx2cas-cmd/target/`:
 
 ### CLI Options
 - `-w [<output-file>]`: Write to WAV file instead of playing audio.
+- `-c [<output-file>]`: Write to CAS file (`<bps>` optional; cannot combine with `-f` or `-w`).
 - `-r`: Reset MSX after loading a ROM.
 - `-m`: Load MegaROM (> 49 KB) into MegaRAM cartridge (port `0x8E`).
+- `-f`: Use custom Z80 turbo loader for ROM and BIN files (automatically selects `3600` bps, always).
 - `-t <auto|konami4|konami5|ascii8|ascii16>`: Force MegaROM mapper type (implies `-m`).
 - `-i`: Inverted waveform (default is normal).
-- `<1200|2400|3000|3600>`: Playback speed in bps (required).
+- `<1200|2400|3000>`: Playback speed in bps (required unless `-c` or `-f` is used; max `3000` without `-f`).
 
 ### Playback Controls (when streaming)
 - `SPACE`: Start/Pause playback.

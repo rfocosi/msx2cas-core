@@ -159,13 +159,11 @@ public class VirtualCas {
      * @throws FlowException If there's an error during conversion
      */
     public WavOutput convert(CasOutput casOutput) throws FlowException {
-        if (sampleRate == null) {
-            throw FlowException.error("sample_rate_required");
-        }
+        SampleRate effectiveRate = resolveSampleRate();
         if (casOutput == null) {
             throw FlowException.error("cas_list_empty");
         }
-        return converterFactory.createConverter(casOutput.getTracks(), sampleRate, casOutput.casName()).convert();
+        return converterFactory.createConverter(casOutput.getTracks(), effectiveRate, casOutput.casName()).convert();
     }
 
     /**
@@ -176,9 +174,7 @@ public class VirtualCas {
      * @throws FlowException If there's an error during conversion
      */
     public WavOutput convert(String filePath) throws FlowException {
-        if (sampleRate == null) {
-            throw FlowException.error("sample_rate_required");
-        }
+        resolveSampleRate();
         return convert(convertToCas(filePath));
     }
 
@@ -190,10 +186,7 @@ public class VirtualCas {
      * @throws FlowException If sample rate is missing or CAS tracks are empty
      */
     public CasPcmInputStream openPcmStream(CasOutput casOutput) throws FlowException {
-        if (sampleRate == null) {
-            throw FlowException.error("sample_rate_required");
-        }
-        return new CasPcmInputStream(casOutput, sampleRate);
+        return new CasPcmInputStream(casOutput, resolveSampleRate());
     }
 
     /**
@@ -204,9 +197,7 @@ public class VirtualCas {
      * @throws FlowException If sample rate is missing or conversion fails
      */
     public CasPcmInputStream openPcmStream(String filePath) throws FlowException {
-        if (sampleRate == null) {
-            throw FlowException.error("sample_rate_required");
-        }
+        resolveSampleRate();
         return openPcmStream(convertToCas(filePath));
     }
 
@@ -218,10 +209,7 @@ public class VirtualCas {
      * @throws FlowException If there's an error during conversion
      */
     public WavOutput convert(List<CasFile> casList) throws FlowException {
-        if (sampleRate == null) {
-            throw FlowException.error("sample_rate_required");
-        }
-        Converter converter = converterFactory.createConverter(casList, sampleRate);
+        Converter converter = converterFactory.createConverter(casList, resolveSampleRate());
         return converter.convert();
     }
 
@@ -232,13 +220,21 @@ public class VirtualCas {
      * @throws FlowException If there's an error during conversion
      */
     public List<WavOutput> convert() throws FlowException {
-        if (sampleRate == null) {
-            throw FlowException.error("sample_rate_required");
-        }
+        resolveSampleRate();
         final List<WavOutput> wavList = new LinkedList<>();
         for (String fileName : fileList) {
             wavList.add(convert(fileName));
         }
         return wavList;
+    }
+
+    private SampleRate resolveSampleRate() throws FlowException {
+        if (sampleRate != null) {
+            return sampleRate;
+        }
+        if (turbo) {
+            return SampleRate.sr33075;
+        }
+        throw FlowException.error("sample_rate_required");
     }
 }
