@@ -38,13 +38,13 @@ mvn -pl msx2cas-core -Dtest=FileEncodingTest test
 ## CLI usage
 
 ```bash
-java -jar msx2cas-cmd/target/msx2cas-cmd-7.0.0-jar-with-dependencies.jar [-i] [-r] [-m] [-f] [-t <auto|konami4|konami5|ascii8|ascii16>] [-c [<output-file>] | -w [<output-file>]] [<1200|2400|3000>] <input-file> [<input-file>...]
+java -jar msx2cas-cmd/target/msx2cas-cmd-7.0.0-jar-with-dependencies.jar [-i] [-r] [-m] [-t <auto|konami4|konami5|ascii8|ascii16>] [-c [<output-file>] | -w [<output-file>]] [<1200|2400|3000|turbo>] <input-file> [<input-file>...]
 ```
 
 - `-i`: Invert waveform (fix playback on some soundcards)
 - `-r`: Reset MSX after loading a ROM
 - `-m`: Load MegaROM (> 49 KB) into a MegaRAM cartridge (port `0x8E`)
-- `-f`: Use custom Z80 turbo loader for ROM and BIN files (always selects `3600` bps; cannot combine with `-c`)
 - `-t`: Force MegaROM mapper type (`auto`, `konami4`, `konami5`, `ascii8`, `ascii16`; implies `-m`)
-- `-c`: Write a CAS file (`<output-file>` or first 6 characters of `<input-file>`); `<bps>` is optional
+- `-c`: Write a CAS file (`<output-file>` or first 6 characters of `<input-file>`); `<bps>` is optional (cannot combine with `turbo`)
 - `-w`: Write a WAV file (`<output-file>` or first 6 characters of `<input-file>`), instead of playing to the default sound interface
+- `<1200|2400|3000|turbo>`: Playback speed in bps (`turbo` uses the custom Z80 turbo loader at `3600` bps for ROM and BIN files)

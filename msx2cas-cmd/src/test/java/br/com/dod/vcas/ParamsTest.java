@@ -164,23 +164,8 @@ public class ParamsTest {
     }
 
     @Test
-    public void turboFlagEnablesTurboModeAndForces3600Bps() {
-        String[] args = { "-f", "-r", "-w", "out.wav", "2400", "my.rom" };
-
-        Params params = new Params(args);
-
-        assertTrue(params.turbo());
-        assertTrue(params.resetRom());
-        assertEquals(1, params.getFiles().size());
-        assertEquals("my.rom", params.getFiles().get(0).inputName());
-        assertEquals("out.wav", params.getFiles().get(0).outputName());
-        assertEquals(SampleRate.sr33075, params.getFiles().get(0).sampleRate());
-        assertFalse(params.getFiles().get(0).sampleRate().isInverted());
-    }
-
-    @Test
-    public void turboFlagWithoutBpsAutomaticallySelects3600Bps() {
-        Params directPlay = new Params(new String[] { "-f", "-i", "-m", "my.rom" });
+    public void turboSpeedEnablesTurboModeAndSelects3600Bps() {
+        Params directPlay = new Params(new String[] { "-i", "-m", "turbo", "my.rom" });
         assertTrue(directPlay.turbo());
         assertTrue(directPlay.megaRam());
         assertEquals(1, directPlay.getFiles().size());
@@ -189,7 +174,8 @@ public class ParamsTest {
         assertTrue(directPlay.getFiles().get(0).sampleRate().isInverted());
         assertFalse(directPlay.getFiles().get(0).write());
 
-        Params defaultWav = new Params(new String[] { "-f", "-w", "my.rom" });
+        Params defaultWav = new Params(new String[] { "-w", "turbo", "my.rom" });
+        assertTrue(defaultWav.turbo());
         assertEquals(1, defaultWav.getFiles().size());
         assertEquals("my.rom", defaultWav.getFiles().get(0).inputName());
         assertEquals("my.wav", defaultWav.getFiles().get(0).outputName());
@@ -197,19 +183,31 @@ public class ParamsTest {
         assertFalse(defaultWav.getFiles().get(0).sampleRate().isInverted());
         assertTrue(defaultWav.getFiles().get(0).write());
 
-        Params customWav = new Params(new String[] { "-f", "-w", "custom.wav", "my.rom" });
+        Params customWav = new Params(new String[] { "-r", "-w", "out.wav", "TURBO", "my.rom" });
+        assertTrue(customWav.turbo());
+        assertTrue(customWav.resetRom());
         assertEquals(1, customWav.getFiles().size());
         assertEquals("my.rom", customWav.getFiles().get(0).inputName());
-        assertEquals("custom.wav", customWav.getFiles().get(0).outputName());
+        assertEquals("out.wav", customWav.getFiles().get(0).outputName());
         assertEquals(SampleRate.sr33075, customWav.getFiles().get(0).sampleRate());
         assertTrue(customWav.getFiles().get(0).write());
 
-        Params multiFiles = new Params(new String[] { "-f", "-w", "my.rom", "another.rom" });
+        Params multiFiles = new Params(new String[] { "-w", "turbo", "my.rom", "another.rom" });
+        assertTrue(multiFiles.turbo());
         assertEquals(2, multiFiles.getFiles().size());
         assertEquals("my.wav", multiFiles.getFiles().get(0).outputName());
         assertEquals("anothe.wav", multiFiles.getFiles().get(1).outputName());
         assertEquals(SampleRate.sr33075, multiFiles.getFiles().get(0).sampleRate());
         assertEquals(SampleRate.sr33075, multiFiles.getFiles().get(1).sampleRate());
+    }
+
+    @Test
+    public void removedTurboFlagIsRejected() {
+        Params legacyFlagOnly = new Params(new String[] { "-f", "-w", "my.rom" });
+        assertEquals(0, legacyFlagOnly.getFiles().size());
+
+        Params legacyFlagWithBps = new Params(new String[] { "-f", "-w", "2400", "my.rom" });
+        assertEquals(0, legacyFlagWithBps.getFiles().size());
     }
 
     @Test
@@ -227,12 +225,9 @@ public class ParamsTest {
     }
 
     @Test
-    public void turboFlagRejectsCasOutputCombination() {
-        Params withoutBps = new Params(new String[] { "-f", "-c", "my.rom" });
-        assertEquals(0, withoutBps.getFiles().size());
-
-        Params withBps = new Params(new String[] { "-f", "-c", "2400", "my.rom" });
-        assertEquals(0, withBps.getFiles().size());
+    public void turboSpeedRejectsCasOutputCombination() {
+        Params withTurbo = new Params(new String[] { "-c", "turbo", "my.rom" });
+        assertEquals(0, withTurbo.getFiles().size());
     }
 
 }
