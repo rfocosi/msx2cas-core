@@ -455,14 +455,128 @@ public class VirtualCasRegressionTest {
         }
     }
 
+    @Test
+    public void turboPcmStreamMatchesWavAndReducesSize() throws Exception, FlowException {
+        File rom16kFile = tempFolder.newFile("t16cas.rom");
+        Files.write(rom16kFile.toPath(), createRom16K((byte) 0x40));
+
+        File rom16kPg2File = tempFolder.newFile("t16p2c.rom");
+        Files.write(rom16kPg2File.toPath(), createRom16K((byte) 0x80));
+
+        byte[] rom32k = new byte[32768];
+        rom32k[0] = 'A';
+        rom32k[1] = 'B';
+        rom32k[2] = 0x10;
+        rom32k[3] = 0x40;
+        for (int i = 4; i < rom32k.length; i++) {
+            rom32k[i] = (byte) ((i * 5) & 0xFF);
+        }
+        File rom32kFile = tempFolder.newFile("t32cas.rom");
+        Files.write(rom32kFile.toPath(), rom32k);
+
+        byte[] rom49k = new byte[49152];
+        rom49k[0x4000] = 'A';
+        rom49k[0x4001] = 'B';
+        rom49k[0x4002] = 0x10;
+        rom49k[0x4003] = 0x40;
+        for (int i = 4; i < rom49k.length; i++) {
+            if (i < 0x4000 || i > 0x4003) {
+                rom49k[i] = (byte) ((i * 11) & 0xFF);
+            }
+        }
+        File rom49kFile = tempFolder.newFile("t49cas.rom");
+        Files.write(rom49kFile.toPath(), rom49k);
+
+        File megaRomFile = tempFolder.newFile("tmegac.rom");
+        byte[] megaRom = new byte[128 * 1024];
+        megaRom[0] = 'A';
+        megaRom[1] = 'B';
+        megaRom[2] = 0x10;
+        megaRom[3] = 0x40;
+        Files.write(megaRomFile.toPath(), megaRom);
+
+        try {
+            assertPcmStreamMatchesWav(PROJECT_FOLDER + "/resources/flabin-flapbird.bin", false, false, true,
+                    SampleRate.sr11025.invertWaveForm(false));
+            assertPcmStreamMatchesWav(PROJECT_FOLDER + "/resources/flabin-flapbird.bin", false, false, true,
+                    SampleRate.sr22050.invertWaveForm(true));
+            assertPcmStreamMatchesWav(rom16kFile.getAbsolutePath(), true, false, true,
+                    SampleRate.sr27563.invertWaveForm(false));
+            assertPcmStreamMatchesWav(rom16kPg2File.getAbsolutePath(), false, false, true,
+                    SampleRate.sr33075.invertWaveForm(true));
+            assertPcmStreamMatchesWav(rom32kFile.getAbsolutePath(), true, false, true,
+                    SampleRate.sr22050.invertWaveForm(false));
+            assertPcmStreamMatchesWav(rom49kFile.getAbsolutePath(), false, false, true,
+                    SampleRate.sr33075.invertWaveForm(false));
+            assertPcmStreamMatchesWav(megaRomFile.getAbsolutePath(), true, true, true,
+                    SampleRate.sr33075.invertWaveForm(true));
+        } finally {
+            for (SampleRate rate : SampleRate.values()) {
+                rate.invertWaveForm(false);
+            }
+        }
+
+        byte[] standardWav = new VirtualCas(SampleRate.sr22050)
+                .convert(rom32kFile.getAbsolutePath())
+                .toBytes();
+        CasOutput turboCas32 = new VirtualCas(SampleRate.sr22050)
+                .turbo(true)
+                .convertToCas(rom32kFile.getAbsolutePath());
+        assertEquals(1, turboCas32.getTracks().size());
+        assertEquals(2, turboCas32.getTracks().get(0).getTurboPayloads().size());
+
+        CasOutput turboCas49 = new VirtualCas(SampleRate.sr22050)
+                .turbo(true)
+                .convertToCas(rom49kFile.getAbsolutePath());
+        assertEquals(1, turboCas49.getTracks().size());
+        assertEquals(3, turboCas49.getTracks().get(0).getTurboPayloads().size());
+
+        CasOutput turboCasMega = new VirtualCas(SampleRate.sr22050)
+                .megaRam(true)
+                .turbo(true)
+                .convertToCas(megaRomFile.getAbsolutePath());
+        assertEquals(1, turboCasMega.getTracks().size());
+        assertEquals(8, turboCasMega.getTracks().get(0).getTurboPayloads().size());
+
+        byte[] turboWav = new VirtualCas(SampleRate.sr22050)
+                .turbo(true)
+                .convert(turboCas32)
+                .toBytes();
+        assertTrue("Expected turbo WAV (" + turboWav.length + ") to be much smaller than standard WAV ("
+                + standardWav.length + ")", turboWav.length < standardWav.length * 0.65);
+
+        byte[] megaStandardWav = new VirtualCas(SampleRate.sr22050)
+                .megaRam(true)
+                .convert(megaRomFile.getAbsolutePath())
+                .toBytes();
+        byte[] megaTurboWav = new VirtualCas(SampleRate.sr22050)
+                .megaRam(true)
+                .turbo(true)
+                .convert(turboCasMega)
+                .toBytes();
+        assertTrue("Expected MegaRAM turbo WAV (" + megaTurboWav.length
+                + ") to be less than half of standard WAV (" + megaStandardWav.length + ")",
+                megaTurboWav.length < megaStandardWav.length * 0.50);
+    }
+
     private void assertPcmStreamMatchesWav(
             String sourcePath,
             boolean reset,
             boolean megaRam,
             SampleRate sampleRate) throws Exception, FlowException {
+        assertPcmStreamMatchesWav(sourcePath, reset, megaRam, false, sampleRate);
+    }
+
+    private void assertPcmStreamMatchesWav(
+            String sourcePath,
+            boolean reset,
+            boolean megaRam,
+            boolean turbo,
+            SampleRate sampleRate) throws Exception, FlowException {
         VirtualCas vcas = new VirtualCas(sampleRate)
                 .resetRom(reset)
-                .megaRam(megaRam);
+                .megaRam(megaRam)
+                .turbo(turbo);
         CasOutput casOutput = vcas.convertToCas(sourcePath);
         byte[] expectedPayload = extractWavPayload(vcas.convert(casOutput).toBytes());
 

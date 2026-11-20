@@ -14,10 +14,13 @@ import java.util.stream.Collectors;
 import static java.util.Arrays.*;
 
 class Params {
-    private static final String SPEEDS = "1200|2400|3000|3600";
+    private static final String TURBO_SPEED = "turbo";
+    private static final String SPEEDS = "1200|2400|3000|turbo";
+    private static final int MAX_STANDARD_BPS = 3000;
     private boolean resetRom;
     private boolean megaRam;
     private MapperType mapperType = MapperType.AUTO;
+    private boolean turbo;
 
     private final List<ConvertFile> files = new LinkedList<>();
 
@@ -39,24 +42,42 @@ class Params {
                 SampleRate sampleRate = null;
                 if (hasBps) {
                     String bps = getBps(arguments);
-                    sampleRate = SampleRate.fromBps(bps);
+                    if (TURBO_SPEED.equalsIgnoreCase(bps)) {
+                        this.turbo = true;
+                        sampleRate = SampleRate.sr33075;
+                    } else {
+                        sampleRate = SampleRate.fromBps(bps);
+                        if (sampleRate == null) {
+                            throw new IllegalArgumentException("Invalid bps: " + bps);
+                        }
+                    }
                 }
 
                 boolean inverted = arguments.remove("-i");
                 this.resetRom = arguments.remove("-r");
-                this.megaRam = arguments.remove("-m");
-                this.mapperType = extractMapperType(arguments);
-                if (this.mapperType != MapperType.AUTO) {
-                    this.megaRam = true;
-                }
+                extractMegaRam(arguments);
 
                 boolean write = arguments.remove("-w");
                 boolean writeCas = arguments.remove("-c");
                 if (write && writeCas) {
                     throw new IllegalArgumentException("Cannot combine -w and -c");
                 }
-                if (!hasBps && (!writeCas || write)) {
-                    throw new IllegalArgumentException("Missing bps");
+                if (this.turbo && writeCas) {
+                    throw new IllegalArgumentException("Cannot combine turbo and -c");
+                }
+                if (!this.turbo) {
+                    if (!hasBps && (!writeCas || write)) {
+                        throw new IllegalArgumentException("Missing bps");
+                    }
+                    if (!writeCas && sampleRate != null && sampleRate.bps() > MAX_STANDARD_BPS) {
+                        throw new IllegalArgumentException("Max speed without turbo is " + MAX_STANDARD_BPS + " bps");
+                    }
+                }
+
+                for (String remainingArg : arguments) {
+                    if (remainingArg.startsWith("-")) {
+                        throw new IllegalArgumentException("Unknown option: " + remainingArg);
+                    }
                 }
 
                 String outputFileName = "";
@@ -65,12 +86,9 @@ class Params {
                         outputFileName = arguments.iterator().next();
                         arguments.remove(outputFileName);
                     }
-                    if (!writeCas) {
-                        sampleRate = sampleRate.invertWaveForm(inverted);
-                    }
                 } else {
                     List<String> remaining = new ArrayList<>(arguments);
-                    if (remaining.size() >= 2) {
+                    if (writeCas && remaining.size() >= 2) {
                         String first = remaining.get(0);
                         if (first.toLowerCase().endsWith(".cas") || !first.matches(".+\\..{3}$")) {
                             outputFileName = first;
@@ -83,6 +101,10 @@ class Params {
                     }
                 }
 
+                if (!writeCas && sampleRate != null) {
+                    sampleRate = sampleRate.invertWaveForm(inverted);
+                }
+
                 setFileList(fileList, outputFileName, sampleRate, write, writeCas);
             }
         } catch (Throwable e) {
@@ -90,9 +112,13 @@ class Params {
         }
     }
 
+    private static boolean isSpeedToken(String arg) {
+        return arg.matches("\\d{4}") || TURBO_SPEED.equalsIgnoreCase(arg);
+    }
+
     private static boolean hasBpsToken(String[] args) {
         for (String arg : args) {
-            if (arg.matches("\\d{4}")) {
+            if (isSpeedToken(arg)) {
                 return true;
             }
         }
@@ -107,7 +133,7 @@ class Params {
 
         for (String arg : arguments) {
             if (afterBps) returnArgs.add(arg);
-            if (arg.matches("\\d{4}")) {
+            if (isSpeedToken(arg)) {
                 afterBps = true;
             }
         }
@@ -120,7 +146,7 @@ class Params {
 
         for (String arg : arguments) {
             returnArgs.add(arg);
-            if (arg.matches("\\d{4}")) {
+            if (isSpeedToken(arg)) {
                 break;
             }
         }
@@ -145,25 +171,27 @@ class Params {
         System.out.println("MSX2Cas v" + getVersion());
     }
 
-    private static MapperType extractMapperType(LinkedHashSet<String> arguments) {
+    private void extractMegaRam(LinkedHashSet<String> arguments) {
         Iterator<String> iterator = arguments.iterator();
         while (iterator.hasNext()) {
-            if ("-t".equals(iterator.next())) {
+            if ("-m".equals(iterator.next())) {
                 iterator.remove();
-                if (!iterator.hasNext()) {
-                    throw new IllegalArgumentException("Missing mapper type after -t");
+                this.megaRam = true;
+                if (iterator.hasNext()) {
+                    String next = iterator.next();
+                    if (!next.startsWith("-") && !next.matches(".+\\..{3}$")) {
+                        this.mapperType = MapperType.fromString(next);
+                        iterator.remove();
+                    }
                 }
-                String mapperValue = iterator.next();
-                iterator.remove();
-                return MapperType.fromString(mapperValue);
+                return;
             }
         }
-        return MapperType.AUTO;
     }
 
     private String getBps(LinkedHashSet<String> arguments) {
         for (String arg : arguments) {
-            if (arg.matches("\\d{4}")) {
+            if (isSpeedToken(arg)) {
                 arguments.remove(arg);
                 return arg;
             }
@@ -201,14 +229,13 @@ class Params {
 
     private static void displayUsage() {
         System.out.println("""
-                Usage: msx2cas [-i] [-r] [-m] [-t <auto|konami4|konami5|ascii8|ascii16>] [-c [<output-file>] | -w [<output-file>]] [<%s>] <input-file> [<input-file>...]
+                Usage: msx2cas [-i] [-r] [-m [<auto|konami4|konami5|ascii8|ascii16>]] [-c [<output-file>] | -w [<output-file>]] [<%s>] <input-file> [<input-file>...]
                 -i: Invert Waveform (fix playback on some soundboards)
                 -r: Reset MSX after loading a ROM
-                -m: Load MegaROM into MegaRAM cartridge (port 0x8E)
-                -t: Force MegaROM mapper type (auto, konami4, konami5, ascii8, ascii16; implies -m)
-                -c: Write a CAS file with <output-file> name OR with file token name (first 6 characters from <filename>); <bps> is optional
+                -m: Load MegaROM into MegaRAM cartridge (port 0x8E); optionally force mapper type (auto, konami4, konami5, ascii8, ascii16; default: auto)
+                -c: Write a CAS file with <output-file> name OR with file token name (first 6 characters from <filename>); <bps> is optional (cannot combine with turbo)
                 -w: Write a WAV file with <output-file> name OR with file token name (first 6 characters from <filename>)
-                <%s>: Playback speed in bps (required unless -c is used)
+                <%s>: Playback speed in bps (required unless -c is used; turbo uses custom Z80 turbo loader at 3600 bps for ROM and BIN files)
                 <input-file>: A ROM, BIN, LDR, MX1, MX2, CAS, BAS(tokenize or not) file
                 
                 If you do not use -c or -w, MSX2Cas will play to default sound interface""".formatted(SPEEDS, SPEEDS));
@@ -224,6 +251,10 @@ class Params {
 
     public boolean megaRam() {
         return this.megaRam;
+    }
+
+    public boolean turbo() {
+        return this.turbo;
     }
 
     public MapperType mapperType() {

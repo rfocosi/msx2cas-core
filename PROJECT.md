@@ -71,7 +71,7 @@ Command-line interface for the core library:
 After building, run the shaded CLI JAR from `msx2cas-cmd/target/`:
 
 ```bash
-java -jar msx2cas-cmd/target/msx2cas-cmd-6.1.0-jar-with-dependencies.jar [options] <1200|2400|3000|3600> <input-file> [<input-file>...]
+java -jar msx2cas-cmd/target/msx2cas-cmd-7.0.0-jar-with-dependencies.jar [options] [<1200|2400|3000|turbo>] <input-file> [<input-file>...]
 ```
 
 *(The JAR manifest includes `Enable-Native-Access: ALL-UNNAMED` so Java 24+ runs without `JNativeHook` native-access warnings.)*
@@ -82,33 +82,33 @@ Pre-compiled binaries (`msx2cas` for Linux, `msx2cas.exe` for Windows) are built
 
 ### Command Line Options
 
-- `<1200|2400|3000|3600>`: Playback speed in bps (**required**)
+- `<1200|2400|3000|turbo>`: Playback speed in bps (required unless `-c` is used; `turbo` uses custom Z80 turbo loader at `3600` bps for ROM and BIN files and cannot combine with `-c`)
 - `-i`: Invert waveform (fix playback on some soundcards)
 - `-r`: Reset MSX after loading a ROM
-- `-m`: Load MegaROM (> 49 KB) into MegaRAM cartridge (port `0x8E`)
-- `-t <auto|konami4|konami5|ascii8|ascii16>`: Force MegaROM mapper type (implies `-m`)
+- `-m [<auto|konami4|konami5|ascii8|ascii16>]`: Load MegaROM (> 49 KB) into MegaRAM cartridge (port `0x8E`), defaulting to `auto` or forcing the specified mapper type
+- `-c [<output-file>]`: Write a CAS file (`<bps>` is optional)
 - `-w [<output-file>]`: Write a WAV file instead of playing audio (uses `<output-file>` if provided for a single input, or the 6-character CAS token name)
 
 ### Examples
 
 Convert a BASIC file to audio and play it at 2400 bps:
 ```bash
-java -jar msx2cas-cmd/target/msx2cas-cmd-6.1.0-jar-with-dependencies.jar 2400 GAME.BAS
+java -jar msx2cas-cmd/target/msx2cas-cmd-7.0.0-jar-with-dependencies.jar 2400 GAME.BAS
 ```
 
-Convert a ROM file to a WAV file with reset enabled at 3600 bps:
+Convert a ROM file to a WAV file with reset enabled in turbo mode (uses 3600 bps):
 ```bash
-java -jar msx2cas-cmd/target/msx2cas-cmd-6.1.0-jar-with-dependencies.jar -r -w 3600 GAME.ROM
+java -jar msx2cas-cmd/target/msx2cas-cmd-7.0.0-jar-with-dependencies.jar -r -w turbo GAME.ROM
 ```
 
 Convert a MegaROM to WAV for MegaRAM with auto-detected mapper at 2400 bps:
 ```bash
-java -jar msx2cas-cmd/target/msx2cas-cmd-6.1.0-jar-with-dependencies.jar -m -w aleste.wav 2400 aleste.rom
+java -jar msx2cas-cmd/target/msx2cas-cmd-7.0.0-jar-with-dependencies.jar -m -w aleste.wav 2400 aleste.rom
 ```
 
 Convert a MegaROM forcing `ascii16` mapper:
 ```bash
-java -jar msx2cas-cmd/target/msx2cas-cmd-6.1.0-jar-with-dependencies.jar -t ascii16 -w 2400 aleste.rom
+java -jar msx2cas-cmd/target/msx2cas-cmd-7.0.0-jar-with-dependencies.jar -m ascii16 -w 2400 aleste.rom
 ```
 
 ## Playback Controls

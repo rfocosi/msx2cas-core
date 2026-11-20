@@ -98,6 +98,18 @@ public class OpenMsxMegaRamIT {
     }
 
     @Test
+    public void gradienteExpertWithoutMegaRamTurboReportsError() throws Exception, FlowException {
+        Assume.assumeTrue("Gradiente Expert GPC-1 BIOS ROM not found",
+                hasRom("expert_1.1_basic-bios1.rom", "d6720845928ee848cfa88a86accb067397685f02"));
+
+        byte[] rom128k = buildKonami4CheckRom(128 * 1024, "MR");
+        String result = runCase("Gradiente_Expert_GPC-1", List.of(),
+                "nomramt", rom128k, true, false, true, false, true, SampleRate.sr22050);
+        assertTrue("Expected NO MEGARAM error on screen in turbo mode but got: " + result,
+                result.contains("Fail: NO MEGARAM!"));
+    }
+
+    @Test
     public void nationalCf2000WithRam512kDoesNotFalselyDetectMegaRam() throws Exception, FlowException {
         Assume.assumeTrue("National CF-2000 BIOS ROM not found",
                 hasRom("cf-2000_basic-bios1.rom", "302afb5d8be26c758309ca3df611ae69cced2821"));
@@ -167,6 +179,30 @@ public class OpenMsxMegaRamIT {
                 result.contains("TAG=OK16"));
     }
 
+    @Test
+    public void gradienteExpertWithMegaRam512kTurboBoots128kKonami4WithResetAndDirect()
+            throws Exception, FlowException {
+        Assume.assumeTrue("Gradiente Expert GPC-1 BIOS ROM not found",
+                hasRom("expert_1.1_basic-bios1.rom", "d6720845928ee848cfa88a86accb067397685f02"));
+
+        byte[] rom128k = buildKonami4CheckRom(128 * 1024, "MT");
+        try {
+            String resultReset = runCase("Gradiente_Expert_GPC-1", List.of("-ext", "megaram"),
+                    "mt128r", rom128k, true, false, false, false, true, SampleRate.sr22050.invertWaveForm(false));
+            assertTrue("Expected OKMT signature in turbo reset mode but got: " + resultReset,
+                    resultReset.contains("TAG=OKMT"));
+
+            String resultDirect = runCase("Gradiente_Expert_GPC-1", List.of("-ext", "megaram"),
+                    "mt128d", rom128k, false, false, false, false, true, SampleRate.sr33075.invertWaveForm(true));
+            assertTrue("Expected OKMT signature in turbo direct 3600i mode but got: " + resultDirect,
+                    resultDirect.contains("TAG=OKMT"));
+        } finally {
+            for (SampleRate rate : SampleRate.values()) {
+                rate.invertWaveForm(false);
+            }
+        }
+    }
+
     private String runCase(
             String machine,
             List<String> extraArgs,
@@ -187,6 +223,21 @@ public class OpenMsxMegaRamIT {
             boolean holdCtrlOnBoot,
             boolean expectErrorScreen,
             boolean useCas) throws Exception, FlowException {
+        return runCase(machine, extraArgs, caseName, romBytes, reset, holdCtrlOnBoot, expectErrorScreen, useCas,
+                false, SampleRate.sr22050);
+    }
+
+    private String runCase(
+            String machine,
+            List<String> extraArgs,
+            String caseName,
+            byte[] romBytes,
+            boolean reset,
+            boolean holdCtrlOnBoot,
+            boolean expectErrorScreen,
+            boolean useCas,
+            boolean turbo,
+            SampleRate sampleRate) throws Exception, FlowException {
         Path userData = prepareUserData();
         File romFile = tempFolder.newFile(caseName + ".rom");
         Files.write(romFile.toPath(), romBytes);
@@ -201,9 +252,10 @@ public class OpenMsxMegaRamIT {
             tapePath = tempFolder.newFile(caseName + ".cas").toPath();
             Files.write(tapePath, cas);
         } else {
-            byte[] wav = new VirtualCas(SampleRate.sr22050)
+            byte[] wav = new VirtualCas(sampleRate)
                     .resetRom(reset)
                     .megaRam(true)
+                    .turbo(turbo)
                     .convert(romFile.getAbsolutePath())
                     .toBytes();
             tapePath = tempFolder.newFile(caseName + ".wav").toPath();

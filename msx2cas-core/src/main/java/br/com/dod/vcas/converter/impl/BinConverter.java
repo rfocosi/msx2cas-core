@@ -14,6 +14,8 @@ public class BinConverter extends AbstractFileConverter {
     
     private static final int FILE_OFFSET = 7;
 
+    private boolean turbo;
+
     /**
      * Constructor for BinConverter without WAV sample rate.
      *
@@ -21,7 +23,18 @@ public class BinConverter extends AbstractFileConverter {
      * @throws FlowException If there's an error reading the file
      */
     public BinConverter(String inputFileName) throws FlowException {
-        super(inputFileName);
+        this(inputFileName, null, false);
+    }
+
+    /**
+     * Constructor for BinConverter without WAV sample rate.
+     *
+     * @param inputFileName Name of the input file
+     * @param turbo True to enable the Stage-2 Z80 turbo loader
+     * @throws FlowException If there's an error reading the file
+     */
+    public BinConverter(String inputFileName, boolean turbo) throws FlowException {
+        this(inputFileName, null, turbo);
     }
     
     /**
@@ -32,7 +45,31 @@ public class BinConverter extends AbstractFileConverter {
      * @throws FlowException If there's an error reading the file
      */
     public BinConverter(String inputFileName, SampleRate sampleRate) throws FlowException {
+        this(inputFileName, sampleRate, false);
+    }
+
+    /**
+     * Constructor for BinConverter
+     *
+     * @param inputFileName Name of the input file
+     * @param sampleRate Sample rate to use for conversion
+     * @param turbo True to enable the Stage-2 Z80 turbo loader
+     * @throws FlowException If there's an error reading the file
+     */
+    public BinConverter(String inputFileName, SampleRate sampleRate, boolean turbo) throws FlowException {
         super(inputFileName, sampleRate);
+        this.turbo = turbo;
+    }
+
+    /**
+     * Set whether to use the Stage-2 Z80 turbo loader
+     *
+     * @param turbo True for turbo mode, false otherwise
+     * @return This BinConverter instance
+     */
+    public BinConverter turbo(boolean turbo) {
+        this.turbo = turbo;
+        return this;
     }
     
     @Override
@@ -42,34 +79,30 @@ public class BinConverter extends AbstractFileConverter {
         encoder.beginTrack(FileType.BIN, getNameBuffer());
         encoder.beginDataBlock();
 
-        // Encode the loader
-        encodeLoader(encoder, getLoader());
+        char[] loader = getLoader();
+        calculateBinCRC(loader);
+        addStartAddressToLoader(loader);
 
-        // Write file content
-        for (int i = FILE_OFFSET; i < inputMemPointer.length; i++) {
-            encoder.writeDataByte((char) inputMemPointer[i]);
+        int payloadLength = inputMemPointer.length - FILE_OFFSET;
+        if (turbo && payloadLength > 0) {
+            char[] supervisor = RomLoaders.turboSupervisor(0x9000);
+            encoder.encodeData(buildBinaryAddressBuffer(sizeof(supervisor)));
+            encoder.encodeData(supervisor);
+            encoder.encodeTurboPayload(
+                    RomLoaders.buildTurboFrame(loader, inputMemPointer, FILE_OFFSET, inputMemPointer.length, true));
+        } else {
+            encoder.encodeData(buildBinaryAddressBuffer(sizeof(loader) + payloadLength));
+            encoder.encodeData(loader);
+
+            // Write file content
+            for (int i = FILE_OFFSET; i < inputMemPointer.length; i++) {
+                encoder.writeDataByte((char) inputMemPointer[i]);
+            }
         }
 
         encoder.finish();
 
         return encoder;
-    }
-    
-    /**
-     * Encode the loader for the binary file
-     * 
-     * @param encoder CAS encoder to use
-     * @param loader Loader code
-     * @throws FlowException If there's an error calculating the CRC
-     */
-    private void encodeLoader(CasEncoder encoder, char[] loader) throws FlowException {
-        encoder.encodeData(buildBinaryAddressBuffer(sizeof(loader) + inputMemPointer.length - FILE_OFFSET));
-        
-        calculateBinCRC(loader);
-        
-        addStartAddressToLoader(loader);
-        
-        encoder.encodeData(loader);
     }
     
     /**

@@ -18,6 +18,7 @@ public class CasEncoder implements CasOutput {
 
     private CasFile currentTrack;
     private ByteArrayOutputStream currentContent;
+    private List<byte[]> currentTurboPayloads;
     private int dataBlockCount;
 
     /**
@@ -53,6 +54,7 @@ public class CasEncoder implements CasOutput {
         currentTrack.setFileType(fileType);
         currentTrack.setName(nameBuffer != null ? new String(nameBuffer) : "");
         currentContent = new ByteArrayOutputStream();
+        currentTurboPayloads = null;
         dataBlockCount = 0;
     }
 
@@ -109,6 +111,24 @@ public class CasEncoder implements CasOutput {
     }
 
     /**
+     * Append a Stage-2 Z80 turbo payload to the active track.
+     *
+     * @param payload Raw payload bytes to be encoded as a Stage-2 turbo stream
+     */
+    public void encodeTurboPayload(byte[] payload) {
+        if (payload == null || payload.length == 0) {
+            return;
+        }
+        if (currentTrack == null) {
+            beginDataBlock();
+        }
+        if (currentTurboPayloads == null) {
+            currentTurboPayloads = new ArrayList<>();
+        }
+        currentTurboPayloads.add(payload.clone());
+    }
+
+    /**
      * Finalize any open track.
      */
     public void finish() {
@@ -118,9 +138,15 @@ public class CasEncoder implements CasOutput {
     private void flushCurrentTrack() {
         if (currentTrack != null) {
             currentTrack.setContentBytes(currentContent != null ? currentContent.toByteArray() : new byte[0]);
+            if (currentTurboPayloads != null) {
+                for (byte[] payload : currentTurboPayloads) {
+                    currentTrack.addTurboPayload(payload);
+                }
+            }
             tracks.add(currentTrack);
             currentTrack = null;
             currentContent = null;
+            currentTurboPayloads = null;
             dataBlockCount = 0;
         }
     }

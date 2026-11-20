@@ -44,7 +44,8 @@ public class Main extends JFrame implements NativeKeyListener {
                     VirtualCas vcas = new VirtualCas(file.sampleRate())
                             .resetRom(params.resetRom())
                             .megaRam(params.megaRam())
-                            .mapperType(params.mapperType());
+                            .mapperType(params.mapperType())
+                            .turbo(params.turbo());
                     CasOutput casFile = vcas.convertToCas(file.inputName());
 
                     if (file.writeCas()) {

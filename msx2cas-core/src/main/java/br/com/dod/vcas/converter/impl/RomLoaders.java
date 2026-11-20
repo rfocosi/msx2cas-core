@@ -32,6 +32,174 @@ final class RomLoaders {
         return MEGA_BOOT.clone();
     }
 
+    /**
+     * Build a Stage-1 multi-block turbo supervisor loaded at {@code 0x9000}.
+     * Relocates {@link #TURBO_SUPERVISOR} to {@code 0xF560} and streams one or more Stage-2 framed
+     * blocks without returning to MSX-BASIC between blocks until the final block executes
+     * {@code finalExitAddr} or an intermediate block signals an error via {@code BAKCLR (0xF3EA) == 8}.
+     *
+     * @param finalExitAddr Entry address jumped to after the final turbo block completes
+     * @return Relocator + relocated Z80 turbo supervisor bytes
+     */
+    static char[] turboSupervisor(int finalExitAddr) {
+        char[] worker = buildSupervisorWorker(finalExitAddr);
+        return assembleRelocatedSupervisor(worker, new char[0]);
+    }
+
+    /**
+     * Build a Stage-1 turbo supervisor for 16K Page-2 ROMs ({@code headId >= 0x80}).
+     * Relocates {@link #TURBO_SUPERVISOR} plus the post-load Page-2 boot trampoline to {@code 0xF560}.
+     *
+     * @param initAddr Cartridge INIT entry point
+     * @param callInit32 True to invoke BIOS {@code INIT32 (0x006F)} before jumping to {@code initAddr}
+     * @return Relocator + relocated Z80 turbo supervisor + trampoline
+     */
+    static char[] turboSupervisorPage2(int initAddr, boolean callInit32) {
+        int exitAddr = TURBO_WORKER_ORG + TURBO_SUPERVISOR.length;
+        char[] worker = buildSupervisorWorker(exitAddr);
+        char[] trampoline = callInit32
+                ? new char[] {
+                        0xFB,
+                        0xCD, 0x6F, 0x00,
+                        0xC3, (char) (initAddr & 0xFF), (char) ((initAddr >> 8) & 0xFF)
+                }
+                : new char[] {
+                        0xFB,
+                        0xC3, (char) (initAddr & 0xFF), (char) ((initAddr >> 8) & 0xFF)
+                };
+        return assembleRelocatedSupervisor(worker, trampoline);
+    }
+
+    /**
+     * Build a Stage-2 turbo frame targeting {@code 0x9000}: a 5-byte descriptor
+     * {@code [isLastBlock, loadAddrLo, loadAddrHi, highCount, lowCount]} followed by {@code loaderAt9000}
+     * and the block bytes from {@code source[blockStart..blockEnd]}.
+     *
+     * @param loaderAt9000 Standard {@code 0x9000}-based loader block
+     * @param source Full ROM/BIN source buffer
+     * @param blockStart Inclusive start offset in {@code source}
+     * @param blockEnd Exclusive end offset in {@code source}
+     * @param isLastBlock True for the final block on the track, false for intermediate blocks
+     * @return Framed Stage-2 turbo payload ready for {@link br.com.dod.vcas.cas.CasEncoder#encodeTurboPayload}
+     */
+    static byte[] buildTurboFrame(
+            char[] loaderAt9000,
+            byte[] source,
+            int blockStart,
+            int blockEnd,
+            boolean isLastBlock) {
+        if (loaderAt9000 == null || loaderAt9000.length == 0) {
+            throw new IllegalArgumentException("Loader block must be non-empty");
+        }
+        int blockSize = blockEnd - blockStart;
+        if (blockSize < 0 || blockStart < 0 || blockEnd > source.length) {
+            throw new IllegalArgumentException("Invalid source slice [" + blockStart + ", " + blockEnd + ")");
+        }
+        return encodeFrame(FRAME_LOAD_ADDR, isLastBlock, loaderAt9000, source, blockStart, blockSize);
+    }
+
+    /**
+     * Build a Stage-2 turbo frame targeting a direct 16K Page-2 load address ({@code startAddr >= 0x8000}).
+     *
+     * @param startAddr Target MSX memory load address
+     * @param payload Raw ROM payload bytes
+     * @return Framed Stage-2 turbo payload
+     */
+    static byte[] buildPage2TurboFrame(int startAddr, byte[] payload) {
+        if (payload == null || payload.length == 0) {
+            throw new IllegalArgumentException("Invalid Page-2 turbo payload size");
+        }
+        return encodeFrame(startAddr, true, null, payload, 0, payload.length);
+    }
+
+    private static byte[] encodeFrame(
+            int loadAddr,
+            boolean isLastBlock,
+            char[] prefixLoader,
+            byte[] source,
+            int sourceOffset,
+            int sourceLength) {
+        int prefixLen = prefixLoader != null ? prefixLoader.length : 0;
+        int totalPayloadSize = prefixLen + sourceLength;
+        if (totalPayloadSize <= 0 || totalPayloadSize > 0x10000) {
+            throw new IllegalArgumentException("Invalid turbo frame payload size: " + totalPayloadSize);
+        }
+
+        int highCount = ((totalPayloadSize - 1) >> 8) + 1;
+        int lowCount = totalPayloadSize & 0xFF;
+        byte[] frame = new byte[FRAME_HEADER_SIZE + totalPayloadSize];
+        frame[0] = (byte) (isLastBlock ? 1 : 0);
+        frame[1] = (byte) (loadAddr & 0xFF);
+        frame[2] = (byte) ((loadAddr >> 8) & 0xFF);
+        frame[3] = (byte) (highCount & 0xFF);
+        frame[4] = (byte) (lowCount & 0xFF);
+
+        for (int i = 0; i < prefixLen; i++) {
+            frame[FRAME_HEADER_SIZE + i] = (byte) (prefixLoader[i] & 0xFF);
+        }
+        if (sourceLength > 0) {
+            System.arraycopy(source, sourceOffset, frame, FRAME_HEADER_SIZE + prefixLen, sourceLength);
+        }
+        return frame;
+    }
+
+    private static char[] assembleRelocatedSupervisor(char[] worker, char[] trampoline) {
+        char[] relocator = buildRelocator(FRAME_LOAD_ADDR + RELOCATOR_SIZE, worker.length + trampoline.length);
+        char[] loader = new char[relocator.length + worker.length + trampoline.length];
+        System.arraycopy(relocator, 0, loader, 0, relocator.length);
+        System.arraycopy(worker, 0, loader, relocator.length, worker.length);
+        if (trampoline.length > 0) {
+            System.arraycopy(trampoline, 0, loader, relocator.length + worker.length, trampoline.length);
+        }
+        return loader;
+    }
+
+    private static char[] buildRelocator(int workerSrcAddr, int copyLength) {
+        return new char[] {
+                0xF3,                                                               // DI
+                0x21, (char) (workerSrcAddr & 0xFF), (char) ((workerSrcAddr >> 8) & 0xFF), // LD HL, src
+                0x11, (char) (TURBO_WORKER_ORG & 0xFF), (char) ((TURBO_WORKER_ORG >> 8) & 0xFF), // LD DE, 0xF560
+                0x01, (char) (copyLength & 0xFF), (char) ((copyLength >> 8) & 0xFF), // LD BC, len
+                0xED, 0xB0,                                                         // LDIR
+                0xC3, (char) (TURBO_WORKER_ORG & 0xFF), (char) ((TURBO_WORKER_ORG >> 8) & 0xFF) // JP 0xF560
+        };
+    }
+
+    private static char[] buildSupervisorWorker(int finalExitAddr) {
+        char[] worker = TURBO_SUPERVISOR.clone();
+        worker[SUPERVISOR_EXIT_OFFSET] = (char) (finalExitAddr & 0xFF);
+        worker[SUPERVISOR_EXIT_OFFSET + 1] = (char) ((finalExitAddr >> 8) & 0xFF);
+        return worker;
+    }
+
+    private static final int RELOCATOR_SIZE = 15;
+    private static final int TURBO_WORKER_ORG = 0xF560;
+    private static final int FRAME_LOAD_ADDR = 0x9000;
+    private static final int FRAME_HEADER_SIZE = 5;
+    private static final int SUPERVISOR_EXIT_OFFSET = 194;
+
+    // Self-calibrating multi-block Z80 turbo supervisor assembled for ORG 0xF560 (246 bytes).
+    private static final char[] TURBO_SUPERVISOR = {
+            0xF3, 0x3E, 0x08, 0xD3, 0xAB, 0x3E, 0x0E, 0xD3, 0xA0, 0x0E, 0xA2, 0xED, 0x78, 0x57,
+            0x1E, 0x40, 0x06, 0x00, 0x04, 0xED, 0x78, 0xAA, 0xF2, 0x72, 0xF5, 0x7A, 0x2F, 0x57,
+            0x78, 0xFE, 0x03, 0x38, 0xED, 0xFE, 0x50, 0x30, 0xE9, 0x1D, 0x20, 0xE8, 0x06, 0x00,
+            0x1E, 0x04, 0x04, 0xED, 0x78, 0xAA, 0xF2, 0x8C, 0xF5, 0x7A, 0x2F, 0x57, 0x1D, 0x20,
+            0xF3, 0x78, 0xCB, 0x3F, 0x5F, 0xCB, 0x3F, 0x83, 0x5F, 0xCB, 0x3F, 0x67, 0x1D, 0x2E,
+            0x02, 0x06, 0x00, 0x04, 0xED, 0x78, 0xAA, 0xF2, 0xA9, 0xF5, 0x7A, 0x2F, 0x57, 0x78,
+            0xBC, 0x38, 0xEE, 0xFE, 0x80, 0x30, 0xB3, 0x2D, 0x20, 0xE9, 0xCD, 0x36, 0xF6, 0xFE,
+            0xA5, 0x20, 0xA9, 0xCD, 0x36, 0xF6, 0x32, 0x1F, 0xF6, 0xCD, 0x36, 0xF6, 0x32, 0xE5,
+            0xF5, 0xCD, 0x36, 0xF6, 0x32, 0xE6, 0xF5, 0xCD, 0x36, 0xF6, 0xD9, 0x47, 0xD9, 0xCD,
+            0x36, 0xF6, 0xD9, 0x4F, 0xD9, 0xDD, 0x21, 0x00, 0x00, 0x2E, 0x80, 0x06, 0x00, 0x04,
+            0xED, 0x78, 0xAA, 0xF2, 0xEB, 0xF5, 0x7A, 0x2F, 0x57, 0x04, 0xED, 0x78, 0xAA, 0xF2,
+            0xF5, 0xF5, 0x7A, 0x2F, 0x57, 0x7B, 0x90, 0xCB, 0x1D, 0x30, 0xE4, 0xDD, 0x75, 0x00,
+            0xDD, 0x23, 0x2E, 0x80, 0xD9, 0x0D, 0xC2, 0x15, 0xF6, 0x05, 0xCA, 0x19, 0xF6, 0xD9,
+            0xC3, 0xE9, 0xF5, 0xD9, 0x3E, 0x09, 0xD3, 0xAB, 0x3E, 0x00, 0xB7, 0xC2, 0x00, 0x00,
+            0xCD, 0x00, 0x90, 0x2A, 0xFA, 0xF3, 0x22, 0xF8, 0xF3, 0x3A, 0xEA, 0xF3, 0xFE, 0x08,
+            0xC8, 0xC3, 0x60, 0xF5, 0x2E, 0x80, 0x06, 0x00, 0x04, 0xED, 0x78, 0xAA, 0xF2, 0x3A,
+            0xF6, 0x7A, 0x2F, 0x57, 0x04, 0xED, 0x78, 0xAA, 0xF2, 0x44, 0xF6, 0x7A, 0x2F, 0x57,
+            0x7B, 0x90, 0xCB, 0x1D, 0x30, 0xE4, 0x7D, 0xC9
+    };
+
     private static final char[] BLOCK_LOADER = {
             0xC3, 0x82, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1E, 0x62, 0x6C,
             0x6F, 0x61, 0x64, 0x22, 0x63, 0x61, 0x73, 0x3A, 0x22, 0x2C, 0x72, 0x0D, 0x00,
