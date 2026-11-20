@@ -80,25 +80,50 @@ public class ParamsTest {
     }
 
     @Test
-    public void mapperTypeImpliesMegaRam() {
-        String args[] = { "-t", "ascii8", "-r", "-w", "out.wav", "2400", "my.rom" };
+    public void megaRamDefaultsToAutoAndAcceptsExplicitMapper() {
+        Params autoDefault = new Params(new String[] { "-m", "-r", "-w", "out.wav", "2400", "my.rom" });
+        assertTrue(autoDefault.megaRam());
+        assertEquals(MapperType.AUTO, autoDefault.mapperType());
+        assertEquals(1, autoDefault.getFiles().size());
 
-        Params params = new Params(args);
+        Params autoBeforeSpeed = new Params(new String[] { "-m", "2400", "my.rom" });
+        assertTrue(autoBeforeSpeed.megaRam());
+        assertEquals(MapperType.AUTO, autoBeforeSpeed.mapperType());
+        assertEquals(1, autoBeforeSpeed.getFiles().size());
 
-        assertTrue(params.megaRam());
-        assertTrue(params.resetRom());
-        assertEquals(MapperType.ASCII8, params.mapperType());
-        assertEquals("my.rom", params.getFiles().get(0).inputName());
-        assertEquals("out.wav", params.getFiles().get(0).outputName());
+        Params forcedMapper = new Params(new String[] { "-m", "ascii8", "-r", "-w", "out.wav", "2400", "my.rom" });
+        assertTrue(forcedMapper.megaRam());
+        assertTrue(forcedMapper.resetRom());
+        assertEquals(MapperType.ASCII8, forcedMapper.mapperType());
+        assertEquals("my.rom", forcedMapper.getFiles().get(0).inputName());
+        assertEquals("out.wav", forcedMapper.getFiles().get(0).outputName());
+
+        Params forcedMapperTurbo = new Params(new String[] { "-m", "konami5", "turbo", "my.rom" });
+        assertTrue(forcedMapperTurbo.megaRam());
+        assertTrue(forcedMapperTurbo.turbo());
+        assertEquals(MapperType.KONAMI5, forcedMapperTurbo.mapperType());
+        assertEquals(SampleRate.sr33075, forcedMapperTurbo.getFiles().get(0).sampleRate());
+
+        Params casAuto = new Params(new String[] { "-c", "-m", "my.rom" });
+        assertTrue(casAuto.megaRam());
+        assertEquals(MapperType.AUTO, casAuto.mapperType());
+        assertEquals(1, casAuto.getFiles().size());
+        assertEquals("my.cas", casAuto.getFiles().get(0).outputName());
+
+        Params casForced = new Params(new String[] { "-c", "-m", "ascii16", "my.rom" });
+        assertTrue(casForced.megaRam());
+        assertEquals(MapperType.ASCII16, casForced.mapperType());
+        assertEquals(1, casForced.getFiles().size());
+        assertEquals("my.cas", casForced.getFiles().get(0).outputName());
     }
 
     @Test
-    public void invalidMapperFallsBackToUsage() {
-        String args[] = { "-t", "unknown", "2400", "my.rom" };
+    public void invalidMapperAndRemovedTFlagFallBackToUsage() {
+        Params invalidMapper = new Params(new String[] { "-m", "unknown", "2400", "my.rom" });
+        assertEquals(0, invalidMapper.getFiles().size());
 
-        Params params = new Params(args);
-
-        assertEquals(0, params.getFiles().size());
+        Params removedTFlag = new Params(new String[] { "-t", "ascii8", "2400", "my.rom" });
+        assertEquals(0, removedTFlag.getFiles().size());
     }
 
     @Test

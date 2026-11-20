@@ -85,8 +85,7 @@ Pre-compiled binaries (`msx2cas` for Linux, `msx2cas.exe` for Windows) are built
 - `<1200|2400|3000|turbo>`: Playback speed in bps (required unless `-c` is used; `turbo` uses custom Z80 turbo loader at `3600` bps for ROM and BIN files and cannot combine with `-c`)
 - `-i`: Invert waveform (fix playback on some soundcards)
 - `-r`: Reset MSX after loading a ROM
-- `-m`: Load MegaROM (> 49 KB) into MegaRAM cartridge (port `0x8E`)
-- `-t <auto|konami4|konami5|ascii8|ascii16>`: Force MegaROM mapper type (implies `-m`)
+- `-m [<auto|konami4|konami5|ascii8|ascii16>]`: Load MegaROM (> 49 KB) into MegaRAM cartridge (port `0x8E`), defaulting to `auto` or forcing the specified mapper type
 - `-c [<output-file>]`: Write a CAS file (`<bps>` is optional)
 - `-w [<output-file>]`: Write a WAV file instead of playing audio (uses `<output-file>` if provided for a single input, or the 6-character CAS token name)
 
@@ -109,7 +108,7 @@ java -jar msx2cas-cmd/target/msx2cas-cmd-7.0.0-jar-with-dependencies.jar -m -w a
 
 Convert a MegaROM forcing `ascii16` mapper:
 ```bash
-java -jar msx2cas-cmd/target/msx2cas-cmd-7.0.0-jar-with-dependencies.jar -t ascii16 -w 2400 aleste.rom
+java -jar msx2cas-cmd/target/msx2cas-cmd-7.0.0-jar-with-dependencies.jar -m ascii16 -w 2400 aleste.rom
 ```
 
 ## Playback Controls

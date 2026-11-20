@@ -55,11 +55,7 @@ class Params {
 
                 boolean inverted = arguments.remove("-i");
                 this.resetRom = arguments.remove("-r");
-                this.megaRam = arguments.remove("-m");
-                this.mapperType = extractMapperType(arguments);
-                if (this.mapperType != MapperType.AUTO) {
-                    this.megaRam = true;
-                }
+                extractMegaRam(arguments);
 
                 boolean write = arguments.remove("-w");
                 boolean writeCas = arguments.remove("-c");
@@ -175,20 +171,22 @@ class Params {
         System.out.println("MSX2Cas v" + getVersion());
     }
 
-    private static MapperType extractMapperType(LinkedHashSet<String> arguments) {
+    private void extractMegaRam(LinkedHashSet<String> arguments) {
         Iterator<String> iterator = arguments.iterator();
         while (iterator.hasNext()) {
-            if ("-t".equals(iterator.next())) {
+            if ("-m".equals(iterator.next())) {
                 iterator.remove();
-                if (!iterator.hasNext()) {
-                    throw new IllegalArgumentException("Missing mapper type after -t");
+                this.megaRam = true;
+                if (iterator.hasNext()) {
+                    String next = iterator.next();
+                    if (!next.startsWith("-") && !next.matches(".+\\..{3}$")) {
+                        this.mapperType = MapperType.fromString(next);
+                        iterator.remove();
+                    }
                 }
-                String mapperValue = iterator.next();
-                iterator.remove();
-                return MapperType.fromString(mapperValue);
+                return;
             }
         }
-        return MapperType.AUTO;
     }
 
     private String getBps(LinkedHashSet<String> arguments) {
@@ -231,11 +229,10 @@ class Params {
 
     private static void displayUsage() {
         System.out.println("""
-                Usage: msx2cas [-i] [-r] [-m] [-t <auto|konami4|konami5|ascii8|ascii16>] [-c [<output-file>] | -w [<output-file>]] [<%s>] <input-file> [<input-file>...]
+                Usage: msx2cas [-i] [-r] [-m [<auto|konami4|konami5|ascii8|ascii16>]] [-c [<output-file>] | -w [<output-file>]] [<%s>] <input-file> [<input-file>...]
                 -i: Invert Waveform (fix playback on some soundboards)
                 -r: Reset MSX after loading a ROM
-                -m: Load MegaROM into MegaRAM cartridge (port 0x8E)
-                -t: Force MegaROM mapper type (auto, konami4, konami5, ascii8, ascii16; implies -m)
+                -m: Load MegaROM into MegaRAM cartridge (port 0x8E); optionally force mapper type (auto, konami4, konami5, ascii8, ascii16; default: auto)
                 -c: Write a CAS file with <output-file> name OR with file token name (first 6 characters from <filename>); <bps> is optional (cannot combine with turbo)
                 -w: Write a WAV file with <output-file> name OR with file token name (first 6 characters from <filename>)
                 <%s>: Playback speed in bps (required unless -c is used; turbo uses custom Z80 turbo loader at 3600 bps for ROM and BIN files)
