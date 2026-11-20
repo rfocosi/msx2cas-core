@@ -9,7 +9,18 @@ final class RomLoaders {
     }
 
     static char[] blockLoader() {
-        return BLOCK_LOADER.clone();
+        return blockLoader(false);
+    }
+
+    static char[] blockLoader(boolean skipUi) {
+        char[] loader = BLOCK_LOADER.clone();
+        if (skipUi) {
+            // Patch START5 (0x922B) -> JP LOADROM (0x9280) so Stage-1 banner stays on screen
+            loader[0x022B] = 0xC3;
+            loader[0x022C] = 0x80;
+            loader[0x022D] = 0x92;
+        }
+        return loader;
     }
 
     static char[] rom16K(boolean reset) {
@@ -25,7 +36,16 @@ final class RomLoaders {
     }
 
     static char[] megaBlock() {
-        return MEGA_BLOCK.clone();
+        return megaBlock(false);
+    }
+
+    static char[] megaBlock(boolean skipUi) {
+        char[] loader = MEGA_BLOCK.clone();
+        if (skipUi) {
+            // Patch JR NZ, SKIP_UI (0x20, 0x3A) at 0x00F9 -> JR SKIP_UI (0x18, 0x3A)
+            loader[0x00F9] = 0x18;
+        }
+        return loader;
     }
 
     static char[] megaBoot() {
@@ -44,6 +64,21 @@ final class RomLoaders {
     static char[] turboSupervisor(int finalExitAddr) {
         char[] worker = buildSupervisorWorker(finalExitAddr);
         return assembleRelocatedSupervisor(worker, new char[0]);
+    }
+
+    /**
+     * Build a Stage-1 multi-block turbo supervisor with the MSX2CAS SCREEN 1 splash banner.
+     * Displays the pixel-accurate MSX2CAS logo on a black background before relocating
+     * {@link #TURBO_SUPERVISOR} to {@code 0xF560} and starting Stage-2 streaming.
+     *
+     * @param finalExitAddr Entry address jumped to after the final turbo block completes
+     * @param megaRam True to display the MegaRAM status text, false for standard ROM loading text
+     * @return Banner + relocator + Z80 turbo supervisor bytes
+     */
+    static char[] turboSupervisorWithBanner(int finalExitAddr, boolean megaRam) {
+        char[] worker = buildSupervisorWorker(finalExitAddr);
+        String status = megaRam ? TurboBanner.STATUS_MEGARAM : TurboBanner.STATUS_ROM;
+        return TurboBanner.assembleBannerSupervisor(FRAME_LOAD_ADDR, TURBO_WORKER_ORG, worker, status);
     }
 
     /**
