@@ -38,7 +38,7 @@ mvn -pl msx2cas-core -Dtest=FileEncodingTest test
 ## CLI usage
 
 ```bash
-java -jar msx2cas-cmd/target/msx2cas-cmd-7.0.0-jar-with-dependencies.jar [-i] [-r] [-m [<auto|konami4|konami5|ascii8|ascii16>]] [-c [<output-file>] | -w [<output-file>]] [<1200|2400|3000|turbo>] <input-file> [<input-file>...]
+java -jar msx2cas-cmd/target/msx2cas-cmd-7.1.0-jar-with-dependencies.jar [-i] [-r] [-m [<auto|konami4|konami5|ascii8|ascii16>]] [-c [<output-file>] | -w [<output-file>]] [<1200|2400|3000|turbo>] <input-file> [<input-file>...]
 ```
 
 - `-i`: Invert waveform (fix playback on some soundcards)
