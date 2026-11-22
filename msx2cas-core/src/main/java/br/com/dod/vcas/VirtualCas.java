@@ -37,6 +37,7 @@ public class VirtualCas {
     private boolean reset;
     private boolean megaRam;
     private MapperType mapperType = MapperType.AUTO;
+    private boolean turbo;
 
     /**
      * Create a {@link VirtualCas} with default speed ({@code 2400 bps} for non-TSX, native for TSX)
@@ -175,17 +176,13 @@ public class VirtualCas {
     }
 
     /**
-     * Toggle Stage-2 Z80 turbo mode ({@link TapeSpeed#TURBO}).
+     * Toggle Stage-2 Z80 PWM turbo mode for ROM and BIN files.
      *
-     * @param turbo {@code true} to select {@link TapeSpeed#TURBO}, {@code false} to revert to {@link TapeSpeed#BPS_2400} if currently turbo
+     * @param turbo {@code true} to enable Stage-2 Z80 PWM turbo mode
      * @return This {@link VirtualCas} instance
      */
     public VirtualCas turbo(boolean turbo) {
-        if (turbo) {
-            this.tapeSpeed = TapeSpeed.TURBO;
-        } else if (this.tapeSpeed == TapeSpeed.TURBO) {
-            this.tapeSpeed = TapeSpeed.BPS_2400;
-        }
+        this.turbo = turbo;
         return this;
     }
 
@@ -406,7 +403,7 @@ public class VirtualCas {
     }
 
     private ConversionOptions buildOptions() {
-        return new ConversionOptions(reset, megaRam, mapperType, tapeSpeed);
+        return new ConversionOptions(reset, megaRam, mapperType, tapeSpeed, turbo);
     }
 
     private SampleRate resolveSampleRate() {

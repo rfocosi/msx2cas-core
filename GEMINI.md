@@ -34,13 +34,14 @@ After building, you can find the artifacts in `msx2cas-cmd/target/`:
 
 ### CLI Options
 - `-w [<output-file>]`: Write to WAV file instead of playing audio (renders `#20` Stop-the-Tape markers as 4s silence).
-- `-t [<output-file>]`: Write to TSX file (TZX 1.21 / `#4B`, `<bps>` defaults to `2400`; preserves native timing on `.tsx` input when `<bps>` is omitted; cannot combine with `-w` or `-c`).
-- `-c [<output-file>]`: Write to CAS file (`<bps>` optional; cannot combine with `turbo`, `-t`, or `-w`).
+- `-t [<output-file>]`: Write to TSX file (TZX 1.21 / `#4B`; preserves native timing on `.tsx` input when `<bps>` is omitted; cannot combine with `-w` or `-c`).
+- `-c [<output-file>]`: Write to CAS file (cannot combine with `--turbo`, `-t`, or `-w`).
+- `--turbo`: Enable Stage-2 Z80 PWM turbo loader for ROM and BIN files (cannot combine with `-c`).
 - `-s <11025|22050|44100|48000>`: Output WAV/audio PCM sample rate in Hz (default: `44100`).
 - `-r`: Reset MSX after loading a ROM.
 - `-m [<auto|konami4|konami5|ascii8|ascii16>]`: Load MegaROM (> 49 KB) into MegaRAM cartridge (port `0x8E`), defaulting to `auto` or forcing the specified mapper type.
 - `-i`: Inverted waveform (default is normal).
-- `<1200|2400|3000|turbo>`: Playback speed in bps (optional with `-c`, `-t`, or `.tsx` inputs; `turbo` uses a 2400 bps BIOS bootstrap + Stage-2 Z80 PWM loader for ROM and BIN files).
+- `<1200|2400|3000>`: Stage-1 / standard tape speed in bps (default: `2400`; preserves native timing for `.tsx` inputs when omitted).
 
 ### Playback Controls (when streaming)
 - `SPACE`: Start/Pause/Resume playback (also resumes after auto-pausing on a TSX `#20` Stop-the-Tape marker).

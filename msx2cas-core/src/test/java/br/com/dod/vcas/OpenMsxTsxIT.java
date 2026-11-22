@@ -111,15 +111,15 @@ public class OpenMsxTsxIT {
 
         // BIN (2400 bps & turbo)
         byte[] binBytes = buildCheckBin(0xA000, 2048, "BN");
-        for (TapeSpeed speed : List.of(TapeSpeed.BPS_2400, TapeSpeed.TURBO)) {
-            Path dir = tempFolder.newFolder("tsx_bin_" + speed.bps()).toPath();
+        for (boolean turbo : List.of(false, true)) {
+            Path dir = tempFolder.newFolder("tsx_bin_" + (turbo ? "turbo" : "2400")).toPath();
             Path src = dir.resolve("chkbin.bin");
             Files.write(src, binBytes);
             Path tsx = dir.resolve("chkbin.tsx");
-            Files.write(tsx, new VirtualCas(speed).convertToTsx(src.toString()).toBytes());
+            Files.write(tsx, new VirtualCas(TapeSpeed.BPS_2400).turbo(turbo).convertToTsx(src.toString()).toBytes());
             String res = runTapeInOpenMsx(userData, "Gradiente_Expert_GPC-1", List.of(), tsx,
                     "BLOAD\\\"CAS:\\\",R\\r", null, null, true, dir);
-            assertTrue("Expected OKBN from TSX (" + speed + ") but got: " + res, res.contains("TAG=OKBN"));
+            assertTrue("Expected OKBN from TSX (turbo=" + turbo + ") but got: " + res, res.contains("TAG=OKBN"));
         }
 
         // CAS -> TSX -> openMSX
@@ -139,8 +139,8 @@ public class OpenMsxTsxIT {
         // ROM 16K Page-2 (2400 & turbo)
         byte[] rom16kPg2 = buildCheckRom(16384, 0x0000, 0x8010, List.of(new int[] { 0xBFFE, 0x99 }), "P2", false);
         rom16kPg2[0x3FFE] = (byte) 0x99;
-        assertRomTsxBoots(userData, "r16p2_2400", rom16kPg2, TapeSpeed.BPS_2400, false, false, List.of(), "OKP2");
-        assertRomTsxBoots(userData, "r16p2_turbo", rom16kPg2, TapeSpeed.TURBO, false, false, List.of(), "OKP2");
+        assertRomTsxBoots(userData, "r16p2_2400", rom16kPg2, TapeSpeed.BPS_2400, false, false, false, List.of(), "OKP2");
+        assertRomTsxBoots(userData, "r16p2_turbo", rom16kPg2, TapeSpeed.BPS_2400, true, false, false, List.of(), "OKP2");
 
         // ROM 32K (2400 & turbo)
         byte[] konamiPage2Map = konamiPage2MapStub();
@@ -151,8 +151,8 @@ public class OpenMsxTsxIT {
         System.arraycopy(konamiPage2Map, 0, rom32k, 0x10, konamiPage2Map.length);
         rom32k[0x3FFE] = 0x3C;
         rom32k[0x7FFE] = (byte) 0xA5;
-        assertRomTsxBoots(userData, "r32_2400", rom32k, TapeSpeed.BPS_2400, true, false, List.of(), "OK32");
-        assertRomTsxBoots(userData, "r32_turbo", rom32k, TapeSpeed.TURBO, false, false, List.of(), "OK32");
+        assertRomTsxBoots(userData, "r32_2400", rom32k, TapeSpeed.BPS_2400, false, true, false, List.of(), "OK32");
+        assertRomTsxBoots(userData, "r32_turbo", rom32k, TapeSpeed.BPS_2400, true, false, false, List.of(), "OK32");
 
         // ROM 49K (turbo)
         byte[] rom49k = buildCheckRom(50176, 0x4000, 0x4010 + konamiPage2Map.length,
@@ -164,13 +164,13 @@ public class OpenMsxTsxIT {
         rom49k[0x7FFE] = 0x22;
         rom49k[0x8100] = 0x33;
         rom49k[0xC100] = 0x44;
-        assertRomTsxBoots(userData, "r49_turbo", rom49k, TapeSpeed.TURBO, true, false, List.of(), "OK49");
+        assertRomTsxBoots(userData, "r49_turbo", rom49k, TapeSpeed.BPS_2400, true, true, false, List.of(), "OK49");
 
         // MegaRAM 128K Konami4 (2400 & turbo)
         byte[] mega128 = buildKonami4CheckRom(128 * 1024, "MR");
-        assertRomTsxBoots(userData, "mega_2400", mega128, TapeSpeed.BPS_2400, true, true,
+        assertRomTsxBoots(userData, "mega_2400", mega128, TapeSpeed.BPS_2400, false, true, true,
                 List.of("-ext", "megaram"), "OKMR");
-        assertRomTsxBoots(userData, "mega_turbo", mega128, TapeSpeed.TURBO, false, true,
+        assertRomTsxBoots(userData, "mega_turbo", mega128, TapeSpeed.BPS_2400, true, false, true,
                 List.of("-ext", "megaram"), "OKMR");
     }
 
@@ -206,7 +206,7 @@ public class OpenMsxTsxIT {
 
         // 3. Turbo #11 TSX -> WAV (normal and inverted at 44100 Hz)
         Path tsxTurbo = workDir.resolve("r16_turbo.tsx");
-        Files.write(tsxTurbo, new VirtualCas(TapeSpeed.TURBO).convertToTsx(romPath.toString()).toBytes());
+        Files.write(tsxTurbo, new VirtualCas(TapeSpeed.BPS_2400).turbo(true).convertToTsx(romPath.toString()).toBytes());
         Path wavTurbo = workDir.resolve("r16_turbo.wav");
         Files.write(wavTurbo, new VirtualCas(SampleRate.sr44100).convertToWav(tsxTurbo.toString()).toBytes());
         String resTurbo = runTapeInOpenMsx(userData, "Gradiente_Expert_GPC-1", List.of(), wavTurbo,
@@ -251,6 +251,7 @@ public class OpenMsxTsxIT {
             String caseName,
             byte[] romBytes,
             TapeSpeed speed,
+            boolean turbo,
             boolean reset,
             boolean megaRam,
             List<String> extraArgs,
@@ -259,7 +260,7 @@ public class OpenMsxTsxIT {
         Path romPath = caseDir.resolve(caseName + ".rom");
         Files.write(romPath, romBytes);
         Path tsxPath = caseDir.resolve(caseName + ".tsx");
-        Files.write(tsxPath, new VirtualCas(speed).resetRom(reset).megaRam(megaRam)
+        Files.write(tsxPath, new VirtualCas(speed).turbo(turbo).resetRom(reset).megaRam(megaRam)
                 .convertToTsx(romPath.toString()).toBytes());
 
         String result = runTapeInOpenMsx(userData, "Gradiente_Expert_GPC-1", extraArgs, tsxPath,

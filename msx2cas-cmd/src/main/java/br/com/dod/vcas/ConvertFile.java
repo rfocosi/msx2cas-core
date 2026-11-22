@@ -16,5 +16,6 @@ record ConvertFile(
         TapeSpeed tapeSpeed,
         SampleRate sampleRate,
         boolean inverted,
+        boolean turbo,
         OutputMode outputMode) {
 }

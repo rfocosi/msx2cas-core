@@ -105,7 +105,7 @@ public class OpenMsxMegaRamIT {
 
         byte[] rom128k = buildKonami4CheckRom(128 * 1024, "MR");
         String result = runCase("Gradiente_Expert_GPC-1", List.of(),
-                "nomramt", rom128k, true, false, true, false, TapeSpeed.TURBO, SampleRate.sr44100, false);
+                "nomramt", rom128k, true, false, true, false, TapeSpeed.BPS_2400, true, SampleRate.sr44100, false);
         assertTrue("Expected NO MEGARAM error on screen in turbo mode but got: " + result,
                 result.contains("Fail: NO MEGARAM!"));
     }
@@ -188,12 +188,12 @@ public class OpenMsxMegaRamIT {
 
         byte[] rom128k = buildKonami4CheckRom(128 * 1024, "MT");
         String resultReset = runCase("Gradiente_Expert_GPC-1", List.of("-ext", "megaram"),
-                "mt128r", rom128k, true, false, false, false, TapeSpeed.TURBO, SampleRate.sr44100, false);
+                "mt128r", rom128k, true, false, false, false, TapeSpeed.BPS_2400, true, SampleRate.sr44100, false);
         assertTrue("Expected OKMT signature in turbo reset mode but got: " + resultReset,
                 resultReset.contains("TAG=OKMT"));
 
         String resultDirect = runCase("Gradiente_Expert_GPC-1", List.of("-ext", "megaram"),
-                "mt128d", rom128k, false, false, false, false, TapeSpeed.TURBO, SampleRate.sr44100, true);
+                "mt128d", rom128k, false, false, false, false, TapeSpeed.BPS_2400, true, SampleRate.sr44100, true);
         assertTrue("Expected OKMT signature in turbo direct inverted mode but got: " + resultDirect,
                 resultDirect.contains("TAG=OKMT"));
     }
@@ -219,7 +219,7 @@ public class OpenMsxMegaRamIT {
             boolean expectErrorScreen,
             boolean useCas) throws Exception, FlowException {
         return runCase(machine, extraArgs, caseName, romBytes, reset, holdCtrlOnBoot, expectErrorScreen, useCas,
-                TapeSpeed.BPS_2400, SampleRate.sr44100, false);
+                TapeSpeed.BPS_2400, false, SampleRate.sr44100, false);
     }
 
     private String runCase(
@@ -232,6 +232,7 @@ public class OpenMsxMegaRamIT {
             boolean expectErrorScreen,
             boolean useCas,
             TapeSpeed tapeSpeed,
+            boolean turbo,
             SampleRate sampleRate,
             boolean inverted) throws Exception, FlowException {
         Path userData = prepareUserData();
@@ -249,6 +250,7 @@ public class OpenMsxMegaRamIT {
             Files.write(tapePath, cas);
         } else {
             byte[] wav = new VirtualCas(tapeSpeed, sampleRate)
+                    .turbo(turbo)
                     .invertWaveform(inverted)
                     .resetRom(reset)
                     .megaRam(true)

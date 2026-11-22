@@ -14,6 +14,8 @@ public class BinConverter extends AbstractFileConverter {
 
     private static final int FILE_OFFSET = 7;
 
+    private boolean turbo;
+
     /**
      * Constructor for BinConverter with default {@link TapeSpeed#BPS_2400}.
      *
@@ -21,18 +23,18 @@ public class BinConverter extends AbstractFileConverter {
      * @throws FlowException If reading the file fails
      */
     public BinConverter(String inputFileName) throws FlowException {
-        this(inputFileName, TapeSpeed.BPS_2400);
+        this(inputFileName, TapeSpeed.BPS_2400, false);
     }
 
     /**
      * Constructor for BinConverter with optional turbo speed.
      *
      * @param inputFileName Name of the input file
-     * @param turbo True to select {@link TapeSpeed#TURBO}
+     * @param turbo True to enable Stage-2 Z80 PWM turbo mode
      * @throws FlowException If reading the file fails
      */
     public BinConverter(String inputFileName, boolean turbo) throws FlowException {
-        this(inputFileName, turbo ? TapeSpeed.TURBO : TapeSpeed.BPS_2400);
+        this(inputFileName, TapeSpeed.BPS_2400, turbo);
     }
 
     /**
@@ -43,7 +45,31 @@ public class BinConverter extends AbstractFileConverter {
      * @throws FlowException If reading the file fails
      */
     public BinConverter(String inputFileName, TapeSpeed speed) throws FlowException {
+        this(inputFileName, speed, false);
+    }
+
+    /**
+     * Constructor for BinConverter with Stage-1 {@link TapeSpeed} and Stage-2 turbo toggle.
+     *
+     * @param inputFileName Name of the input file
+     * @param speed Target {@link TapeSpeed} for Stage-1 MSX BIOS header/supervisor
+     * @param turbo True to enable Stage-2 Z80 PWM turbo mode
+     * @throws FlowException If reading the file fails
+     */
+    public BinConverter(String inputFileName, TapeSpeed speed, boolean turbo) throws FlowException {
         super(inputFileName, speed);
+        this.turbo = turbo;
+    }
+
+    /**
+     * Toggle Stage-2 Z80 PWM turbo mode.
+     *
+     * @param turbo True to enable turbo mode
+     * @return This {@link BinConverter} instance
+     */
+    public BinConverter turbo(boolean turbo) {
+        this.turbo = turbo;
+        return this;
     }
 
     @Override
@@ -59,7 +85,7 @@ public class BinConverter extends AbstractFileConverter {
         addStartAddressToLoader(loader);
 
         int payloadLength = inputMemPointer.length - FILE_OFFSET;
-        if (targetSpeed.isTurbo() && payloadLength > 0) {
+        if (turbo && payloadLength > 0) {
             char[] supervisor = RomLoaders.turboSupervisor(0x9000);
             builder.encodeData(buildBinaryAddressBuffer(sizeof(supervisor)));
             builder.encodeData(supervisor);

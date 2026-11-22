@@ -183,7 +183,7 @@ public class TsxFormatTest {
         File romFile = tempFolder.newFile("turbo_compat.rom");
         Files.write(romFile.toPath(), rom16k);
 
-        TsxOutput turboTsx = new VirtualCas(TapeSpeed.TURBO).convertToTsx(romFile.getAbsolutePath());
+        TsxOutput turboTsx = new VirtualCas().turbo(true).convertToTsx(romFile.getAbsolutePath());
         assertTrue(turboTsx.getTapeImage().getBlocks().stream().anyMatch(b -> b instanceof TurboSpeedBlock));
         assertFalse(turboTsx.getTapeImage().isCasCompatible());
 
@@ -217,7 +217,7 @@ public class TsxFormatTest {
         }
 
         try {
-            new VirtualCas(TapeSpeed.TURBO).convertToTape(tsxFile.getAbsolutePath());
+            new VirtualCas().turbo(true).convertToTape(tsxFile.getAbsolutePath());
             fail("Expected FlowException: tsx_turbo_retime_not_supported");
         } catch (FlowException e) {
             assertEquals("tsx_turbo_retime_not_supported", e.getMessage());

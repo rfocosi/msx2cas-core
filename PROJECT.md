@@ -74,7 +74,7 @@ Command-line interface for the core library:
 After building, run the shaded CLI JAR from `msx2cas-cmd/target/`:
 
 ```bash
-java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar [options] [<1200|2400|3000|turbo>] <input-file> [<input-file>...]
+java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar [options] [<1200|2400|3000>] <input-file> [<input-file>...]
 ```
 
 *(The JAR manifest includes `Enable-Native-Access: ALL-UNNAMED` so Java 24+ runs without `JNativeHook` native-access warnings.)*
@@ -85,13 +85,14 @@ Pre-compiled binaries (`msx2cas` for Linux, `msx2cas.exe` for Windows) are built
 
 ### Command Line Options
 
-- `<1200|2400|3000|turbo>`: Playback speed in bps (optional with `-c`, `-t`, or `.tsx` inputs; `turbo` uses a 2400 bps MSX BIOS bootstrap + Stage-2 Z80 PWM loader in WAV/TSX and cannot combine with `-c`)
+- `<1200|2400|3000>`: Stage-1 / standard tape speed in bps (default: `2400`; preserves native timing for `.tsx` inputs when omitted)
 - `-i`: Invert waveform (fix playback on some soundcards)
 - `-r`: Reset MSX after loading a ROM
 - `-m [<auto|konami4|konami5|ascii8|ascii16>]`: Load MegaROM (> 49 KB) into MegaRAM cartridge (port `0x8E`), defaulting to `auto` or forcing the specified mapper type
+- `--turbo`: Enable Stage-2 Z80 PWM turbo loader for ROM and BIN files (cannot combine with `-c`)
 - `-s <11025|22050|44100|48000>`: Output WAV/audio PCM sample rate in Hz (default: `44100`)
-- `-c [<output-file>]`: Write a CAS file (`<bps>` is optional; fails if `.tsx` contains non-MSX-KCS blocks)
-- `-t [<output-file>]`: Write a TSX (TZX 1.21 / `#4B`) file (`<bps>` defaults to `2400`, or preserves native timing on `.tsx` input when omitted)
+- `-c [<output-file>]`: Write a CAS file (fails if `.tsx` contains non-MSX-KCS blocks; cannot combine with `--turbo`)
+- `-t [<output-file>]`: Write a TSX (TZX 1.21 / `#4B`) file (preserves native timing on `.tsx` input when `<bps>` is omitted)
 - `-w [<output-file>]`: Write a WAV file instead of playing audio (uses `<output-file>` if provided for a single input, or the 6-character CAS token name; renders `#20` Stop-the-Tape markers as 4s silence)
 
 ### Examples
@@ -103,12 +104,12 @@ java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar 2400 GA
 
 Convert a ROM file to a WAV file with reset enabled in turbo mode:
 ```bash
-java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar -r -w turbo GAME.ROM
+java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar -r --turbo -w GAME.ROM
 ```
 
 Convert a ROM file to a TSX image in turbo mode:
 ```bash
-java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar -r -t turbo GAME.ROM
+java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar -r --turbo -t GAME.ROM
 ```
 
 Convert a TSX image to a 48000 Hz WAV file preserving native TSX timings:

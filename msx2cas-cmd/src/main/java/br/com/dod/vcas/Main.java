@@ -45,6 +45,7 @@ public class Main extends JFrame implements NativeKeyListener {
                 try {
                     VirtualCas vcas = new VirtualCas(file.tapeSpeed(), file.sampleRate())
                             .invertWaveform(file.inverted())
+                            .turbo(file.turbo())
                             .resetRom(params.resetRom())
                             .megaRam(params.megaRam())
                             .mapperType(params.mapperType());
@@ -140,7 +141,8 @@ public class Main extends JFrame implements NativeKeyListener {
             System.out.println("Playing: " + pcmStream.casName());
             System.out.println("Playback length: " + (frameLength / sampleRate.intValue()) + " seconds");
             System.out.println("Sample Rate: " + sampleRate.intValue() + " Hz");
-            System.out.println("Tape Speed: " + (file.tapeSpeed() != null ? file.tapeSpeed().bps() + " bps" : "native"));
+            System.out.println("Tape Speed: " + (file.tapeSpeed() != null ? file.tapeSpeed().bps() + " bps" : "native")
+                    + (file.turbo() ? " (Stage-1) + Turbo Z80 PWM (Stage-2)" : ""));
             System.out.println("Waveform: " + (pcmStream.isInverted() ? "Inverted" : "Normal"));
             System.out.println();
 

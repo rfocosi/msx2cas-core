@@ -56,18 +56,15 @@ public final class TapeImage {
 
     /**
      * Re-time all KCS ({@code #4B}) blocks on this tape to {@code speed}.
-     * Rejects {@link TapeSpeed#TURBO} and tapes containing non-{@code #4B} audio/loop blocks.
+     * Rejects tapes containing non-{@code #4B} audio/loop blocks.
      *
      * @param speed Target standard KCS speed, or {@code null} to return {@code this} unchanged
      * @return Re-timed {@link TapeImage}
-     * @throws FlowException If {@code speed} is {@link TapeSpeed#TURBO} or custom non-{@code #4B} blocks are present
+     * @throws FlowException If custom non-{@code #4B} blocks are present
      */
     public TapeImage retimeKcs(TapeSpeed speed) throws FlowException {
         if (speed == null) {
             return this;
-        }
-        if (speed.isTurbo()) {
-            throw FlowException.error("tsx_turbo_retime_not_supported");
         }
         List<TapeBlock> retimed = new ArrayList<>(blocks.size());
         for (TapeBlock block : blocks) {

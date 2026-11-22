@@ -63,9 +63,11 @@ public class FileEncodingTest {
 
             try {
                 for (TapeSpeed speed : TapeSpeed.values()) {
-                    generateFile(file, casName, speed, false);
-                    generateFile(file, casName, speed, true);
+                    generateFile(file, casName, speed, false, false);
+                    generateFile(file, casName, speed, false, true);
                 }
+                generateFile(file, casName, TapeSpeed.BPS_2400, true, false);
+                generateFile(file, casName, TapeSpeed.BPS_2400, true, true);
             } catch (FlowException e) {
                 out.println("Can not generate file [" + file + "]: " + e.getMessage());
             }
@@ -84,51 +86,51 @@ public class FileEncodingTest {
 
     @Test
     public void test1200Files() {
-        testFiles(TapeSpeed.BPS_1200, false);
+        testFiles(TapeSpeed.BPS_1200, false, false);
     }
 
     @Test
     public void test2400Files() {
-        testFiles(TapeSpeed.BPS_2400, false);
+        testFiles(TapeSpeed.BPS_2400, false, false);
     }
 
     @Test
     public void test3000Files() {
-        testFiles(TapeSpeed.BPS_3000, false);
+        testFiles(TapeSpeed.BPS_3000, false, false);
     }
 
     @Test
     public void test3600Files() {
-        testFiles(TapeSpeed.TURBO, false);
+        testFiles(TapeSpeed.BPS_2400, true, false);
     }
 
     @Test
     public void test1200iFiles() {
-        testFiles(TapeSpeed.BPS_1200, true);
+        testFiles(TapeSpeed.BPS_1200, false, true);
     }
 
     @Test
     public void test2400iFiles() {
-        testFiles(TapeSpeed.BPS_2400, true);
+        testFiles(TapeSpeed.BPS_2400, false, true);
     }
 
     @Test
     public void test3000iFiles() {
-        testFiles(TapeSpeed.BPS_3000, true);
+        testFiles(TapeSpeed.BPS_3000, false, true);
     }
 
     @Test
     public void test3600iFiles() {
-        testFiles(TapeSpeed.TURBO, true);
+        testFiles(TapeSpeed.BPS_2400, true, true);
     }
 
-    private void testFiles(TapeSpeed speed, boolean inverted) {
+    private void testFiles(TapeSpeed speed, boolean turbo, boolean inverted) {
         try {
             for (Entry<String, String> entry : files.entrySet()) {
                 String file = entry.getKey();
                 String casName = entry.getValue();
 
-                fileTest(file, casName, speed, inverted);
+                fileTest(file, casName, speed, turbo, inverted);
             }
         } catch (FlowException | Exception fe) {
             fe.printStackTrace();
@@ -136,20 +138,23 @@ public class FileEncodingTest {
         }
     }
 
-    private void fileTest(String inputFileName, String fileId, TapeSpeed speed, boolean inverted)
+    private void fileTest(String inputFileName, String fileId, TapeSpeed speed, boolean turbo, boolean inverted)
             throws FlowException, Exception {
         try {
-            byte[] expected = getFileBytes(PROJECT_FOLDER + "/resources/generated/" + getWavFileName(fileId, speed, inverted));
+            byte[] expected = getFileBytes(
+                    PROJECT_FOLDER + "/resources/generated/" + getWavFileName(fileId, speed, turbo, inverted));
 
             byte[] wavFileBytes = new VirtualCas(speed, SampleRate.DEFAULT)
+                    .turbo(turbo)
                     .invertWaveform(inverted)
                     .convertToWav(inputFileName)
                     .toBytes();
 
-            assertEquals(speed.bps() + " Error!", expected.length, wavFileBytes.length);
+            String label = turbo ? "turbo" : String.valueOf(speed.bps());
+            assertEquals(label + " Error!", expected.length, wavFileBytes.length);
 
             for (int i = 0; i < expected.length; i++) {
-                assertEquals("fileId:" + fileId + ",speed:" + speed.bps()
+                assertEquals("fileId:" + fileId + ",speed:" + label
                         + ",inverted:" + inverted + ",fileLength:" + expected.length + ",pos:" + i,
                         expected[i], wavFileBytes[i]);
             }
@@ -162,15 +167,17 @@ public class FileEncodingTest {
         return Files.readAllBytes(new File(filename).toPath());
     }
 
-    private static void generateFile(String inputFileName, String fileId, TapeSpeed speed, boolean inverted)
+    private static void generateFile(String inputFileName, String fileId, TapeSpeed speed, boolean turbo, boolean inverted)
             throws FlowException, Exception {
-        Path finalPath = new File(PROJECT_FOLDER + "/resources/generated/" + getWavFileName(fileId, speed, inverted)).toPath();
+        Path finalPath = new File(
+                PROJECT_FOLDER + "/resources/generated/" + getWavFileName(fileId, speed, turbo, inverted)).toPath();
 
         if (Files.notExists(finalPath) || forceGenerate) {
             Files.deleteIfExists(finalPath);
             out.println("Generating: " + finalPath.getFileName());
 
             byte[] wavFile = new VirtualCas(speed, SampleRate.DEFAULT)
+                    .turbo(turbo)
                     .invertWaveform(inverted)
                     .convertToWav(inputFileName)
                     .toBytes();
@@ -187,7 +194,8 @@ public class FileEncodingTest {
         }
     }
 
-    private static String getWavFileName(String fileId, TapeSpeed speed, boolean inverted) {
-        return fileId + "-" + speed.bps() + (inverted ? "i" : "") + ".wav";
+    private static String getWavFileName(String fileId, TapeSpeed speed, boolean turbo, boolean inverted) {
+        String label = turbo ? "3600" : String.valueOf(speed.bps());
+        return fileId + "-" + label + (inverted ? "i" : "") + ".wav";
     }
 }

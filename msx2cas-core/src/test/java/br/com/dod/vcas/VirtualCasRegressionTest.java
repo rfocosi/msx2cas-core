@@ -311,13 +311,13 @@ public class VirtualCasRegressionTest {
         Files.write(rom16kFile.toPath(), createRom16K((byte) 0x40));
 
         assertPcmStreamMatchesWav(PROJECT_FOLDER + "/resources/token.bas", false, false,
-                TapeSpeed.BPS_1200, SampleRate.sr11025, false);
+                TapeSpeed.BPS_1200, false, SampleRate.sr11025, false);
         assertPcmStreamMatchesWav(PROJECT_FOLDER + "/resources/flabin-flapbird.bin", false, false,
-                TapeSpeed.BPS_2400, SampleRate.sr22050, true);
+                TapeSpeed.BPS_2400, false, SampleRate.sr22050, true);
         assertPcmStreamMatchesWav(PROJECT_FOLDER + "/resources/asciib.bas", false, false,
-                TapeSpeed.BPS_3000, SampleRate.sr44100, false);
+                TapeSpeed.BPS_3000, false, SampleRate.sr44100, false);
         assertPcmStreamMatchesWav(rom16kFile.getAbsolutePath(), true, false,
-                TapeSpeed.BPS_2400, SampleRate.sr48000, true);
+                TapeSpeed.BPS_2400, false, SampleRate.sr48000, true);
 
         VirtualCas vcas = new VirtualCas(TapeSpeed.BPS_2400, SampleRate.sr44100);
         TapeImage basTape = vcas.convertToTape(PROJECT_FOLDER + "/resources/token.bas");
@@ -365,30 +365,51 @@ public class VirtualCasRegressionTest {
         Files.write(megaRomFile.toPath(), megaRom);
 
         assertPcmStreamMatchesWav(rom32kFile.getAbsolutePath(), true, false,
-                TapeSpeed.TURBO, SampleRate.sr44100, false);
+                TapeSpeed.BPS_2400, true, SampleRate.sr44100, false);
         assertPcmStreamMatchesWav(megaRomFile.getAbsolutePath(), true, true,
-                TapeSpeed.TURBO, SampleRate.sr44100, true);
+                TapeSpeed.BPS_2400, true, SampleRate.sr44100, true);
 
         byte[] standardWav = new VirtualCas(TapeSpeed.BPS_2400, SampleRate.sr44100)
                 .convertToWav(rom32kFile.getAbsolutePath()).toBytes();
-        TapeImage turboTape32 = new VirtualCas(TapeSpeed.TURBO, SampleRate.sr44100)
+        TapeImage turboTape32 = new VirtualCas(TapeSpeed.BPS_2400, SampleRate.sr44100)
+                .turbo(true)
                 .convertToTape(rom32kFile.getAbsolutePath());
         long turboBlocks32 = turboTape32.getBlocks().stream().filter(b -> b instanceof TurboSpeedBlock).count();
         assertEquals(2L, turboBlocks32);
 
-        byte[] turboWav = new VirtualCas(TapeSpeed.TURBO, SampleRate.sr44100)
+        TapeImage turboTape1200Stage1 = new VirtualCas(TapeSpeed.BPS_1200, SampleRate.sr44100)
+                .turbo(true)
+                .convertToTape(rom32kFile.getAbsolutePath());
+        List<KcsBlock> stage1Kcs = turboTape1200Stage1.getBlocks().stream()
+                .filter(b -> b instanceof KcsBlock)
+                .map(b -> (KcsBlock) b)
+                .toList();
+        assertEquals(2, stage1Kcs.size());
+        assertEquals(TapeSpeed.BPS_1200.pilotPulseTStates(), stage1Kcs.get(0).pilotPulseLen());
+        assertEquals(TapeSpeed.BPS_1200.zeroPulseTStates(), stage1Kcs.get(0).zeroPulseLen());
+        TurboSpeedBlock stage2Block = turboTape1200Stage1.getBlocks().stream()
+                .filter(b -> b instanceof TurboSpeedBlock)
+                .map(b -> (TurboSpeedBlock) b)
+                .findFirst()
+                .orElseThrow();
+        assertEquals(TapeSpeed.TURBO_ZERO_PULSE, stage2Block.zeroPulseLen());
+        assertEquals(TapeSpeed.TURBO_ONE_PULSE, stage2Block.onePulseLen());
+
+        byte[] turboWav = new VirtualCas(TapeSpeed.BPS_2400, SampleRate.sr44100)
+                .turbo(true)
                 .convertToWav(turboTape32).toBytes();
         assertTrue("Expected turbo WAV (" + turboWav.length + ") to be much smaller than standard WAV ("
                 + standardWav.length + ")", turboWav.length < standardWav.length * 0.65);
 
         // TSX write + read round-trip preserves exact turbo WAV
-        byte[] tsxBytes = new VirtualCas(TapeSpeed.TURBO).convertToTsx(turboTape32).toBytes();
+        byte[] tsxBytes = new VirtualCas(TapeSpeed.BPS_2400).turbo(true).convertToTsx(turboTape32).toBytes();
         File tsxFile = tempFolder.newFile("t32_rt.tsx");
         Files.write(tsxFile.toPath(), tsxBytes);
         byte[] wavFromTsx = new VirtualCas(SampleRate.sr44100).convertToWav(tsxFile.getAbsolutePath()).toBytes();
         assertArrayEquals(turboWav, wavFromTsx);
 
-        TapeImage turboTapeMega = new VirtualCas(TapeSpeed.TURBO, SampleRate.sr44100)
+        TapeImage turboTapeMega = new VirtualCas(TapeSpeed.BPS_2400, SampleRate.sr44100)
+                .turbo(true)
                 .megaRam(true)
                 .convertToTape(megaRomFile.getAbsolutePath());
         long turboBlocksMega = turboTapeMega.getBlocks().stream().filter(b -> b instanceof TurboSpeedBlock).count();
@@ -416,11 +437,11 @@ public class VirtualCasRegressionTest {
         File megaFile = tempFolder.newFile("banmega.rom");
         Files.write(megaFile.toPath(), megaRom);
 
-        String singleStage1 = extractFirstKcsDataText(new VirtualCas(TapeSpeed.TURBO)
+        String singleStage1 = extractFirstKcsDataText(new VirtualCas().turbo(true)
                 .convertToTape(rom16File.getAbsolutePath()));
-        String multi32Stage1 = extractFirstKcsDataText(new VirtualCas(TapeSpeed.TURBO)
+        String multi32Stage1 = extractFirstKcsDataText(new VirtualCas().turbo(true)
                 .convertToTape(rom32File.getAbsolutePath()));
-        String multiMegaStage1 = extractFirstKcsDataText(new VirtualCas(TapeSpeed.TURBO).megaRam(true)
+        String multiMegaStage1 = extractFirstKcsDataText(new VirtualCas().turbo(true).megaRam(true)
                 .convertToTape(megaFile.getAbsolutePath()));
 
         assertTrue("16K single-block turbo Stage-1 must stay compact without banner",
@@ -444,9 +465,11 @@ public class VirtualCasRegressionTest {
             boolean reset,
             boolean megaRam,
             TapeSpeed speed,
+            boolean turbo,
             SampleRate sampleRate,
             boolean inverted) throws Exception, FlowException {
         VirtualCas vcas = new VirtualCas(speed, sampleRate)
+                .turbo(turbo)
                 .invertWaveform(inverted)
                 .resetRom(reset)
                 .megaRam(megaRam);

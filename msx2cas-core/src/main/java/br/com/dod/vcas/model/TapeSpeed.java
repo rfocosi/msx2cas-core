@@ -4,10 +4,9 @@ package br.com.dod.vcas.model;
  * Tape baud rate and pulse timing profiles anchored to the standard 3.5 MHz Z80 TZX clock.
  */
 public enum TapeSpeed {
-    BPS_1200(1200, 729, 1458, 729, false),
-    BPS_2400(2400, 365, 729, 365, false),
-    BPS_3000(3000, 329, 658, 329, false),
-    TURBO(3600, 365, 729, 365, true);
+    BPS_1200(1200, 729, 1458, 729),
+    BPS_2400(2400, 365, 729, 365),
+    BPS_3000(3000, 329, 658, 329);
 
     /** TZX/TSX reference clock frequency in Hz (1 T-state = 1 / 3,500,000 s). */
     public static final long TSTATES_PER_SECOND = 3_500_000L;
@@ -25,14 +24,12 @@ public enum TapeSpeed {
     private final int pilotPulseTStates;
     private final int zeroPulseTStates;
     private final int onePulseTStates;
-    private final boolean turbo;
 
-    TapeSpeed(int bps, int pilotPulseTStates, int zeroPulseTStates, int onePulseTStates, boolean turbo) {
+    TapeSpeed(int bps, int pilotPulseTStates, int zeroPulseTStates, int onePulseTStates) {
         this.bps = bps;
         this.pilotPulseTStates = pilotPulseTStates;
         this.zeroPulseTStates = zeroPulseTStates;
         this.onePulseTStates = onePulseTStates;
-        this.turbo = turbo;
     }
 
     /**
@@ -72,16 +69,7 @@ public enum TapeSpeed {
     }
 
     /**
-     * Whether this speed uses the Stage-2 Z80 PWM turbo loader after a 2400 bps BIOS bootstrap.
-     *
-     * @return {@code true} for {@link #TURBO}
-     */
-    public boolean isTurbo() {
-        return turbo;
-    }
-
-    /**
-     * Parse a CLI/API speed token ({@code 1200}, {@code 2400}, {@code 3000}, or {@code turbo}).
+     * Parse a CLI/API speed token ({@code 1200}, {@code 2400}, or {@code 3000}).
      *
      * @param token Speed string token
      * @return Matching {@link TapeSpeed}
@@ -106,9 +94,6 @@ public enum TapeSpeed {
             return null;
         }
         String trimmed = token.trim();
-        if ("turbo".equalsIgnoreCase(trimmed)) {
-            return TURBO;
-        }
         if ("1200".equals(trimmed)) {
             return BPS_1200;
         }

@@ -25,6 +25,7 @@ public class DefaultFileConverterFactory implements FileConverterFactory {
     public Converter createConverter(String filePath, ConversionOptions options) throws FlowException {
         boolean resetRom = options != null && options.resetRom();
         boolean megaRam = options != null && options.megaRam();
+        boolean turbo = options != null && options.turbo();
         MapperType mapperType = options != null && options.mapperType() != null
                 ? options.mapperType()
                 : MapperType.AUTO;
@@ -33,11 +34,11 @@ public class DefaultFileConverterFactory implements FileConverterFactory {
 
         FileType fileType = detectFileType(filePath);
         return switch (fileType) {
-            case TSX -> new TsxConverter(filePath, rawSpeed);
+            case TSX -> new TsxConverter(filePath, rawSpeed, turbo);
             case BAS -> new BasConverter(filePath, nonTsxSpeed);
-            case BIN -> new BinConverter(filePath, nonTsxSpeed);
+            case BIN -> new BinConverter(filePath, nonTsxSpeed, turbo);
             case CAS -> new CasConverter(filePath, nonTsxSpeed);
-            case ROM -> new RomConverter(filePath, nonTsxSpeed, resetRom, megaRam, mapperType);
+            case ROM -> new RomConverter(filePath, nonTsxSpeed, resetRom, megaRam, mapperType, turbo);
             default -> new AsciiConverter(filePath, nonTsxSpeed);
         };
     }

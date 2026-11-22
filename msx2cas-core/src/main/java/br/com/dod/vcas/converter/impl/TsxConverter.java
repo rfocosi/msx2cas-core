@@ -12,6 +12,8 @@ import br.com.dod.vcas.tsx.TsxParser;
  */
 public class TsxConverter extends AbstractFileConverter {
 
+    private final boolean turbo;
+
     /**
      * Constructor preserving native embedded TSX T-state timings.
      *
@@ -19,7 +21,7 @@ public class TsxConverter extends AbstractFileConverter {
      * @throws FlowException If reading the file fails
      */
     public TsxConverter(String inputFileName) throws FlowException {
-        this(inputFileName, null);
+        this(inputFileName, null, false);
     }
 
     /**
@@ -30,7 +32,20 @@ public class TsxConverter extends AbstractFileConverter {
      * @throws FlowException If reading the file fails
      */
     public TsxConverter(String inputFileName, TapeSpeed speed) throws FlowException {
+        this(inputFileName, speed, false);
+    }
+
+    /**
+     * Constructor with optional {@link TapeSpeed} override and turbo check.
+     *
+     * @param inputFileName Path to the {@code .tsx} file
+     * @param speed Optional speed override ({@code null} preserves native TSX timings)
+     * @param turbo Rejects TSX conversion with {@code tsx_turbo_retime_not_supported} when {@code true}
+     * @throws FlowException If reading the file fails
+     */
+    public TsxConverter(String inputFileName, TapeSpeed speed, boolean turbo) throws FlowException {
         super(inputFileName, speed);
+        this.turbo = turbo;
     }
 
     @Override
@@ -40,6 +55,9 @@ public class TsxConverter extends AbstractFileConverter {
 
     @Override
     public TapeImage convertToTape() throws FlowException {
+        if (turbo) {
+            throw FlowException.error("tsx_turbo_retime_not_supported");
+        }
         TapeImage image = TsxParser.parse(inputMemPointer, inputFileName);
         return speed != null ? image.retimeKcs(speed) : image;
     }

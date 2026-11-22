@@ -103,11 +103,32 @@ public class RomConverter extends AbstractFileConverter {
             boolean resetRom,
             boolean megaRam,
             MapperType mapperType) throws FlowException {
+        this(inputFileName, speed, resetRom, megaRam, mapperType, false);
+    }
+
+    /**
+     * Constructor for RomConverter with Stage-1 {@link TapeSpeed}, ROM reset, MegaRAM, mapper type, and Stage-2 turbo options.
+     *
+     * @param inputFileName Name of the input file
+     * @param speed Target {@link TapeSpeed} for Stage-1 BIOS bootstrap
+     * @param resetRom True to reset the MSX after loading the ROM
+     * @param megaRam True to target a MegaRAM cartridge (port 0x8E)
+     * @param mapperType Source MegaROM mapper type ({@link MapperType#AUTO} by default)
+     * @param turbo True to enable Stage-2 Z80 PWM turbo mode
+     * @throws FlowException If reading or validating the ROM fails
+     */
+    public RomConverter(
+            String inputFileName,
+            TapeSpeed speed,
+            boolean resetRom,
+            boolean megaRam,
+            MapperType mapperType,
+            boolean turbo) throws FlowException {
         super(inputFileName, speed != null ? speed : TapeSpeed.BPS_2400);
         this.resetRom = resetRom;
         this.megaRam = megaRam;
         this.mapperType = mapperType != null ? mapperType : MapperType.AUTO;
-        this.turbo = effectiveSpeed().isTurbo();
+        this.turbo = turbo;
         validate();
     }
 
@@ -153,10 +174,7 @@ public class RomConverter extends AbstractFileConverter {
 
     @Override
     public TapeImage convertToTape() throws FlowException {
-        TapeSpeed buildSpeed = turbo
-                ? TapeSpeed.TURBO
-                : (effectiveSpeed().isTurbo() ? TapeSpeed.BPS_2400 : effectiveSpeed());
-        TapeBuilder builder = new TapeBuilder(inputFileName, buildSpeed);
+        TapeBuilder builder = new TapeBuilder(inputFileName, effectiveSpeed());
         int fileSize = getFileSize();
 
         if (megaRam) {

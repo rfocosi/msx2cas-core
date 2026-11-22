@@ -17,7 +17,7 @@ import br.com.dod.vcas.model.TapeSpeed;
 import br.com.dod.vcas.util.FileCommons;
 
 class Params {
-    private static final String SPEEDS = "1200|2400|3000|turbo";
+    private static final String SPEEDS = "1200|2400|3000";
     private static final String SAMPLE_RATES = "11025|22050|44100|48000";
 
     private boolean resetRom;
@@ -26,6 +26,7 @@ class Params {
     private TapeSpeed tapeSpeed;
     private SampleRate sampleRate = SampleRate.DEFAULT;
     private boolean inverted;
+    private boolean turbo;
 
     private final List<ConvertFile> files = new ArrayList<>();
 
@@ -58,6 +59,7 @@ class Params {
                 switch (arg) {
                     case "-i" -> this.inverted = true;
                     case "-r" -> this.resetRom = true;
+                    case "--turbo" -> this.turbo = true;
                     case "-m" -> {
                         this.megaRam = true;
                         if (i + 1 < optionEnd) {
@@ -111,8 +113,8 @@ class Params {
                 }
             }
 
-            if (outputMode == OutputMode.CAS && this.tapeSpeed == TapeSpeed.TURBO) {
-                throw new IllegalArgumentException("Cannot combine turbo and -c");
+            if (outputMode == OutputMode.CAS && this.turbo) {
+                throw new IllegalArgumentException("Cannot combine --turbo and -c");
             }
 
             LinkedHashSet<String> inputFiles = new LinkedHashSet<>();
@@ -145,14 +147,14 @@ class Params {
             if (inputFiles.isEmpty()) {
                 throw new IllegalArgumentException("Missing input files");
             }
-
-            boolean allInputTsx = inputFiles.stream().allMatch(Params::isTsxFile);
-            if (!hasBps) {
-                if (outputMode == OutputMode.TSX) {
-                    this.tapeSpeed = TapeSpeed.BPS_2400;
-                } else if ((outputMode == OutputMode.WAV || outputMode == OutputMode.PLAY) && !allInputTsx) {
-                    throw new IllegalArgumentException("Missing bps");
+            for (String file : inputFiles) {
+                if (!hasInputExtension(file)) {
+                    throw new IllegalArgumentException("Invalid input file or unexpected argument: " + file);
                 }
+            }
+
+            if (!hasBps && outputMode != OutputMode.CAS) {
+                this.tapeSpeed = TapeSpeed.BPS_2400;
             }
 
             if (inputFiles.size() != 1) {
@@ -175,7 +177,7 @@ class Params {
     }
 
     private static boolean isSpeedToken(String arg) {
-        return arg != null && (arg.matches("\\d{4}") || "turbo".equalsIgnoreCase(arg));
+        return arg != null && arg.matches("\\d{4}");
     }
 
     private static boolean hasInputExtension(String value) {
@@ -209,19 +211,20 @@ class Params {
             if (outputMode == OutputMode.CAS && isCasFile(file)) {
                 continue;
             }
-            if (outputMode == OutputMode.TSX && !hasBps && isTsxFile(file)) {
+            if (outputMode == OutputMode.TSX && !hasBps && !this.turbo && isTsxFile(file)) {
                 continue;
             }
             String outName = outputMode == OutputMode.PLAY
                     ? ""
                     : getOutputFilename(file, customOutputName, extension);
-            TapeSpeed effectiveSpeed = (isTsxFile(file) && !hasBps) ? null : this.tapeSpeed;
+            TapeSpeed effectiveSpeed = (isTsxFile(file) && !hasBps && !this.turbo) ? null : this.tapeSpeed;
             files.add(new ConvertFile(
                     file,
                     outName,
                     effectiveSpeed,
                     this.sampleRate,
                     this.inverted,
+                    this.turbo,
                     outputMode));
         }
     }
@@ -256,15 +259,16 @@ class Params {
 
     private static void displayUsage() {
         System.out.println("""
-                Usage: msx2cas [-i] [-r] [-m [<auto|konami4|konami5|ascii8|ascii16>]] [-s <%s>] [-c [<output-file>] | -t [<output-file>] | -w [<output-file>]] [<%s>] <input-file> [<input-file>...]
+                Usage: msx2cas [-i] [-r] [-m [<auto|konami4|konami5|ascii8|ascii16>]] [--turbo] [-s <%s>] [-c [<output-file>] | -t [<output-file>] | -w [<output-file>]] [<%s>] <input-file> [<input-file>...]
                 -i: Invert Waveform (fix playback on some soundboards)
                 -r: Reset MSX after loading a ROM
                 -m: Load MegaROM into MegaRAM cartridge (port 0x8E); optionally force mapper type (auto, konami4, konami5, ascii8, ascii16; default: auto)
+                --turbo: Enable Stage-2 Z80 PWM turbo loader for ROM and BIN files (cannot combine with -c)
                 -s: Audio output sample rate in Hz (%s; default: 44100)
-                -c: Write a CAS file with <output-file> name OR with file token name; <bps> is optional (cannot combine with turbo)
-                -t: Write a TSX file with <output-file> name OR with file token name; <bps> is optional (defaults to 2400)
+                -c: Write a CAS file with <output-file> name OR with file token name (cannot combine with --turbo)
+                -t: Write a TSX file with <output-file> name OR with file token name
                 -w: Write a WAV file with <output-file> name OR with file token name
-                <%s>: Tape speed in bps (required for non-TSX playback/-w; optional for -c, -t, and TSX input)
+                <%s>: Tape speed in bps (default: 2400; preserves native timing for TSX input when omitted)
                 <input-file>: A ROM, BIN, LDR, MX1, MX2, CAS, TSX, BAS(tokenize or not) file
                 
                 If you do not use -c, -t, or -w, MSX2Cas will play to default sound interface""".formatted(
@@ -284,7 +288,7 @@ class Params {
     }
 
     public boolean turbo() {
-        return this.tapeSpeed == TapeSpeed.TURBO;
+        return this.turbo;
     }
 
     public TapeSpeed tapeSpeed() {
