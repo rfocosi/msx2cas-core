@@ -3,42 +3,39 @@ package br.com.dod.vcas.converter.impl;
 import java.util.ArrayList;
 import java.util.List;
 
-import br.com.dod.vcas.cas.CasEncoder;
 import br.com.dod.vcas.cas.CasFile;
-import br.com.dod.vcas.cas.CasOutput;
 import br.com.dod.vcas.cas.CasUtil;
 import br.com.dod.vcas.converter.AbstractFileConverter;
 import br.com.dod.vcas.exception.FlowException;
-import br.com.dod.vcas.model.SampleRate;
-import br.com.dod.vcas.wav.WavEncoder;
-import br.com.dod.vcas.wav.WavOutput;
+import br.com.dod.vcas.model.TapeSpeed;
+import br.com.dod.vcas.tape.TapeImage;
 
 /**
- * Converter for CAS files (CAS parsing pass-through and CAS to WAV encoding)
+ * Converter for MSX CAS files into unified {@link TapeImage}.
  */
 public class CasConverter extends AbstractFileConverter {
 
     private final List<CasFile> casFiles;
 
     /**
-     * Constructor for CasConverter without WAV sample rate.
+     * Constructor for CasConverter using default {@link TapeSpeed#BPS_2400}.
      *
      * @param inputFileName Name of the input file
-     * @throws FlowException If there's an error reading the file
+     * @throws FlowException If reading or parsing the CAS file fails
      */
     public CasConverter(String inputFileName) throws FlowException {
-        this(inputFileName, null);
+        this(inputFileName, TapeSpeed.BPS_2400);
     }
 
     /**
-     * Constructor for CasConverter
+     * Constructor for CasConverter.
      *
      * @param inputFileName Name of the input file
-     * @param sampleRate Sample rate to use for conversion
-     * @throws FlowException If there's an error reading the file
+     * @param speed Target {@link TapeSpeed}
+     * @throws FlowException If reading or parsing the CAS file fails
      */
-    public CasConverter(String inputFileName, SampleRate sampleRate) throws FlowException {
-        super(inputFileName, sampleRate);
+    public CasConverter(String inputFileName, TapeSpeed speed) throws FlowException {
+        super(inputFileName, speed);
         this.casFiles = new CasUtil(this.inputMemPointer).list();
         if (this.casFiles.isEmpty()) {
             throw FlowException.error("cas_list_empty");
@@ -46,36 +43,36 @@ public class CasConverter extends AbstractFileConverter {
     }
 
     /**
-     * Constructor for CasConverter with pre-loaded CAS files and no WAV sample rate.
+     * Constructor for CasConverter with pre-loaded CAS tracks.
      *
-     * @param casFiles List of CAS files
-     * @throws FlowException If there's an error with the CAS files
+     * @param casFiles List of CAS tracks
+     * @throws FlowException If the CAS list is empty
      */
     public CasConverter(List<CasFile> casFiles) throws FlowException {
-        this(casFiles, null, null);
+        this(casFiles, TapeSpeed.BPS_2400, null);
     }
 
     /**
-     * Constructor for CasConverter with pre-loaded CAS files
+     * Constructor for CasConverter with pre-loaded CAS tracks and explicit {@link TapeSpeed}.
      *
-     * @param casFiles List of CAS files
-     * @param sampleRate Sample rate to use for conversion
-     * @throws FlowException If there's an error with the CAS files
+     * @param casFiles List of CAS tracks
+     * @param speed Target {@link TapeSpeed}
+     * @throws FlowException If the CAS list is empty
      */
-    public CasConverter(List<CasFile> casFiles, SampleRate sampleRate) throws FlowException {
-        this(casFiles, sampleRate, null);
+    public CasConverter(List<CasFile> casFiles, TapeSpeed speed) throws FlowException {
+        this(casFiles, speed, null);
     }
 
     /**
-     * Constructor for CasConverter with pre-loaded CAS files and retained input filename.
+     * Constructor for CasConverter with pre-loaded CAS tracks and retained input filename.
      *
-     * @param casFiles List of CAS files
-     * @param sampleRate Sample rate to use for conversion
+     * @param casFiles List of CAS tracks
+     * @param speed Target {@link TapeSpeed}
      * @param inputFileName Original input file name
-     * @throws FlowException If there's an error with the CAS files
+     * @throws FlowException If the CAS list is empty
      */
-    public CasConverter(List<CasFile> casFiles, SampleRate sampleRate, String inputFileName) throws FlowException {
-        super(sampleRate, inputFileName);
+    public CasConverter(List<CasFile> casFiles, TapeSpeed speed, String inputFileName) throws FlowException {
+        super(speed, inputFileName);
         if (casFiles == null || casFiles.isEmpty()) {
             throw FlowException.error("cas_list_empty");
         }
@@ -83,52 +80,7 @@ public class CasConverter extends AbstractFileConverter {
     }
 
     @Override
-    public CasOutput convertToCas() throws FlowException {
-        return new CasEncoder(this.casFiles, this.inputFileName);
-    }
-
-    @Override
-    public WavOutput convert() throws FlowException {
-        if (sampleRate == null) {
-            throw FlowException.error("sample_rate_required");
-        }
-        WavEncoder encoder = new WavEncoder(sampleRate, inputFileName);
-
-        for (int i = 0; i < casFiles.size(); i++) {
-            CasFile casFile = casFiles.get(i);
-            encodeFile(encoder, casFile, i == 0);
-        }
-
-        encoder.finish();
-
-        return encoder;
-    }
-
-    private void encodeFile(WavEncoder encoder, CasFile casFile, boolean isFirstTrack) {
-        boolean turboTrack = casFile.hasTurboPayload();
-        if (casFile.isAsciiContinuation()) {
-            encoder.encodeShortHeader(turboTrack);
-        } else {
-            encoder.encodePause(WavEncoder.FIRST_PAUSE_LENGTH);
-            encoder.encodeLongHeader(turboTrack);
-
-            boolean hasName = casFile.getName() != null && !casFile.getName().isEmpty();
-            if (isFirstTrack || hasName) {
-                encoder.encodeData(casFile.getHeader(), turboTrack);
-                encoder.encodeData(hasName ? casFile.getName().toCharArray() : new char[0], turboTrack);
-                encoder.encodePause(WavEncoder.DEFAULT_PAUSE_LENGTH);
-                encoder.encodeShortHeader(turboTrack);
-            }
-        }
-
-        byte[] content = casFile.getContentBytes();
-        if (content != null) {
-            for (byte b : content) {
-                encoder.writeDataByte((char) (b & 0xFF), turboTrack);
-            }
-        }
-        if (turboTrack) {
-            encoder.encodeTurboBlocks(casFile.getTurboPayloads());
-        }
+    public TapeImage convertToTape() throws FlowException {
+        return CasUtil.toTape(casFiles, effectiveSpeed(), inputFileName);
     }
 }

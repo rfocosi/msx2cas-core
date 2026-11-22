@@ -25,6 +25,7 @@ import org.junit.rules.TemporaryFolder;
 
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.SampleRate;
+import br.com.dod.vcas.model.TapeSpeed;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -104,7 +105,7 @@ public class OpenMsxMegaRamIT {
 
         byte[] rom128k = buildKonami4CheckRom(128 * 1024, "MR");
         String result = runCase("Gradiente_Expert_GPC-1", List.of(),
-                "nomramt", rom128k, true, false, true, false, true, SampleRate.sr22050);
+                "nomramt", rom128k, true, false, true, false, TapeSpeed.TURBO, SampleRate.sr44100, false);
         assertTrue("Expected NO MEGARAM error on screen in turbo mode but got: " + result,
                 result.contains("Fail: NO MEGARAM!"));
     }
@@ -186,21 +187,15 @@ public class OpenMsxMegaRamIT {
                 hasRom("expert_1.1_basic-bios1.rom", "d6720845928ee848cfa88a86accb067397685f02"));
 
         byte[] rom128k = buildKonami4CheckRom(128 * 1024, "MT");
-        try {
-            String resultReset = runCase("Gradiente_Expert_GPC-1", List.of("-ext", "megaram"),
-                    "mt128r", rom128k, true, false, false, false, true, SampleRate.sr22050.invertWaveForm(false));
-            assertTrue("Expected OKMT signature in turbo reset mode but got: " + resultReset,
-                    resultReset.contains("TAG=OKMT"));
+        String resultReset = runCase("Gradiente_Expert_GPC-1", List.of("-ext", "megaram"),
+                "mt128r", rom128k, true, false, false, false, TapeSpeed.TURBO, SampleRate.sr44100, false);
+        assertTrue("Expected OKMT signature in turbo reset mode but got: " + resultReset,
+                resultReset.contains("TAG=OKMT"));
 
-            String resultDirect = runCase("Gradiente_Expert_GPC-1", List.of("-ext", "megaram"),
-                    "mt128d", rom128k, false, false, false, false, true, SampleRate.sr33075.invertWaveForm(true));
-            assertTrue("Expected OKMT signature in turbo direct 3600i mode but got: " + resultDirect,
-                    resultDirect.contains("TAG=OKMT"));
-        } finally {
-            for (SampleRate rate : SampleRate.values()) {
-                rate.invertWaveForm(false);
-            }
-        }
+        String resultDirect = runCase("Gradiente_Expert_GPC-1", List.of("-ext", "megaram"),
+                "mt128d", rom128k, false, false, false, false, TapeSpeed.TURBO, SampleRate.sr44100, true);
+        assertTrue("Expected OKMT signature in turbo direct inverted mode but got: " + resultDirect,
+                resultDirect.contains("TAG=OKMT"));
     }
 
     private String runCase(
@@ -224,7 +219,7 @@ public class OpenMsxMegaRamIT {
             boolean expectErrorScreen,
             boolean useCas) throws Exception, FlowException {
         return runCase(machine, extraArgs, caseName, romBytes, reset, holdCtrlOnBoot, expectErrorScreen, useCas,
-                false, SampleRate.sr22050);
+                TapeSpeed.BPS_2400, SampleRate.sr44100, false);
     }
 
     private String runCase(
@@ -236,15 +231,16 @@ public class OpenMsxMegaRamIT {
             boolean holdCtrlOnBoot,
             boolean expectErrorScreen,
             boolean useCas,
-            boolean turbo,
-            SampleRate sampleRate) throws Exception, FlowException {
+            TapeSpeed tapeSpeed,
+            SampleRate sampleRate,
+            boolean inverted) throws Exception, FlowException {
         Path userData = prepareUserData();
         File romFile = tempFolder.newFile(caseName + ".rom");
         Files.write(romFile.toPath(), romBytes);
 
         Path tapePath;
         if (useCas) {
-            byte[] cas = new VirtualCas()
+            byte[] cas = new VirtualCas(tapeSpeed)
                     .resetRom(reset)
                     .megaRam(true)
                     .convertToCas(romFile.getAbsolutePath())
@@ -252,11 +248,11 @@ public class OpenMsxMegaRamIT {
             tapePath = tempFolder.newFile(caseName + ".cas").toPath();
             Files.write(tapePath, cas);
         } else {
-            byte[] wav = new VirtualCas(sampleRate)
+            byte[] wav = new VirtualCas(tapeSpeed, sampleRate)
+                    .invertWaveform(inverted)
                     .resetRom(reset)
                     .megaRam(true)
-                    .turbo(turbo)
-                    .convert(romFile.getAbsolutePath())
+                    .convertToWav(romFile.getAbsolutePath())
                     .toBytes();
             tapePath = tempFolder.newFile(caseName + ".wav").toPath();
             Files.write(tapePath, wav);

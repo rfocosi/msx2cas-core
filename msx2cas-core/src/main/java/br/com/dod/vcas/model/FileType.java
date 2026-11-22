@@ -9,6 +9,7 @@ public enum FileType {
     BAS(new char[]{ 0xff }, "BASIC", new char[]{ 0xD3,0xD3,0xD3,0xD3,0xD3,0xD3,0xD3,0xD3,0xD3,0xD3 }),
     BIN(new char[]{ 0xfe }, "BINARY", new char[]{ 0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0 }),
     CAS(new char[]{ 0x1F,0xA6,0xDE,0xBA,0xCC,0x13,0x7D,0x74 }, "CAS", new char[]{}),
+    TSX(new char[]{ 'Z','X','T','a','p','e','!', 0x1A }, "TSX", new char[]{}),
     ROM(new char[]{ 0x41, 0x42 }, "ROM", new char[]{ 0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0 }),
     DATA(new char[]{}, "DATA", new char[]{ 0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0,0xD0 }),
     NONE(new char[]{}, "NONE", new char[]{});
@@ -25,10 +26,32 @@ public enum FileType {
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
     private boolean equals(String fileName, int offset) throws IOException {
+        if (id.length == 0) {
+            return true;
+        }
         byte[] fileHeader = new byte[id.length];
         try (FileInputStream fileInputStream = new FileInputStream(fileName)) {
-            fileInputStream.skip(offset);
-            if (fileInputStream.read(fileHeader) <= 0) throw new IOException("File empty!");
+            if (offset > 0) {
+                long skipped = 0;
+                while (skipped < offset) {
+                    long s = fileInputStream.skip(offset - skipped);
+                    if (s <= 0) {
+                        return false;
+                    }
+                    skipped += s;
+                }
+            }
+            int totalRead = 0;
+            while (totalRead < fileHeader.length) {
+                int read = fileInputStream.read(fileHeader, totalRead, fileHeader.length - totalRead);
+                if (read == -1) {
+                    if (totalRead == 0 && offset == 0) {
+                        throw new IOException("File empty!");
+                    }
+                    return false;
+                }
+                totalRead += read;
+            }
         }
         return equals(fileHeader);
     }
@@ -42,6 +65,9 @@ public enum FileType {
     }
 
     public boolean equals(byte[] inputHandler) {
+        if (inputHandler == null || inputHandler.length < id.length) {
+            return false;
+        }
         for (int i=0; i < id.length; i++) {
             if ((byte) id[i] != inputHandler[i]) return false;
         }

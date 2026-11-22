@@ -9,12 +9,12 @@ import java.nio.file.Paths;
 import java.util.LinkedHashMap;
 import java.util.Map.Entry;
 
-import br.com.dod.vcas.model.SampleRate;
-import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import br.com.dod.vcas.exception.FlowException;
+import br.com.dod.vcas.model.SampleRate;
+import br.com.dod.vcas.model.TapeSpeed;
 
 import static br.com.dod.vcas.AllTests.PROJECT_FOLDER;
 import static java.lang.System.getenv;
@@ -24,10 +24,10 @@ import static org.junit.Assert.fail;
 
 public class FileEncodingTest {
 
-    // Set to "true" to update test's WAVs
-    private static boolean forceGenerate = getForceWavGenerateEnv();
+    // Set FORCE_WAV_GENERATE=true in the environment to regenerate reference WAVs
+    private static final boolean forceGenerate = getForceWavGenerateEnv();
 
-    private static LinkedHashMap<String,String> files;
+    private static LinkedHashMap<String, String> files;
 
     @BeforeClass
     public static void generateFiles() throws Exception {
@@ -41,12 +41,15 @@ public class FileEncodingTest {
                         || path.toString().endsWith(".cas"))
                 .forEach(file -> files.put(file.toString(), file.getFileName().toString()));
 
-        Files.list(getExtraTestResourcesPath())
-                .filter(path -> path.toString().endsWith(".rom")
-                        || path.toString().endsWith(".bin")
-                        || path.toString().endsWith(".bas")
-                        || path.toString().endsWith(".cas"))
-                .forEach(file -> files.put(file.toString(), file.getFileName().toString()));
+        Path extraPath = getExtraTestResourcesPath();
+        if (Files.isDirectory(extraPath)) {
+            Files.list(extraPath)
+                    .filter(path -> path.toString().endsWith(".rom")
+                            || path.toString().endsWith(".bin")
+                            || path.toString().endsWith(".bas")
+                            || path.toString().endsWith(".cas"))
+                    .forEach(file -> files.put(file.toString(), file.getFileName().toString()));
+        }
 
         out.println("Generating test files...");
         generateTestFiles();
@@ -54,90 +57,78 @@ public class FileEncodingTest {
     }
 
     private static void generateTestFiles() throws Exception {
-        for (Entry<String,String> entry : files.entrySet()) {
+        for (Entry<String, String> entry : files.entrySet()) {
             String file = entry.getKey();
             String casName = entry.getValue();
 
             try {
-                generateFile(file, casName, SampleRate.sr11025.invertWaveForm(false));
-                generateFile(file, casName, SampleRate.sr22050.invertWaveForm(false));
-                generateFile(file, casName, SampleRate.sr27563.invertWaveForm(false));
-                generateFile(file, casName, SampleRate.sr33075.invertWaveForm(false));
-                generateFile(file, casName, SampleRate.sr11025.invertWaveForm(true));
-                generateFile(file, casName, SampleRate.sr22050.invertWaveForm(true));
-                generateFile(file, casName, SampleRate.sr27563.invertWaveForm(true));
-                generateFile(file, casName, SampleRate.sr33075.invertWaveForm(true));
+                for (TapeSpeed speed : TapeSpeed.values()) {
+                    generateFile(file, casName, speed, false);
+                    generateFile(file, casName, speed, true);
+                }
             } catch (FlowException e) {
-                out.println("Can not generate file ["+file+"]: " + e.getMessage());
+                out.println("Can not generate file [" + file + "]: " + e.getMessage());
             }
-        }
-        resetSampleRateInversion();
-    }
-
-    @AfterClass
-    public static void resetSampleRateInversion() {
-        for (SampleRate rate : SampleRate.values()) {
-            rate.invertWaveForm(false);
         }
     }
 
     private static Path getExtraTestResourcesPath() {
-        String extra_test_resources_path = getenv("EXTRA_TEST_RESOURCES_PATH");
-        return Paths.get(extra_test_resources_path != null ? extra_test_resources_path : PROJECT_FOLDER + "/resources/local/");
+        String extra = getenv("EXTRA_TEST_RESOURCES_PATH");
+        return Paths.get(extra != null ? extra : PROJECT_FOLDER + "/resources/local/");
     }
 
     private static boolean getForceWavGenerateEnv() {
         String forceWavGenerate = getenv("FORCE_WAV_GENERATE");
-        return forceWavGenerate != null && getenv("FORCE_WAV_GENERATE").equalsIgnoreCase("true");
+        return forceWavGenerate != null && forceWavGenerate.equalsIgnoreCase("true");
     }
 
     @Test
-    public void test11025Files() {
-        testFiles(SampleRate.sr11025.invertWaveForm(false));
+    public void test1200Files() {
+        testFiles(TapeSpeed.BPS_1200, false);
     }
 
     @Test
-    public void test22050Files() {
-        testFiles(SampleRate.sr22050.invertWaveForm(false));
+    public void test2400Files() {
+        testFiles(TapeSpeed.BPS_2400, false);
     }
 
     @Test
-    public void test27563Files() {
-        testFiles(SampleRate.sr27563.invertWaveForm(false));
+    public void test3000Files() {
+        testFiles(TapeSpeed.BPS_3000, false);
     }
 
     @Test
-    public void test33075Files() {
-        testFiles(SampleRate.sr33075.invertWaveForm(false));
+    public void test3600Files() {
+        testFiles(TapeSpeed.TURBO, false);
     }
 
     @Test
-    public void test11025iFiles() {
-        testFiles(SampleRate.sr11025.invertWaveForm(true));
+    public void test1200iFiles() {
+        testFiles(TapeSpeed.BPS_1200, true);
     }
 
     @Test
-    public void test22050iFiles() {
-        testFiles(SampleRate.sr22050.invertWaveForm(true));
+    public void test2400iFiles() {
+        testFiles(TapeSpeed.BPS_2400, true);
     }
 
     @Test
-    public void test27563iFiles() {
-        testFiles(SampleRate.sr27563.invertWaveForm(true));
+    public void test3000iFiles() {
+        testFiles(TapeSpeed.BPS_3000, true);
     }
 
     @Test
-    public void test33075iFiles() {
-        testFiles(SampleRate.sr33075.invertWaveForm(true));
+    public void test3600iFiles() {
+        testFiles(TapeSpeed.TURBO, true);
     }
 
-    private void testFiles(SampleRate sampleRate) {
+    private void testFiles(TapeSpeed speed, boolean inverted) {
         try {
-            for (Entry<String,String> entry : files.entrySet()) {
+            for (Entry<String, String> entry : files.entrySet()) {
                 String file = entry.getKey();
                 String casName = entry.getValue();
 
-                fileTest(file, casName, sampleRate);
+                fileTest(file, casName, speed, inverted);
             }
         } catch (FlowException | Exception fe) {
             fe.printStackTrace();
@@ -145,20 +136,25 @@ public class FileEncodingTest {
         }
     }
 
-    private void fileTest(String inputFileName, String fileId, SampleRate sampleRate) throws FlowException, Exception {
+    private void fileTest(String inputFileName, String fileId, TapeSpeed speed, boolean inverted)
+            throws FlowException, Exception {
         try {
-            byte[] inputFileHandler = getFileBytes(PROJECT_FOLDER + "/resources/generated/" + getWavFileName(fileId, sampleRate));
+            byte[] expected = getFileBytes(PROJECT_FOLDER + "/resources/generated/" + getWavFileName(fileId, speed, inverted));
 
-            byte[] wavFileBytes = new VirtualCas(sampleRate).convert(inputFileName).toBytes();
+            byte[] wavFileBytes = new VirtualCas(speed, SampleRate.DEFAULT)
+                    .invertWaveform(inverted)
+                    .convertToWav(inputFileName)
+                    .toBytes();
 
-            assertEquals(sampleRate.intValue() +" Error!", inputFileHandler.length, wavFileBytes.length);
+            assertEquals(speed.bps() + " Error!", expected.length, wavFileBytes.length);
 
-            for (int i = 0; i < inputFileHandler.length; i++) {
-                assertEquals("fileId:"+fileId+",sampleRate:"+sampleRate.intValue()
-                        +",fileLength:"+inputFileHandler.length+",pos:"+i, inputFileHandler[i], wavFileBytes[i]);
+            for (int i = 0; i < expected.length; i++) {
+                assertEquals("fileId:" + fileId + ",speed:" + speed.bps()
+                        + ",inverted:" + inverted + ",fileLength:" + expected.length + ",pos:" + i,
+                        expected[i], wavFileBytes[i]);
             }
         } catch (IOException e) {
-            // Skip
+            // Skip missing fixture
         }
     }
 
@@ -166,31 +162,32 @@ public class FileEncodingTest {
         return Files.readAllBytes(new File(filename).toPath());
     }
 
-    private static void generateFile(String inputFileName, String fileId, SampleRate sampleRate) throws FlowException, Exception{
-        Path finalPath = new File(PROJECT_FOLDER + "/resources/generated/"+ getWavFileName(fileId, sampleRate)).toPath();
+    private static void generateFile(String inputFileName, String fileId, TapeSpeed speed, boolean inverted)
+            throws FlowException, Exception {
+        Path finalPath = new File(PROJECT_FOLDER + "/resources/generated/" + getWavFileName(fileId, speed, inverted)).toPath();
 
-        if (Files.notExists(finalPath) || forceGenerate ) {
+        if (Files.notExists(finalPath) || forceGenerate) {
             Files.deleteIfExists(finalPath);
-            out.println("Generating: "+ finalPath.getFileName());
+            out.println("Generating: " + finalPath.getFileName());
 
-            byte[] wavFile = new VirtualCas(sampleRate).convert(inputFileName).toBytes();
+            byte[] wavFile = new VirtualCas(speed, SampleRate.DEFAULT)
+                    .invertWaveform(inverted)
+                    .convertToWav(inputFileName)
+                    .toBytes();
 
-            writeWav(wavFile, PROJECT_FOLDER + "/resources/generated/"+finalPath.getFileName());
-
+            writeWav(wavFile, PROJECT_FOLDER + "/resources/generated/" + finalPath.getFileName());
         } else {
-            out.println("File already exists: "+ finalPath.getFileName());
+            out.println("File already exists: " + finalPath.getFileName());
         }
     }
 
     private static void writeWav(byte[] wavBytes, String fileOutputPathName) throws IOException {
-        FileOutputStream outputStream = new FileOutputStream(new File(fileOutputPathName));
-
-        outputStream.write(wavBytes);
-
-        outputStream.close();
+        try (FileOutputStream outputStream = new FileOutputStream(new File(fileOutputPathName))) {
+            outputStream.write(wavBytes);
+        }
     }
 
-    private static String getWavFileName(String fileId, SampleRate sampleRate) {
-        return fileId +"-"+ sampleRate.bps() + (sampleRate.isInverted() ? "i" : "") + ".wav";
+    private static String getWavFileName(String fileId, TapeSpeed speed, boolean inverted) {
+        return fileId + "-" + speed.bps() + (inverted ? "i" : "") + ".wav";
     }
 }
