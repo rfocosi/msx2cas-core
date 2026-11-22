@@ -193,7 +193,7 @@ public class OpenMsxMegaRamIT {
                 resultReset.contains("TAG=OKMT"));
 
         String resultDirect = runCase("Gradiente_Expert_GPC-1", List.of("-ext", "megaram"),
-                "mt128d", rom128k, false, false, false, false, TapeSpeed.BPS_2400, true, SampleRate.sr44100, true);
+                "mt128d", rom128k, false, false, false, false, TapeSpeed.BPS_2400, true, SampleRate.sr33075, true);
         assertTrue("Expected OKMT signature in turbo direct inverted mode but got: " + resultDirect,
                 resultDirect.contains("TAG=OKMT"));
     }

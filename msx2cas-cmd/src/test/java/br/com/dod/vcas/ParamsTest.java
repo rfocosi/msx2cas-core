@@ -277,6 +277,14 @@ public class ParamsTest {
         assertEquals(1, customSr.getFiles().size());
         assertEquals(SampleRate.sr48000, customSr.getFiles().get(0).sampleRate());
 
+        Params sr33075Short = new Params(new String[] { "-s", "33075", "--turbo", "-w", "my.rom" });
+        assertEquals(1, sr33075Short.getFiles().size());
+        assertEquals(SampleRate.sr33075, sr33075Short.getFiles().get(0).sampleRate());
+
+        Params sr33075Long = new Params(new String[] { "--sr", "33075", "-f", "my.rom" });
+        assertEquals(1, sr33075Long.getFiles().size());
+        assertEquals(SampleRate.sr33075, sr33075Long.getFiles().get(0).sampleRate());
+
         Params invalidSr = new Params(new String[] { "-s", "96000", "-w", "-b", "2400", "my.rom" });
         assertEquals(0, invalidSr.getFiles().size());
 
@@ -392,7 +400,7 @@ public class ParamsTest {
         assertTrue(usage.contains("-b, --bps <rate>"));
         assertTrue(usage.contains("1200, 2400, 3000; default: 2400"));
         assertTrue(usage.contains("-s, --sr <rate>"));
-        assertTrue(usage.contains("11025, 22050, 44100, 48000; default: 44100"));
+        assertTrue(usage.contains("11025, 22050, 33075, 44100, 48000; default: 44100"));
         assertTrue(usage.contains("-c, --cas [<output-file>]"));
         assertTrue(usage.contains("-t, --tsx [<output-file>]"));
         assertTrue(usage.contains("-w, --wav [<output-file>]"));

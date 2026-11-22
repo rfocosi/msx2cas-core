@@ -366,6 +366,8 @@ public class VirtualCasRegressionTest {
 
         assertPcmStreamMatchesWav(rom32kFile.getAbsolutePath(), true, false,
                 TapeSpeed.BPS_2400, true, SampleRate.sr44100, false);
+        assertPcmStreamMatchesWav(rom32kFile.getAbsolutePath(), true, false,
+                TapeSpeed.BPS_2400, true, SampleRate.sr33075, false);
         assertPcmStreamMatchesWav(megaRomFile.getAbsolutePath(), true, true,
                 TapeSpeed.BPS_2400, true, SampleRate.sr44100, true);
 

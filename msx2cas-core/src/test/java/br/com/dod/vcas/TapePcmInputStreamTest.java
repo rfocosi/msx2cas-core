@@ -1,6 +1,7 @@
 package br.com.dod.vcas;
 
 import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -135,6 +136,52 @@ public class TapePcmInputStreamTest {
     }
 
     @Test
+    public void symmetricTurboQuantizesZeroJitterWhileNonSymmetricPreservesTStates() throws Exception, FlowException {
+        byte[] symData = new byte[] { (byte) 0xA5, 0x3C };
+        TapeImage symmetric = new TapeImage("sym11", List.of(
+                new TurboSpeedBlock(212, 424, 424, 212, 424, 16, 8, 0, symData)));
+
+        long[] expectedZero = { 1L, 2L, 2L, 3L, 3L };
+        SampleRate[] rates = SampleRate.values();
+        assertEquals(expectedZero.length, rates.length);
+
+        for (int r = 0; r < rates.length; r++) {
+            long zeroSamples = expectedZero[r];
+            long oneSamples = zeroSamples * 2L;
+            try (TapePcmInputStream stream = new TapePcmInputStream(symmetric, rates[r], false)) {
+                byte[] pcm = readChunked(stream, 256);
+                List<Integer> runLengths = measureRunLengths(pcm);
+                int idx = 0;
+                for (int i = 0; i < 16; i++) {
+                    assertEquals(zeroSamples, runLengths.get(idx++).longValue());
+                }
+                assertEquals(oneSamples, runLengths.get(idx++).longValue());
+                assertEquals(oneSamples, runLengths.get(idx++).longValue());
+                for (byte b : symData) {
+                    for (int bit = 7; bit >= 0; bit--) {
+                        long bitSamples = ((b >>> bit) & 1) == 0 ? zeroSamples : oneSamples;
+                        assertEquals(bitSamples, runLengths.get(idx++).longValue());
+                        assertEquals(bitSamples, runLengths.get(idx++).longValue());
+                    }
+                }
+                assertEquals(idx, runLengths.size());
+                assertEquals(pcm.length, stream.getTotalSamples());
+            }
+        }
+
+        TapeImage nonSymmetric = new TapeImage("asym11", List.of(
+                new TurboSpeedBlock(2168, 667, 735, 855, 1710, 16, 8, 0, new byte[] { 0x55 })));
+        long totalTStates = 16L * 2168L + 667L + 735L + 4L * 2L * 855L + 4L * 2L * 1710L;
+        for (SampleRate rate : rates) {
+            try (TapePcmInputStream stream = new TapePcmInputStream(nonSymmetric, rate, false)) {
+                long expectedFractional = totalTStates * rate.intValue() / TapeSpeed.TSTATES_PER_SECOND;
+                assertTrue("Sample count mismatch for non-symmetric #11 at " + rate.intValue(),
+                        Math.abs(stream.getTotalSamples() - expectedFractional) <= 1L);
+            }
+        }
+    }
+
+    @Test
     public void handlesMetadataOnlyTapeAndRejectsEmptyOrNullInputs() throws Exception, FlowException {
         TapeImage metaOnly = new TapeImage("meta", List.of(new TextBlock("Only text")));
         try (TapePcmInputStream stream = new TapePcmInputStream(metaOnly)) {
@@ -155,6 +202,24 @@ public class TapePcmInputStreamTest {
         } catch (FlowException e) {
             assertEquals("sample_rate_required", e.getMessage());
         }
+    }
+
+    private static List<Integer> measureRunLengths(byte[] pcm) {
+        List<Integer> lengths = new ArrayList<>();
+        if (pcm.length == 0) {
+            return lengths;
+        }
+        int run = 1;
+        for (int i = 1; i < pcm.length; i++) {
+            if (pcm[i] == pcm[i - 1]) {
+                run++;
+            } else {
+                lengths.add(run);
+                run = 1;
+            }
+        }
+        lengths.add(run);
+        return lengths;
     }
 
     private static byte[] readChunked(TapePcmInputStream stream, int chunkSize) {

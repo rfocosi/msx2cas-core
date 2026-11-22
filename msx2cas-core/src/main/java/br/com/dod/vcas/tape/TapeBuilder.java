@@ -199,7 +199,7 @@ public class TapeBuilder {
                     8,
                     0,
                     msbPayload));
-            blocks.add(new PureToneBlock(TapeSpeed.TURBO_ZERO_PULSE, 2));
+            blocks.add(new PureToneBlock(TapeSpeed.TURBO_ONE_PULSE, 2));
 
             boolean isLastTurbo = idx + 1 == payloads.size();
             int pauseMs = (isLastTurbo && hasFollowingTrack) ? INTER_TRACK_PAUSE_MS : TRAILING_PAUSE_MS;

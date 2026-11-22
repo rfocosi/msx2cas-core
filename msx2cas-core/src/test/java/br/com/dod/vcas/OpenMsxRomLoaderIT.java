@@ -157,7 +157,7 @@ public class OpenMsxRomLoaderIT {
 
         byte[] binFile = buildCheckBin(0xA000, 4096, "BN");
 
-        for (SampleRate rate : List.of(SampleRate.sr44100, SampleRate.sr48000)) {
+        for (SampleRate rate : List.of(SampleRate.sr22050, SampleRate.sr33075, SampleRate.sr44100, SampleRate.sr48000)) {
             assertRomBoots(userData, "Gradiente_Expert_GPC-1", "turbo_" + rate.intValue() + "_norm",
                     rom16k, false, "OK16", "2 X", null, null, false, List.of(), 7, false,
                     TapeSpeed.BPS_2400, true, rate, false);
@@ -165,6 +165,9 @@ public class OpenMsxRomLoaderIT {
                     rom16kPg2, false, "OKP2", null, null, "063607", false, List.of(), 7, false,
                     TapeSpeed.BPS_2400, true, rate, true);
         }
+        assertRomBoots(userData, "Gradiente_Expert_GPC-1", "turbo_1200_11k",
+                rom16k, false, "OK16", "2 X", null, null, false, List.of(), 7, false,
+                TapeSpeed.BPS_1200, true, SampleRate.sr11025, false);
         assertRomBoots(userData, "Gradiente_Expert_GPC-1", "turbo_1200_s1",
                 rom16k, false, "OK16", "2 X", null, null, false, List.of(), 7, false,
                 TapeSpeed.BPS_1200, true, SampleRate.sr44100, false);

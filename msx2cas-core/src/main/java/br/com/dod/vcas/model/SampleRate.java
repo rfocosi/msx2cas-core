@@ -6,6 +6,7 @@ package br.com.dod.vcas.model;
 public enum SampleRate {
     sr11025(11025),
     sr22050(22050),
+    sr33075(33075),
     sr44100(44100),
     sr48000(48000);
 

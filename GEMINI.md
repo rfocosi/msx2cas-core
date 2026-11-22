@@ -38,7 +38,7 @@ After building, you can find the artifacts in `msx2cas-cmd/target/`:
 - `-c`, `--cas [<output-file>]`: Write to CAS file (cannot combine with `-f`/`--turbo`, `-t`/`--tsx`, or `-w`/`--wav`).
 - `-f`, `--turbo`, `--fast-load`: Enable Stage-2 Z80 PWM turbo loader for ROM and BIN files (cannot combine with `-c`/`--cas`).
 - `-b`, `--bps <1200|2400|3000>`: Stage-1 / standard tape speed in bps (default: `2400`; preserves native timing for `.tsx` inputs when omitted).
-- `-s`, `--sr <11025|22050|44100|48000>`: Output WAV/audio PCM sample rate in Hz (default: `44100`).
+- `-s`, `--sr <11025|22050|33075|44100|48000>`: Output WAV/audio PCM sample rate in Hz (default: `44100`; use `-s 33075` for fastest Stage-2 `-f`/`--turbo` WAV/playback speed).
 - `-r`, `--reset`: Reset MSX after loading a ROM.
 - `-m`, `--megarom [<auto|konami4|konami5|ascii8|ascii16>]`: Load MegaROM (> 49 KB) into MegaRAM cartridge (port `0x8E`), defaulting to `auto` or forcing the specified mapper type.
 - `-i`, `--invert-waveform`: Inverted waveform (default is normal).

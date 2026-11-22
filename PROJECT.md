@@ -90,7 +90,7 @@ Pre-compiled binaries (`msx2cas` for Linux, `msx2cas.exe` for Windows) are built
 - `-m`, `--megarom [<auto|konami4|konami5|ascii8|ascii16>]`: Load MegaROM (> 49 KB) into MegaRAM cartridge (port `0x8E`), defaulting to `auto` or forcing the specified mapper type
 - `-f`, `--turbo`, `--fast-load`: Enable Stage-2 Z80 PWM turbo loader for ROM and BIN files (cannot combine with `-c`/`--cas`)
 - `-b`, `--bps <1200|2400|3000>`: Stage-1 / standard tape speed in bps (default: `2400`; preserves native timing for `.tsx` inputs when omitted)
-- `-s`, `--sr <11025|22050|44100|48000>`: Output WAV/audio PCM sample rate in Hz (default: `44100`)
+- `-s`, `--sr <11025|22050|33075|44100|48000>`: Output WAV/audio PCM sample rate in Hz (default: `44100`; use `-s 33075` for fastest Stage-2 `-f`/`--turbo` WAV/playback speed)
 - `-c`, `--cas [<output-file>]`: Write a CAS file (fails if `.tsx` contains non-MSX-KCS blocks; cannot combine with `-f`/`--turbo`)
 - `-t`, `--tsx [<output-file>]`: Write a TSX (TZX 1.21 / `#4B`) file (preserves native timing on `.tsx` input when `-b`/`--bps` is omitted)
 - `-w`, `--wav [<output-file>]`: Write a WAV file instead of playing audio (uses `<output-file>` if provided for a single input, or the 6-character CAS token name; renders `#20` Stop-the-Tape markers as 4s silence)
@@ -102,9 +102,9 @@ Convert a BASIC file to audio and play it at 2400 bps (default):
 java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar GAME.BAS
 ```
 
-Convert a ROM file to a WAV file with reset enabled in turbo mode:
+Convert a ROM file to a WAV file with reset enabled in turbo mode (use `--sr 33075` for fastest Stage-2 playback speed):
 ```bash
-java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar -r --turbo -w GAME.ROM
+java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar -r --turbo -s 33075 -w GAME.ROM
 ```
 
 Convert a ROM file to a TSX image in turbo mode:

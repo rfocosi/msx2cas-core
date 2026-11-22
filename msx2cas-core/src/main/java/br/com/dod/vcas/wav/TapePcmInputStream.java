@@ -41,6 +41,7 @@ public class TapePcmInputStream extends InputStream {
 
     private static final long TSTATES_PER_SECOND = TapeSpeed.TSTATES_PER_SECOND;
     private static final long TSTATES_PER_MS = TSTATES_PER_SECOND / 1000L;
+    private static final long MIN_SYMMETRIC_TURBO_HALF_CYCLE_TSTATES = 185L;
     private static final int MAX_EXPANDED_BLOCKS = 1_000_000;
 
     private final SampleRate sampleRate;
@@ -317,6 +318,8 @@ public class TapePcmInputStream extends InputStream {
         private long cachedKcsPilotSamples;
         private long cachedKcsZeroSamples;
         private long cachedKcsOneSamples;
+        private long cachedTurboZeroSamples;
+        private long cachedTurboOneSamples;
         private List<PilotRle> cachedPilotRle;
         private List<SymbolDef> cachedPilotSyms;
         private List<SymbolDef> cachedDataSyms;
@@ -346,6 +349,8 @@ public class TapePcmInputStream extends InputStream {
             this.cachedKcsPilotSamples = 0L;
             this.cachedKcsZeroSamples = 0L;
             this.cachedKcsOneSamples = 0L;
+            this.cachedTurboZeroSamples = 0L;
+            this.cachedTurboOneSamples = 0L;
             this.cachedPilotRle = null;
             this.cachedPilotSyms = null;
             this.cachedDataSyms = null;
@@ -524,6 +529,19 @@ public class TapePcmInputStream extends InputStream {
         private boolean stepTurboSpeed(TurboSpeedBlock b) {
             if (phase == PHASE_INIT) {
                 cachedData = b.data();
+                if (isSymmetric2To1Turbo(b)) {
+                    long roundedZero = Math.max(1L,
+                            Math.round(b.zeroPulseLen() * (double) sampleRate / TSTATES_PER_SECOND));
+                    long minSamples = b.zeroPulseLen() >= MIN_SYMMETRIC_TURBO_HALF_CYCLE_TSTATES
+                            ? (MIN_SYMMETRIC_TURBO_HALF_CYCLE_TSTATES * sampleRate + TSTATES_PER_SECOND - 1L)
+                                    / TSTATES_PER_SECOND
+                            : 1L;
+                    cachedTurboZeroSamples = Math.max(minSamples, roundedZero);
+                    cachedTurboOneSamples = cachedTurboZeroSamples * 2L;
+                } else {
+                    cachedTurboZeroSamples = 0L;
+                    cachedTurboOneSamples = 0L;
+                }
                 index1 = 0;
                 index2 = 0;
                 index3 = 0;
@@ -538,7 +556,7 @@ public class TapePcmInputStream extends InputStream {
                 }
             }
             if (phase == PHASE_PILOT) {
-                emitToggledPulse(b.pilotPulseLen());
+                emitPulse(cachedTurboZeroSamples, b.pilotPulseLen());
                 index1++;
                 if (index1 >= b.pilotPulses()) {
                     index1 = 0;
@@ -553,7 +571,7 @@ public class TapePcmInputStream extends InputStream {
                 return true;
             }
             if (phase == PHASE_SYNC1) {
-                emitToggledPulse(b.sync1PulseLen());
+                emitPulse(cachedTurboOneSamples, b.sync1PulseLen());
                 if (b.sync2PulseLen() > 0) {
                     phase = PHASE_SYNC2;
                 } else {
@@ -565,7 +583,7 @@ public class TapePcmInputStream extends InputStream {
                 return true;
             }
             if (phase == PHASE_SYNC2) {
-                emitToggledPulse(b.sync2PulseLen());
+                emitPulse(cachedTurboOneSamples, b.sync2PulseLen());
                 index1 = 0;
                 index2 = 0;
                 index3 = 0;
@@ -573,7 +591,10 @@ public class TapePcmInputStream extends InputStream {
                 return true;
             }
             if (phase == PHASE_DATA) {
-                return stepMsbDataBytes(b.zeroPulseLen(), b.onePulseLen(), clampUsedBits(b.usedBitsInLastByte()));
+                int usedBits = clampUsedBits(b.usedBitsInLastByte());
+                return cachedTurboZeroSamples > 0L
+                        ? stepMsbDataBytesExact(cachedTurboZeroSamples, cachedTurboOneSamples, usedBits)
+                        : stepMsbDataBytes(b.zeroPulseLen(), b.onePulseLen(), usedBits);
             }
             if (b.pauseMs() > 0) {
                 emitPause(b.pauseMs(), false);
@@ -582,6 +603,14 @@ public class TapePcmInputStream extends InputStream {
             }
             finishBlock();
             return false;
+        }
+
+        private static boolean isSymmetric2To1Turbo(TurboSpeedBlock b) {
+            return b.zeroPulseLen() > 0
+                    && b.pilotPulseLen() == b.zeroPulseLen()
+                    && b.sync1PulseLen() == b.onePulseLen()
+                    && b.sync2PulseLen() == b.onePulseLen()
+                    && Math.abs(b.onePulseLen() - 2 * b.zeroPulseLen()) <= 2;
         }
 
         private boolean stepPureTone(PureToneBlock b) {
@@ -784,10 +813,22 @@ public class TapePcmInputStream extends InputStream {
         }
 
         private boolean stepMsbDataBytes(int zeroPulseLen, int onePulseLen, int usedBitsLastByte) {
+            return stepMsbDataBytes(zeroPulseLen, onePulseLen, usedBitsLastByte, false);
+        }
+
+        private boolean stepMsbDataBytesExact(long zeroSamples, long oneSamples, int usedBitsLastByte) {
+            return stepMsbDataBytes(zeroSamples, oneSamples, usedBitsLastByte, true);
+        }
+
+        private boolean stepMsbDataBytes(long zeroLen, long oneLen, int usedBitsLastByte, boolean exactSamples) {
             int bitsInByte = (index1 == cachedData.length - 1) ? usedBitsLastByte : 8;
             int bit = (cachedData[index1] >>> (7 - index2)) & 1;
-            int pulseLen = bit == 0 ? zeroPulseLen : onePulseLen;
-            emitToggledPulse(pulseLen);
+            long len = bit == 0 ? zeroLen : oneLen;
+            if (exactSamples) {
+                emitExactToggledPulse(len);
+            } else {
+                emitToggledPulse((int) len);
+            }
             index3++;
             if (index3 >= 2) {
                 index3 = 0;
@@ -801,6 +842,14 @@ public class TapePcmInputStream extends InputStream {
                 }
             }
             return true;
+        }
+
+        private void emitPulse(long exactSamples, int tStates) {
+            if (exactSamples > 0L) {
+                emitExactToggledPulse(exactSamples);
+            } else {
+                emitToggledPulse(tStates);
+            }
         }
 
         private static int clampUsedBits(int usedBits) {
@@ -846,6 +895,8 @@ public class TapePcmInputStream extends InputStream {
             cachedKcsPilotSamples = 0L;
             cachedKcsZeroSamples = 0L;
             cachedKcsOneSamples = 0L;
+            cachedTurboZeroSamples = 0L;
+            cachedTurboOneSamples = 0L;
             cachedPilotRle = null;
             cachedPilotSyms = null;
             cachedDataSyms = null;

@@ -18,7 +18,7 @@ import br.com.dod.vcas.util.FileCommons;
 
 class Params {
     private static final String SPEEDS = "1200|2400|3000";
-    private static final String SAMPLE_RATES = "11025|22050|44100|48000";
+    private static final String SAMPLE_RATES = "11025|22050|33075|44100|48000";
 
     private boolean resetRom;
     private boolean megaRam;

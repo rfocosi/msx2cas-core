@@ -12,12 +12,12 @@ public enum TapeSpeed {
     public static final long TSTATES_PER_SECOND = 3_500_000L;
 
     /** Stage-2 Z80 turbo PWM half-cycle pulse lengths in 3.5 MHz T-states. */
-    public static final int TURBO_PILOT_PULSE = 318;
+    public static final int TURBO_PILOT_PULSE = 212;
     public static final int TURBO_PILOT_PULSES = 1024;
-    public static final int TURBO_SYNC1_PULSE = 636;
-    public static final int TURBO_SYNC2_PULSE = 636;
-    public static final int TURBO_ZERO_PULSE = 318;
-    public static final int TURBO_ONE_PULSE = 636;
+    public static final int TURBO_SYNC1_PULSE = 424;
+    public static final int TURBO_SYNC2_PULSE = 424;
+    public static final int TURBO_ZERO_PULSE = 212;
+    public static final int TURBO_ONE_PULSE = 424;
     public static final int TURBO_SYNC_BYTE = 0xA5;
 
     private final int bps;
