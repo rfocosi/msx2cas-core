@@ -643,6 +643,46 @@ public class VirtualCasRegressionTest {
         assertArrayEquals("WAV mismatch after CAS round-trip for " + sourcePath, wavDirect, wavFromCas);
     }
 
+    @Test
+    public void turboStage1BannerOnlyOnMultiBlockRoms() throws Exception, FlowException {
+        File rom16File = tempFolder.newFile("ban16.rom");
+        Files.write(rom16File.toPath(), createRom16K((byte) 0x40));
+
+        byte[] rom32 = new byte[32768];
+        rom32[0] = 'A';
+        rom32[1] = 'B';
+        rom32[2] = 0x10;
+        rom32[3] = 0x40;
+        File rom32File = tempFolder.newFile("ban32.rom");
+        Files.write(rom32File.toPath(), rom32);
+
+        byte[] megaRom = new byte[65536];
+        megaRom[0] = 'A';
+        megaRom[1] = 'B';
+        megaRom[2] = 0x10;
+        megaRom[3] = 0x40;
+        File megaFile = tempFolder.newFile("banmega.rom");
+        Files.write(megaFile.toPath(), megaRom);
+
+        CasFile singleBlock = new VirtualCas(SampleRate.sr22050).turbo(true)
+                .convertToCas(rom16File.getAbsolutePath()).getTracks().get(0);
+        CasFile multi32 = new VirtualCas(SampleRate.sr22050).turbo(true)
+                .convertToCas(rom32File.getAbsolutePath()).getTracks().get(0);
+        CasFile multiMega = new VirtualCas(SampleRate.sr22050).turbo(true).megaRam(true)
+                .convertToCas(megaFile.getAbsolutePath()).getTracks().get(0);
+
+        String singleStage1 = new String(singleBlock.getContentBytes(), StandardCharsets.ISO_8859_1);
+        String multi32Stage1 = new String(multi32.getContentBytes(), StandardCharsets.ISO_8859_1);
+        String multiMegaStage1 = new String(multiMega.getContentBytes(), StandardCharsets.ISO_8859_1);
+
+        assertTrue("16K single-block turbo Stage-1 must stay compact without banner",
+                singleStage1.length() < 300);
+        assertTrue("32K multi-block turbo Stage-1 must include ROM loading banner",
+                multi32Stage1.contains("Loading, please wait..."));
+        assertTrue("MegaRAM multi-block turbo Stage-1 must include MegaRAM loading banner",
+                multiMegaStage1.contains("MegaRAM loading..."));
+    }
+
     private void assertFlowError(byte[] data, String name, String expectedMessage) throws Exception {
         File file = tempFolder.newFile(name);
         Files.write(file.toPath(), data);

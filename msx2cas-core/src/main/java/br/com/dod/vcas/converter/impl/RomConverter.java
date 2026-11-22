@@ -310,9 +310,9 @@ public class RomConverter extends AbstractFileConverter {
 
         encodeBlockHeader(encoder, getNameBuffer());
         if (turbo) {
-            startTurboSupervisor(encoder);
+            startTurboSupervisor(encoder, true, false);
         }
-        encodeRomBlock(encoder, headId, 0, ROM_16K_MAX_SIZE, RomLoaders.blockLoader(), false);
+        encodeRomBlock(encoder, headId, 0, ROM_16K_MAX_SIZE, RomLoaders.blockLoader(turbo), false);
 
         if (!turbo) {
             encodeBlockHeader(encoder, getNumberedNameBuffer(2));
@@ -325,14 +325,14 @@ public class RomConverter extends AbstractFileConverter {
 
         encodeBlockHeader(encoder, getNameBuffer());
         if (turbo) {
-            startTurboSupervisor(encoder);
+            startTurboSupervisor(encoder, true, false);
         }
-        encodeRomBlock(encoder, headId, 0, ROM_16K_MAX_SIZE, RomLoaders.blockLoader(), false);
+        encodeRomBlock(encoder, headId, 0, ROM_16K_MAX_SIZE, RomLoaders.blockLoader(turbo), false);
 
         if (!turbo) {
             encodeBlockHeader(encoder, getNumberedNameBuffer(2));
         }
-        encodeRomBlock(encoder, headId, ROM_16K_MAX_SIZE, ROM_32K_MAX_SIZE, RomLoaders.blockLoader(), false);
+        encodeRomBlock(encoder, headId, ROM_16K_MAX_SIZE, ROM_32K_MAX_SIZE, RomLoaders.blockLoader(turbo), false);
 
         if (!turbo) {
             encodeBlockHeader(encoder, getNumberedNameBuffer(3));
@@ -349,7 +349,7 @@ public class RomConverter extends AbstractFileConverter {
 
         if (turbo) {
             encodeBlockHeader(encoder, getNameBuffer());
-            startTurboSupervisor(encoder);
+            startTurboSupervisor(encoder, totalBlocks > 1, true);
         }
 
         for (int blockIdx = 0; blockIdx < totalBlocks; blockIdx++) {
@@ -358,7 +358,7 @@ public class RomConverter extends AbstractFileConverter {
             int blockSize = blockEnd - blockStart;
             boolean isLastBlock = blockIdx == totalBlocks - 1;
 
-            char[] loader = isLastBlock ? RomLoaders.megaBoot() : RomLoaders.megaBlock();
+            char[] loader = isLastBlock ? RomLoaders.megaBoot() : RomLoaders.megaBlock(turbo);
 
             loader[3] = 0x00;
             loader[4] = 0x40;
@@ -385,7 +385,13 @@ public class RomConverter extends AbstractFileConverter {
     }
 
     private void startTurboSupervisor(CasEncoder encoder) {
-        char[] supervisor = RomLoaders.turboSupervisor(0x9000);
+        startTurboSupervisor(encoder, false, false);
+    }
+
+    private void startTurboSupervisor(CasEncoder encoder, boolean showBanner, boolean megaRamBanner) {
+        char[] supervisor = showBanner
+                ? RomLoaders.turboSupervisorWithBanner(0x9000, megaRamBanner)
+                : RomLoaders.turboSupervisor(0x9000);
         encoder.beginDataBlock();
         encoder.encodeData(buildBinaryAddressBuffer(sizeof(supervisor)));
         encoder.encodeData(supervisor);
