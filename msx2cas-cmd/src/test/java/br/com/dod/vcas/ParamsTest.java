@@ -19,7 +19,7 @@ public class ParamsTest {
 
     @Test
     public void allParams() {
-        String[] args = { "-i", "-r", "-m", "-w", "out.wav", "2400", "my.rom" };
+        String[] args = { "-i", "-r", "-m", "-w", "out.wav", "-b", "2400", "my.rom" };
 
         Params params = new Params(args);
 
@@ -36,7 +36,7 @@ public class ParamsTest {
 
     @Test
     public void generateOutput() {
-        String[] args = { "-r", "-w", "2400", "my.rom" };
+        String[] args = { "-r", "-w", "-b", "2400", "my.rom" };
 
         Params params = new Params(args);
 
@@ -80,7 +80,7 @@ public class ParamsTest {
 
     @Test
     public void multiFiles() {
-        String[] args = { "-i", "-r", "-w", "2400", "my.rom", "another.rom", "more.rom" };
+        String[] args = { "-i", "-r", "-w", "-b", "2400", "my.rom", "another.rom", "more.rom" };
 
         Params params = new Params(args);
 
@@ -95,7 +95,7 @@ public class ParamsTest {
 
     @Test
     public void multiFilesWithOutputName() {
-        String[] args = { "-i", "-r", "-w", "out.wav", "2400", "my.rom", "another.rom", "more.rom" };
+        String[] args = { "-i", "-r", "-w", "out.wav", "-b", "2400", "my.rom", "another.rom", "more.rom" };
 
         Params params = new Params(args);
 
@@ -110,17 +110,17 @@ public class ParamsTest {
 
     @Test
     public void megaRamDefaultsToAutoAndAcceptsExplicitMapper() {
-        Params autoDefault = new Params(new String[] { "-m", "-r", "-w", "out.wav", "2400", "my.rom" });
+        Params autoDefault = new Params(new String[] { "-m", "-r", "-w", "out.wav", "-b", "2400", "my.rom" });
         assertTrue(autoDefault.megaRam());
         assertEquals(MapperType.AUTO, autoDefault.mapperType());
         assertEquals(1, autoDefault.getFiles().size());
 
-        Params autoBeforeSpeed = new Params(new String[] { "-m", "2400", "my.rom" });
+        Params autoBeforeSpeed = new Params(new String[] { "-m", "-b", "2400", "my.rom" });
         assertTrue(autoBeforeSpeed.megaRam());
         assertEquals(MapperType.AUTO, autoBeforeSpeed.mapperType());
         assertEquals(1, autoBeforeSpeed.getFiles().size());
 
-        Params forcedMapper = new Params(new String[] { "-m", "ascii8", "-r", "-w", "out.wav", "2400", "my.rom" });
+        Params forcedMapper = new Params(new String[] { "-m", "ascii8", "-r", "-w", "out.wav", "-b", "2400", "my.rom" });
         assertTrue(forcedMapper.megaRam());
         assertTrue(forcedMapper.resetRom());
         assertEquals(MapperType.ASCII8, forcedMapper.mapperType());
@@ -149,15 +149,24 @@ public class ParamsTest {
     }
 
     @Test
-    public void invalidMapperAndUnknownFlagsFallBackToUsage() {
-        Params invalidMapper = new Params(new String[] { "-m", "unknown", "2400", "my.rom" });
+    public void invalidMapperUnknownFlagsAndPositionalBpsFallBackToUsage() {
+        Params invalidMapper = new Params(new String[] { "-m", "unknown", "-b", "2400", "my.rom" });
         assertEquals(0, invalidMapper.getFiles().size());
 
-        Params unknownFlag = new Params(new String[] { "-z", "2400", "my.rom" });
+        Params unknownFlag = new Params(new String[] { "-z", "-b", "2400", "my.rom" });
         assertEquals(0, unknownFlag.getFiles().size());
 
-        Params legacyFlag = new Params(new String[] { "-f", "-w", "2400", "my.rom" });
-        assertEquals(0, legacyFlag.getFiles().size());
+        Params unknownLongFlag = new Params(new String[] { "--unknown", "my.rom" });
+        assertEquals(0, unknownLongFlag.getFiles().size());
+
+        Params missingBpsValue = new Params(new String[] { "-b", "my.rom" });
+        assertEquals(0, missingBpsValue.getFiles().size());
+
+        Params positionalBps = new Params(new String[] { "2400", "my.rom" });
+        assertEquals(0, positionalBps.getFiles().size());
+
+        Params wavPositionalBps = new Params(new String[] { "-w", "2400", "my.rom" });
+        assertEquals(0, wavPositionalBps.getFiles().size());
     }
 
     @Test
@@ -244,7 +253,7 @@ public class ParamsTest {
         assertTrue(turboTsx.getFiles().get(0).turbo());
         assertEquals("my.tsx", turboTsx.getFiles().get(0).outputName());
 
-        Params turboTsx1200 = new Params(new String[] { "-t", "--turbo", "1200", "my.rom" });
+        Params turboTsx1200 = new Params(new String[] { "-t", "--turbo", "-b", "1200", "my.rom" });
         assertEquals(1, turboTsx1200.getFiles().size());
         assertEquals(TapeSpeed.BPS_1200, turboTsx1200.getFiles().get(0).tapeSpeed());
         assertTrue(turboTsx1200.getFiles().get(0).turbo());
@@ -253,22 +262,22 @@ public class ParamsTest {
         Params skipTsxNoBps = new Params(new String[] { "-t", "game.tsx" });
         assertEquals(0, skipTsxNoBps.getFiles().size());
 
-        Params retimeTsx = new Params(new String[] { "-t", "1200", "game.tsx" });
+        Params retimeTsx = new Params(new String[] { "-t", "-b", "1200", "game.tsx" });
         assertEquals(1, retimeTsx.getFiles().size());
         assertEquals(TapeSpeed.BPS_1200, retimeTsx.getFiles().get(0).tapeSpeed());
         assertEquals("game.tsx", retimeTsx.getFiles().get(0).outputName());
 
-        Params combined = new Params(new String[] { "-t", "-w", "2400", "my.rom" });
+        Params combined = new Params(new String[] { "-t", "-w", "-b", "2400", "my.rom" });
         assertEquals(0, combined.getFiles().size());
     }
 
     @Test
     public void sampleRateOverrideAndTsxPlaybackWithoutBps() {
-        Params customSr = new Params(new String[] { "-s", "48000", "-w", "2400", "my.rom" });
+        Params customSr = new Params(new String[] { "-s", "48000", "-w", "-b", "2400", "my.rom" });
         assertEquals(1, customSr.getFiles().size());
         assertEquals(SampleRate.sr48000, customSr.getFiles().get(0).sampleRate());
 
-        Params invalidSr = new Params(new String[] { "-s", "96000", "-w", "2400", "my.rom" });
+        Params invalidSr = new Params(new String[] { "-s", "96000", "-w", "-b", "2400", "my.rom" });
         assertEquals(0, invalidSr.getFiles().size());
 
         Params tsxPlay = new Params(new String[] { "game.tsx" });
@@ -297,20 +306,22 @@ public class ParamsTest {
         assertTrue(directPlay.getFiles().get(0).inverted());
         assertEquals(OutputMode.PLAY, directPlay.getFiles().get(0).outputMode());
 
-        Params turboWithExplicitBps = new Params(new String[] { "-w", "out.wav", "--turbo", "3000", "my.rom" });
-        assertTrue(turboWithExplicitBps.turbo());
-        assertEquals(1, turboWithExplicitBps.getFiles().size());
-        assertEquals(OutputMode.WAV, turboWithExplicitBps.getFiles().get(0).outputMode());
-        assertEquals("out.wav", turboWithExplicitBps.getFiles().get(0).outputName());
-        assertEquals(TapeSpeed.BPS_3000, turboWithExplicitBps.getFiles().get(0).tapeSpeed());
-        assertTrue(turboWithExplicitBps.getFiles().get(0).turbo());
+        Params shortFastFlag = new Params(new String[] { "-f", "-w", "out.wav", "-b", "3000", "my.rom" });
+        assertTrue(shortFastFlag.turbo());
+        assertEquals(1, shortFastFlag.getFiles().size());
+        assertEquals(OutputMode.WAV, shortFastFlag.getFiles().get(0).outputMode());
+        assertEquals("out.wav", shortFastFlag.getFiles().get(0).outputName());
+        assertEquals(TapeSpeed.BPS_3000, shortFastFlag.getFiles().get(0).tapeSpeed());
+        assertTrue(shortFastFlag.getFiles().get(0).turbo());
 
-        Params defaultWav = new Params(new String[] { "-w", "--turbo", "my.rom" });
-        assertEquals(OutputMode.WAV, defaultWav.getFiles().get(0).outputMode());
-        assertEquals(TapeSpeed.BPS_2400, defaultWav.getFiles().get(0).tapeSpeed());
-        assertTrue(defaultWav.getFiles().get(0).turbo());
+        Params fastLoadFlag = new Params(new String[] { "--fast-load", "--wav", "my.rom" });
+        assertTrue(fastLoadFlag.turbo());
+        assertEquals(OutputMode.WAV, fastLoadFlag.getFiles().get(0).outputMode());
+        assertEquals("my.wav", fastLoadFlag.getFiles().get(0).outputName());
+        assertEquals(TapeSpeed.BPS_2400, fastLoadFlag.getFiles().get(0).tapeSpeed());
+        assertTrue(fastLoadFlag.getFiles().get(0).turbo());
 
-        Params at3000 = new Params(new String[] { "-w", "3000", "my.rom" });
+        Params at3000 = new Params(new String[] { "-w", "-b", "3000", "my.rom" });
         assertEquals(1, at3000.getFiles().size());
         assertEquals(TapeSpeed.BPS_3000, at3000.getFiles().get(0).tapeSpeed());
         assertFalse(at3000.getFiles().get(0).turbo());
@@ -321,11 +332,46 @@ public class ParamsTest {
         Params legacyPositionalTurboWav = new Params(new String[] { "-w", "out.wav", "turbo", "my.rom" });
         assertEquals(0, legacyPositionalTurboWav.getFiles().size());
 
-        Params at3600 = new Params(new String[] { "-w", "3600", "my.rom" });
+        Params at3600 = new Params(new String[] { "-w", "-b", "3600", "my.rom" });
         assertEquals(0, at3600.getFiles().size());
 
         Params casTurbo = new Params(new String[] { "-c", "--turbo", "my.rom" });
         assertEquals(0, casTurbo.getFiles().size());
+
+        Params casFastShort = new Params(new String[] { "--cas", "-f", "my.rom" });
+        assertEquals(0, casFastShort.getFiles().size());
+    }
+
+    @Test
+    public void doubleDashAliasesWorkAcrossModesAndOrdering() {
+        Params wavLongAll = new Params(new String[] {
+                "--invert-waveform", "--reset", "--megarom", "ascii8",
+                "--sr", "48000", "--bps", "1200", "--fast-load", "--wav", "out.wav", "my.rom"
+        });
+        assertTrue(wavLongAll.inverted());
+        assertTrue(wavLongAll.resetRom());
+        assertTrue(wavLongAll.megaRam());
+        assertEquals(MapperType.ASCII8, wavLongAll.mapperType());
+        assertTrue(wavLongAll.turbo());
+        assertEquals(SampleRate.sr48000, wavLongAll.sampleRate());
+        assertEquals(TapeSpeed.BPS_1200, wavLongAll.tapeSpeed());
+        assertEquals(1, wavLongAll.getFiles().size());
+        assertEquals(OutputMode.WAV, wavLongAll.getFiles().get(0).outputMode());
+        assertEquals("out.wav", wavLongAll.getFiles().get(0).outputName());
+        assertEquals("my.rom", wavLongAll.getFiles().get(0).inputName());
+
+        Params tsxLongRetime = new Params(new String[] { "--tsx", "custom.tsx", "--bps", "1200", "game.tsx" });
+        assertEquals(1, tsxLongRetime.getFiles().size());
+        assertEquals(OutputMode.TSX, tsxLongRetime.getFiles().get(0).outputMode());
+        assertEquals("custom.tsx", tsxLongRetime.getFiles().get(0).outputName());
+        assertEquals(TapeSpeed.BPS_1200, tsxLongRetime.getFiles().get(0).tapeSpeed());
+
+        Params casLong = new Params(new String[] { "--megarom", "--cas", "out.cas", "my.rom" });
+        assertTrue(casLong.megaRam());
+        assertEquals(MapperType.AUTO, casLong.mapperType());
+        assertEquals(1, casLong.getFiles().size());
+        assertEquals(OutputMode.CAS, casLong.getFiles().get(0).outputMode());
+        assertEquals("out.cas", casLong.getFiles().get(0).outputName());
     }
 
     @Test
@@ -339,8 +385,16 @@ public class ParamsTest {
             System.setOut(originalOut);
         }
         String usage = captured.toString(StandardCharsets.UTF_8);
-        assertTrue(usage.contains("--turbo: Enable Stage-2 Z80 PWM turbo loader"));
-        assertTrue(usage.contains("-s: Audio output sample rate in Hz (11025, 22050, 44100, 48000; default: 44100)"));
-        assertTrue(usage.contains("<1200|2400|3000>: Tape speed in bps (default: 2400; preserves native timing for TSX input when omitted)"));
+        assertTrue(usage.contains("-i, --invert-waveform"));
+        assertTrue(usage.contains("-r, --reset"));
+        assertTrue(usage.contains("-m, --megarom"));
+        assertTrue(usage.contains("-f, --turbo, --fast-load"));
+        assertTrue(usage.contains("-b, --bps <rate>"));
+        assertTrue(usage.contains("1200, 2400, 3000; default: 2400"));
+        assertTrue(usage.contains("-s, --sr <rate>"));
+        assertTrue(usage.contains("11025, 22050, 44100, 48000; default: 44100"));
+        assertTrue(usage.contains("-c, --cas [<output-file>]"));
+        assertTrue(usage.contains("-t, --tsx [<output-file>]"));
+        assertTrue(usage.contains("-w, --wav [<output-file>]"));
     }
 }

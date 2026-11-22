@@ -74,7 +74,7 @@ Command-line interface for the core library:
 After building, run the shaded CLI JAR from `msx2cas-cmd/target/`:
 
 ```bash
-java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar [options] [<1200|2400|3000>] <input-file> [<input-file>...]
+java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar [options] <input-file> [<input-file>...]
 ```
 
 *(The JAR manifest includes `Enable-Native-Access: ALL-UNNAMED` so Java 24+ runs without `JNativeHook` native-access warnings.)*
@@ -85,21 +85,21 @@ Pre-compiled binaries (`msx2cas` for Linux, `msx2cas.exe` for Windows) are built
 
 ### Command Line Options
 
-- `<1200|2400|3000>`: Stage-1 / standard tape speed in bps (default: `2400`; preserves native timing for `.tsx` inputs when omitted)
-- `-i`: Invert waveform (fix playback on some soundcards)
-- `-r`: Reset MSX after loading a ROM
-- `-m [<auto|konami4|konami5|ascii8|ascii16>]`: Load MegaROM (> 49 KB) into MegaRAM cartridge (port `0x8E`), defaulting to `auto` or forcing the specified mapper type
-- `--turbo`: Enable Stage-2 Z80 PWM turbo loader for ROM and BIN files (cannot combine with `-c`)
-- `-s <11025|22050|44100|48000>`: Output WAV/audio PCM sample rate in Hz (default: `44100`)
-- `-c [<output-file>]`: Write a CAS file (fails if `.tsx` contains non-MSX-KCS blocks; cannot combine with `--turbo`)
-- `-t [<output-file>]`: Write a TSX (TZX 1.21 / `#4B`) file (preserves native timing on `.tsx` input when `<bps>` is omitted)
-- `-w [<output-file>]`: Write a WAV file instead of playing audio (uses `<output-file>` if provided for a single input, or the 6-character CAS token name; renders `#20` Stop-the-Tape markers as 4s silence)
+- `-i`, `--invert-waveform`: Invert waveform (fix playback on some soundcards)
+- `-r`, `--reset`: Reset MSX after loading a ROM
+- `-m`, `--megarom [<auto|konami4|konami5|ascii8|ascii16>]`: Load MegaROM (> 49 KB) into MegaRAM cartridge (port `0x8E`), defaulting to `auto` or forcing the specified mapper type
+- `-f`, `--turbo`, `--fast-load`: Enable Stage-2 Z80 PWM turbo loader for ROM and BIN files (cannot combine with `-c`/`--cas`)
+- `-b`, `--bps <1200|2400|3000>`: Stage-1 / standard tape speed in bps (default: `2400`; preserves native timing for `.tsx` inputs when omitted)
+- `-s`, `--sr <11025|22050|44100|48000>`: Output WAV/audio PCM sample rate in Hz (default: `44100`)
+- `-c`, `--cas [<output-file>]`: Write a CAS file (fails if `.tsx` contains non-MSX-KCS blocks; cannot combine with `-f`/`--turbo`)
+- `-t`, `--tsx [<output-file>]`: Write a TSX (TZX 1.21 / `#4B`) file (preserves native timing on `.tsx` input when `-b`/`--bps` is omitted)
+- `-w`, `--wav [<output-file>]`: Write a WAV file instead of playing audio (uses `<output-file>` if provided for a single input, or the 6-character CAS token name; renders `#20` Stop-the-Tape markers as 4s silence)
 
 ### Examples
 
-Convert a BASIC file to audio and play it at 2400 bps:
+Convert a BASIC file to audio and play it at 2400 bps (default):
 ```bash
-java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar 2400 GAME.BAS
+java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar GAME.BAS
 ```
 
 Convert a ROM file to a WAV file with reset enabled in turbo mode:
@@ -109,22 +109,22 @@ java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar -r --tu
 
 Convert a ROM file to a TSX image in turbo mode:
 ```bash
-java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar -r --turbo -t GAME.ROM
+java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar --reset --fast-load --tsx GAME.ROM
 ```
 
 Convert a TSX image to a 48000 Hz WAV file preserving native TSX timings:
 ```bash
-java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar -s 48000 -w GAME.TSX
+java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar --sr 48000 --wav GAME.TSX
 ```
 
 Convert a MegaROM to WAV for MegaRAM with auto-detected mapper at 2400 bps:
 ```bash
-java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar -m -w aleste.wav 2400 aleste.rom
+java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar -m -w aleste.wav -b 2400 aleste.rom
 ```
 
 Convert a MegaROM forcing `ascii16` mapper:
 ```bash
-java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar -m ascii16 -w 2400 aleste.rom
+java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar --megarom ascii16 -w -b 2400 aleste.rom
 ```
 
 ## Playback Controls

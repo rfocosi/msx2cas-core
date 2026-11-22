@@ -39,30 +39,29 @@ class Params {
                 return;
             }
 
-            int speedIndex = findSpeedTokenIndex(args);
-            boolean hasBps = speedIndex >= 0;
-            if (hasBps) {
-                TapeSpeed parsed = TapeSpeed.tryFromToken(args[speedIndex]);
-                if (parsed == null) {
-                    throw new IllegalArgumentException("Invalid bps: " + args[speedIndex]);
-                }
-                this.tapeSpeed = parsed;
-            }
-
-            int optionEnd = hasBps ? speedIndex : args.length;
+            boolean hasBps = false;
             OutputMode outputMode = OutputMode.PLAY;
             String customOutputName = "";
-            List<String> positionalNoBps = new ArrayList<>();
+            LinkedHashSet<String> inputFiles = new LinkedHashSet<>();
+            boolean seenInputFile = false;
 
-            for (int i = 0; i < optionEnd; i++) {
+            for (int i = 0; i < args.length; i++) {
                 String arg = args[i];
+                if (seenInputFile) {
+                    if (arg.startsWith("-")) {
+                        throw new IllegalArgumentException("Options must precede input files: " + arg);
+                    }
+                    inputFiles.add(arg);
+                    continue;
+                }
+
                 switch (arg) {
-                    case "-i" -> this.inverted = true;
-                    case "-r" -> this.resetRom = true;
-                    case "--turbo" -> this.turbo = true;
-                    case "-m" -> {
+                    case "-i", "--invert-waveform" -> this.inverted = true;
+                    case "-r", "--reset" -> this.resetRom = true;
+                    case "-f", "--turbo", "--fast-load" -> this.turbo = true;
+                    case "-m", "--megarom" -> {
                         this.megaRam = true;
-                        if (i + 1 < optionEnd) {
+                        if (i + 1 < args.length) {
                             String next = args[i + 1];
                             if (!next.startsWith("-") && !hasInputExtension(next)) {
                                 this.mapperType = MapperType.fromString(next);
@@ -70,28 +69,41 @@ class Params {
                             }
                         }
                     }
-                    case "-s" -> {
-                        if (i + 1 >= optionEnd) {
-                            throw new IllegalArgumentException("Missing sample rate after -s");
+                    case "-s", "--sr" -> {
+                        if (i + 1 >= args.length) {
+                            throw new IllegalArgumentException("Missing sample rate after " + arg);
                         }
                         this.sampleRate = SampleRate.fromString(args[++i]);
                     }
-                    case "-w", "-c", "-t" -> {
+                    case "-b", "--bps" -> {
+                        if (i + 1 >= args.length) {
+                            throw new IllegalArgumentException("Missing bps after " + arg);
+                        }
+                        this.tapeSpeed = TapeSpeed.fromToken(args[++i]);
+                        hasBps = true;
+                    }
+                    case "-w", "--wav", "-c", "--cas", "-t", "--tsx" -> {
                         OutputMode requested = switch (arg) {
-                            case "-w" -> OutputMode.WAV;
-                            case "-c" -> OutputMode.CAS;
+                            case "-w", "--wav" -> OutputMode.WAV;
+                            case "-c", "--cas" -> OutputMode.CAS;
                             default -> OutputMode.TSX;
                         };
                         if (outputMode != OutputMode.PLAY) {
-                            throw new IllegalArgumentException("Cannot combine -w, -c, and -t");
+                            throw new IllegalArgumentException("Cannot combine -w/--wav, -c/--cas, and -t/--tsx");
                         }
                         outputMode = requested;
-                        if (hasBps && i + 1 < optionEnd) {
+                        String expectedExt = switch (requested) {
+                            case CAS -> ".cas";
+                            case TSX -> ".tsx";
+                            case WAV -> ".wav";
+                            default -> "";
+                        };
+                        if (i + 1 < args.length - 1) {
                             String next = args[i + 1];
-                            if (!next.startsWith("-")) {
-                                if (!customOutputName.isEmpty()) {
-                                    throw new IllegalArgumentException("Multiple output filenames specified");
-                                }
+                            boolean looksLikeSpeedToken = next.matches("\\d{4}") || "turbo".equalsIgnoreCase(next);
+                            if (!next.startsWith("-")
+                                    && (next.toLowerCase(Locale.ROOT).endsWith(expectedExt)
+                                            || (!hasInputExtension(next) && !looksLikeSpeedToken))) {
                                 customOutputName = next;
                                 i++;
                             }
@@ -101,47 +113,14 @@ class Params {
                         if (arg.startsWith("-")) {
                             throw new IllegalArgumentException("Unknown option: " + arg);
                         }
-                        if (hasBps) {
-                            if (outputMode == OutputMode.PLAY || !customOutputName.isEmpty()) {
-                                throw new IllegalArgumentException("Unexpected argument: " + arg);
-                            }
-                            customOutputName = arg;
-                        } else {
-                            positionalNoBps.add(arg);
-                        }
+                        seenInputFile = true;
+                        inputFiles.add(arg);
                     }
                 }
             }
 
             if (outputMode == OutputMode.CAS && this.turbo) {
-                throw new IllegalArgumentException("Cannot combine --turbo and -c");
-            }
-
-            LinkedHashSet<String> inputFiles = new LinkedHashSet<>();
-            if (hasBps) {
-                for (int i = speedIndex + 1; i < args.length; i++) {
-                    String arg = args[i];
-                    if (arg.startsWith("-")) {
-                        throw new IllegalArgumentException("Options must precede speed and input files: " + arg);
-                    }
-                    inputFiles.add(arg);
-                }
-            } else {
-                if ((outputMode == OutputMode.CAS || outputMode == OutputMode.TSX || outputMode == OutputMode.WAV)
-                        && positionalNoBps.size() >= 2) {
-                    String first = positionalNoBps.get(0);
-                    String expectedExt = switch (outputMode) {
-                        case CAS -> ".cas";
-                        case TSX -> ".tsx";
-                        case WAV -> ".wav";
-                        default -> "";
-                    };
-                    if (first.toLowerCase(Locale.ROOT).endsWith(expectedExt) || !hasInputExtension(first)) {
-                        customOutputName = first;
-                        positionalNoBps.remove(0);
-                    }
-                }
-                inputFiles.addAll(positionalNoBps);
+                throw new IllegalArgumentException("Cannot combine -f/--turbo and -c/--cas");
             }
 
             if (inputFiles.isEmpty()) {
@@ -165,19 +144,6 @@ class Params {
         } catch (Throwable e) {
             displayUsage();
         }
-    }
-
-    private static int findSpeedTokenIndex(String[] args) {
-        for (int i = 0; i < args.length; i++) {
-            if (isSpeedToken(args[i])) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    private static boolean isSpeedToken(String arg) {
-        return arg != null && arg.matches("\\d{4}");
     }
 
     private static boolean hasInputExtension(String value) {
@@ -259,20 +225,22 @@ class Params {
 
     private static void displayUsage() {
         System.out.println("""
-                Usage: msx2cas [-i] [-r] [-m [<auto|konami4|konami5|ascii8|ascii16>]] [--turbo] [-s <%s>] [-c [<output-file>] | -t [<output-file>] | -w [<output-file>]] [<%s>] <input-file> [<input-file>...]
-                -i: Invert Waveform (fix playback on some soundboards)
-                -r: Reset MSX after loading a ROM
-                -m: Load MegaROM into MegaRAM cartridge (port 0x8E); optionally force mapper type (auto, konami4, konami5, ascii8, ascii16; default: auto)
-                --turbo: Enable Stage-2 Z80 PWM turbo loader for ROM and BIN files (cannot combine with -c)
-                -s: Audio output sample rate in Hz (%s; default: 44100)
-                -c: Write a CAS file with <output-file> name OR with file token name (cannot combine with --turbo)
-                -t: Write a TSX file with <output-file> name OR with file token name
-                -w: Write a WAV file with <output-file> name OR with file token name
-                <%s>: Tape speed in bps (default: 2400; preserves native timing for TSX input when omitted)
+                Usage: msx2cas [options] <input-file> [<input-file>...]
+                Options:
+                  -i, --invert-waveform             Invert waveform (fix playback on some soundboards)
+                  -r, --reset                       Reset MSX after loading a ROM
+                  -m, --megarom [<mapper>]          Load MegaROM into MegaRAM cartridge (port 0x8E);
+                                                    optional mapper: auto, konami4, konami5, ascii8, ascii16 (default: auto)
+                  -f, --turbo, --fast-load          Enable Stage-2 Z80 PWM turbo loader for ROM and BIN files (cannot combine with -c/--cas)
+                  -b, --bps <rate>                  Tape speed in bps (%s; default: 2400; preserves native timing for TSX input when omitted)
+                  -s, --sr <rate>                   Audio output sample rate in Hz (%s; default: 44100)
+                  -c, --cas [<output-file>]         Write a CAS file with <output-file> name OR with file token name (cannot combine with -f/--turbo)
+                  -t, --tsx [<output-file>]         Write a TSX file with <output-file> name OR with file token name
+                  -w, --wav [<output-file>]         Write a WAV file with <output-file> name OR with file token name
+
                 <input-file>: A ROM, BIN, LDR, MX1, MX2, CAS, TSX, BAS(tokenize or not) file
-                
-                If you do not use -c, -t, or -w, MSX2Cas will play to default sound interface""".formatted(
-                SAMPLE_RATES, SPEEDS, SAMPLE_RATES.replace("|", ", "), SPEEDS));
+                If you do not use -c/--cas, -t/--tsx, or -w/--wav, MSX2Cas will play to default sound interface""".formatted(
+                SPEEDS.replace("|", ", "), SAMPLE_RATES.replace("|", ", ")));
     }
 
     List<ConvertFile> getFiles() {

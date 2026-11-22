@@ -6,7 +6,7 @@ The root Maven pom aggregates the `msx2cas-core` library and the `msx2cas-cmd` C
 ## Build, Test, and Development Commands
 - `mvn clean package`: compiles both modules with Java 17, runs resource processing, and produces the library JARs plus the CLI assembly.  
 - `mvn -pl msx2cas-core test` or `mvn -pl msx2cas-core -Dtest=FileEncodingTest test`: execute the test suite or just the waveform regression when validating audio changes.  
-- `java -jar msx2cas-cmd/target/msx2cas-cmd-<version>-jar-with-dependencies.jar -w 2400 GAME.BAS`: converts a BASIC file to WAV at 2400 bps; drop `-w` to stream audio to the sound card.  
+- `java -jar msx2cas-cmd/target/msx2cas-cmd-<version>-jar-with-dependencies.jar -w -b 2400 GAME.BAS`: converts a BASIC file to WAV at 2400 bps; drop `-w` to stream audio to the sound card.  
 Keep `JAVA_HOME` pointed at a JDK 17+ runtime before running these commands.
 
 ## Coding Style & Naming Conventions

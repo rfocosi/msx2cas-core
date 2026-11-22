@@ -33,15 +33,15 @@ After building, you can find the artifacts in `msx2cas-cmd/target/`:
 - **Windows EXE**: `msx2cas-cmd/target/msx2cas.exe`
 
 ### CLI Options
-- `-w [<output-file>]`: Write to WAV file instead of playing audio (renders `#20` Stop-the-Tape markers as 4s silence).
-- `-t [<output-file>]`: Write to TSX file (TZX 1.21 / `#4B`; preserves native timing on `.tsx` input when `<bps>` is omitted; cannot combine with `-w` or `-c`).
-- `-c [<output-file>]`: Write to CAS file (cannot combine with `--turbo`, `-t`, or `-w`).
-- `--turbo`: Enable Stage-2 Z80 PWM turbo loader for ROM and BIN files (cannot combine with `-c`).
-- `-s <11025|22050|44100|48000>`: Output WAV/audio PCM sample rate in Hz (default: `44100`).
-- `-r`: Reset MSX after loading a ROM.
-- `-m [<auto|konami4|konami5|ascii8|ascii16>]`: Load MegaROM (> 49 KB) into MegaRAM cartridge (port `0x8E`), defaulting to `auto` or forcing the specified mapper type.
-- `-i`: Inverted waveform (default is normal).
-- `<1200|2400|3000>`: Stage-1 / standard tape speed in bps (default: `2400`; preserves native timing for `.tsx` inputs when omitted).
+- `-w`, `--wav [<output-file>]`: Write to WAV file instead of playing audio (renders `#20` Stop-the-Tape markers as 4s silence).
+- `-t`, `--tsx [<output-file>]`: Write to TSX file (TZX 1.21 / `#4B`; preserves native timing on `.tsx` input when `-b`/`--bps` is omitted; cannot combine with `-w`/`--wav` or `-c`/`--cas`).
+- `-c`, `--cas [<output-file>]`: Write to CAS file (cannot combine with `-f`/`--turbo`, `-t`/`--tsx`, or `-w`/`--wav`).
+- `-f`, `--turbo`, `--fast-load`: Enable Stage-2 Z80 PWM turbo loader for ROM and BIN files (cannot combine with `-c`/`--cas`).
+- `-b`, `--bps <1200|2400|3000>`: Stage-1 / standard tape speed in bps (default: `2400`; preserves native timing for `.tsx` inputs when omitted).
+- `-s`, `--sr <11025|22050|44100|48000>`: Output WAV/audio PCM sample rate in Hz (default: `44100`).
+- `-r`, `--reset`: Reset MSX after loading a ROM.
+- `-m`, `--megarom [<auto|konami4|konami5|ascii8|ascii16>]`: Load MegaROM (> 49 KB) into MegaRAM cartridge (port `0x8E`), defaulting to `auto` or forcing the specified mapper type.
+- `-i`, `--invert-waveform`: Inverted waveform (default is normal).
 
 ### Playback Controls (when streaming)
 - `SPACE`: Start/Pause/Resume playback (also resumes after auto-pausing on a TSX `#20` Stop-the-Tape marker).
