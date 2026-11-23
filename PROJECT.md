@@ -58,11 +58,7 @@ Command-line interface for the core library:
    ```bash
    mvn test
    ```
-4. Refresh or verify waveform regression fixtures:
-   ```bash
-   mvn -pl msx2cas-core -Dtest=FileEncodingTest test
-   ```
-5. Run openMSX integration tests (`*IT`, requires `openmsx` and system ROMs installed locally):
+4. Run openMSX integration tests (`*IT`, requires `openmsx` and system ROMs installed locally):
    ```bash
    mvn -pl msx2cas-core verify
    ```

@@ -60,8 +60,6 @@ After building, you can find the artifacts in `msx2cas-cmd/target/`:
 ### Testing Practices
 - **Standard Tests**: Run `mvn test` (or `mvn -pl msx2cas-core test` for the core module).
 - **Integration Tests**: Run `mvn -pl msx2cas-core verify` to execute `*IT` openMSX integration tests (requires `openmsx` and system ROMs).
-- **Regression Testing**: `FileEncodingTest.java` is used to guard against waveform regressions. 
-- **Workflow**: Run `mvn -pl msx2cas-core -Dtest=FileEncodingTest test` before editing waveform code to generate reference artifacts, and again after changes to verify parity.
 
 ### Guidelines
 - Follow the [AGENTS.md](AGENTS.md) for detailed repository guidelines.

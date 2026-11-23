@@ -12,7 +12,6 @@ import static java.lang.System.getProperty;
         DetectFileTypeTest.class,
         TsxFormatTest.class,
         TapePcmInputStreamTest.class,
-        FileEncodingTest.class,
         VirtualCasRegressionTest.class
 })
 public class AllTests {

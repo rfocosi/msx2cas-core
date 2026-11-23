@@ -29,12 +29,6 @@ Compile and package all artifacts (`jar-with-dependencies`, Linux `msx2cas`, Win
 mvn clean package
 ```
 
-To generate or validate waveform regression fixtures before/after editing audio code:
-
-```bash
-mvn -pl msx2cas-core -Dtest=FileEncodingTest test
-```
-
 ## CLI usage
 
 ```bash
