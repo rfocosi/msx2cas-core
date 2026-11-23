@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -13,9 +14,8 @@ import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
-import javax.swing.*;
+import javax.swing.JFrame;
 
-import br.com.dod.vcas.model.SampleRate;
 import org.jnativehook.GlobalScreen;
 import org.jnativehook.NativeHookException;
 import org.jnativehook.keyboard.NativeKeyEvent;
@@ -23,7 +23,9 @@ import org.jnativehook.keyboard.NativeKeyListener;
 
 import br.com.dod.vcas.cas.CasOutput;
 import br.com.dod.vcas.exception.FlowException;
-import br.com.dod.vcas.wav.CasPcmInputStream;
+import br.com.dod.vcas.model.SampleRate;
+import br.com.dod.vcas.tsx.TsxOutput;
+import br.com.dod.vcas.wav.TapePcmInputStream;
 import br.com.dod.vcas.wav.WavOutput;
 
 public class Main extends JFrame implements NativeKeyListener {
@@ -41,26 +43,33 @@ public class Main extends JFrame implements NativeKeyListener {
 
             for (ConvertFile file : params.getFiles()) {
                 try {
-                    VirtualCas vcas = new VirtualCas(file.sampleRate())
+                    VirtualCas vcas = new VirtualCas(file.tapeSpeed(), file.sampleRate())
+                            .invertWaveform(file.inverted())
+                            .turbo(file.turbo())
                             .resetRom(params.resetRom())
                             .megaRam(params.megaRam())
-                            .mapperType(params.mapperType())
-                            .turbo(params.turbo());
-                    CasOutput casFile = vcas.convertToCas(file.inputName());
+                            .mapperType(params.mapperType());
 
-                    if (file.writeCas()) {
-                        writeOutputFile(casFile.toBytes(), file);
-                    } else if (file.write()) {
-                        WavOutput wavFile = vcas.convert(casFile);
-                        writeOutputFile(wavFile.toBytes(), file);
-                    } else {
-                        play(vcas.openPcmStream(casFile), file.sampleRate());
+                    switch (file.outputMode()) {
+                        case CAS -> {
+                            CasOutput casFile = vcas.convertToCas(file.inputName());
+                            writeOutputFile(casFile.toBytes(), file);
+                        }
+                        case TSX -> {
+                            TsxOutput tsxFile = vcas.convertToTsx(file.inputName());
+                            writeOutputFile(tsxFile.toBytes(), file);
+                        }
+                        case WAV -> {
+                            WavOutput wavFile = vcas.convertToWav(file.inputName());
+                            writeOutputFile(wavFile.toBytes(), file);
+                        }
+                        case PLAY -> play(vcas.openPcmStream(file.inputName()), file);
                     }
-                } catch (FlowException|IOException e) {
-                    System.out.println("Error: "+e.getMessage());
+                } catch (FlowException | IOException e) {
+                    System.out.println("Error: " + e.getMessage());
                 }
             }
-        } catch (LineUnavailableException|IllegalArgumentException iae) {
+        } catch (LineUnavailableException | IllegalArgumentException iae) {
             System.out.println("Audio output not found.");
             System.out.println(iae.getMessage());
             System.out.println("If error persists, use '-w' to write a WAV file.");
@@ -76,7 +85,7 @@ public class Main extends JFrame implements NativeKeyListener {
     }
 
     private static void disableLogging() {
-        Arrays.stream(Logger.getLogger("").getHandlers()).forEach( h -> h.setLevel(Level.OFF));
+        Arrays.stream(Logger.getLogger("").getHandlers()).forEach(h -> h.setLevel(Level.OFF));
     }
 
     private static void writeOutputFile(byte[] outputBytes, ConvertFile file) throws Exception {
@@ -86,12 +95,12 @@ public class Main extends JFrame implements NativeKeyListener {
         File outputFile = new File(file.outputName());
         int count = 1;
         while (outputFile.exists() || count == 1000) {
-            outputFile = new File(file.outputName().replaceAll("(.+)(\\..{3})$", "$1" + (count++) + "$2"));
+            outputFile = new File(file.outputName().replaceAll("(.+)(\\..{1,4})$", "$1" + (count++) + "$2"));
         }
 
-        FileOutputStream outputStream = new FileOutputStream(outputFile);
-        outputStream.write(outputBytes);
-        outputStream.close();
+        try (FileOutputStream outputStream = new FileOutputStream(outputFile)) {
+            outputStream.write(outputBytes);
+        }
 
         Date end = Calendar.getInstance().getTime();
         System.out.println("File wrote: " + outputFile.getAbsolutePath());
@@ -99,7 +108,8 @@ public class Main extends JFrame implements NativeKeyListener {
                 "Generated in " + ((double) (end.getTime() - start.getTime()) / 1000) + " seconds");
     }
 
-    private static void play(CasPcmInputStream pcmStream, SampleRate sampleRate) throws Exception {
+    private static void play(TapePcmInputStream pcmStream, ConvertFile file) throws Exception {
+        SampleRate sampleRate = pcmStream.getSampleRate();
         AudioFormat format = new AudioFormat(sampleRate.intValue(), 8, 1, false, false);
         int bufferSize = Math.max(1024, sampleRate.intValue() / 5);
         SourceDataLine dataLine = AudioSystem.getSourceDataLine(format);
@@ -125,14 +135,20 @@ public class Main extends JFrame implements NativeKeyListener {
             }
 
             long frameLength = pcmStream.getTotalSamples();
+            List<Long> stopPositions = pcmStream.getStopPositions();
+            int nextStopIndex = 0;
 
             System.out.println("Playing: " + pcmStream.casName());
             System.out.println("Playback length: " + (frameLength / sampleRate.intValue()) + " seconds");
-            System.out.println("Sample Rate: " + sampleRate.bps());
-            System.out.println("Waveform: " + (sampleRate.isInverted() ? "Inverted" : "Normal"));
+            System.out.println("Sample Rate: " + sampleRate.intValue() + " Hz");
+            System.out.println("Tape Speed: " + (file.tapeSpeed() != null ? file.tapeSpeed().bps() + " bps" : "native")
+                    + (file.turbo() ? " (Stage-1) + Turbo Z80 PWM (Stage-2)" : ""));
+            System.out.println("Waveform: " + (pcmStream.isInverted() ? "Inverted" : "Normal"));
             System.out.println();
 
-            if (keyListener) System.out.println("[SPACE] Start/Pause | [ESC] Stop | [HOME] Restart");
+            if (keyListener) {
+                System.out.println("[SPACE] Start/Pause | [ESC] Stop | [HOME] Restart");
+            }
 
             String progressBar = "|--------------------------------------|";
             System.out.println("1% _________________________________ 100%");
@@ -153,6 +169,7 @@ public class Main extends JFrame implements NativeKeyListener {
                     pcmStream.reset();
                     framesPlayed = 0L;
                     frameCheck = frameProp;
+                    nextStopIndex = 0;
                     restartRequested = false;
                     System.out.print("\r                                        \r");
                     continue;
@@ -163,13 +180,30 @@ public class Main extends JFrame implements NativeKeyListener {
                     continue;
                 }
 
-                int bytesRead = pcmStream.read(buffer, 0, buffer.length);
+                if (nextStopIndex < stopPositions.size() && framesPlayed >= stopPositions.get(nextStopIndex)) {
+                    nextStopIndex++;
+                    if (keyListener) {
+                        dataLine.drain();
+                        dataLine.stop();
+                        playing = false;
+                        System.out.println();
+                        System.out.println("Tape stopped (block #20). Press [SPACE] to resume...");
+                        continue;
+                    }
+                }
+
+                int maxToRead = buffer.length;
+                if (nextStopIndex < stopPositions.size()) {
+                    long remainingBeforeStop = stopPositions.get(nextStopIndex) - framesPlayed;
+                    if (remainingBeforeStop > 0 && remainingBeforeStop < maxToRead) {
+                        maxToRead = (int) remainingBeforeStop;
+                    }
+                }
+
+                int bytesRead = pcmStream.read(buffer, 0, maxToRead);
                 if (bytesRead == -1) {
                     dataLine.drain();
-                    if (stopped) {
-                        break;
-                    }
-                    if (restartRequested) {
+                    if (stopped || restartRequested) {
                         continue;
                     }
                     break;
@@ -219,6 +253,7 @@ public class Main extends JFrame implements NativeKeyListener {
         }
     }
 
+    @Override
     public void nativeKeyReleased(NativeKeyEvent e) {
         SourceDataLine currentLine = line;
         if (currentLine == null || stopped) {
@@ -231,13 +266,11 @@ public class Main extends JFrame implements NativeKeyListener {
             currentLine.stop();
             currentLine.flush();
             currentLine.close();
-
         } else if (e.getKeyCode() == NativeKeyEvent.VC_HOME) {
             playing = false;
             restartRequested = true;
             currentLine.stop();
             currentLine.flush();
-
         } else if (e.getKeyCode() == NativeKeyEvent.VC_SPACE) {
             System.out.print("\b");
             if (playing) {
@@ -250,6 +283,9 @@ public class Main extends JFrame implements NativeKeyListener {
         }
     }
 
+    @Override
     public void nativeKeyPressed(NativeKeyEvent e) {}
+
+    @Override
     public void nativeKeyTyped(NativeKeyEvent e) {}
 }

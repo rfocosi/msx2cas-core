@@ -41,7 +41,9 @@ public class FileCommons {
     public static FileType detectFile(String fileName) throws IOException {
         FileType fileType = FileType.ASCII;
 
-        if (FileType.CAS.equals(fileName)) {
+        if (FileType.TSX.equals(fileName)) {
+            fileType = FileType.TSX;
+        } else if (FileType.CAS.equals(fileName)) {
             fileType = FileType.CAS;
         } else if (FileType.BAS.equals(fileName)) {
             fileType = FileType.BAS;

@@ -1,10 +1,21 @@
 package br.com.dod.vcas;
 
 import br.com.dod.vcas.model.SampleRate;
+import br.com.dod.vcas.model.TapeSpeed;
 
-record ConvertFile(String inputName, String outputName, SampleRate sampleRate, boolean write, boolean writeCas) {
+enum OutputMode {
+    PLAY,
+    WAV,
+    CAS,
+    TSX
+}
 
-    ConvertFile(String inputName, String outputName, SampleRate sampleRate, boolean write) {
-        this(inputName, outputName, sampleRate, write, false);
-    }
+record ConvertFile(
+        String inputName,
+        String outputName,
+        TapeSpeed tapeSpeed,
+        SampleRate sampleRate,
+        boolean inverted,
+        boolean turbo,
+        OutputMode outputMode) {
 }

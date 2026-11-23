@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
+import br.com.dod.vcas.cas.CasEncoder;
 import br.com.dod.vcas.cas.CasFile;
 import br.com.dod.vcas.cas.CasOutput;
 import br.com.dod.vcas.converter.ConversionOptions;
@@ -13,64 +14,122 @@ import br.com.dod.vcas.converter.FileConverterFactory;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.MapperType;
 import br.com.dod.vcas.model.SampleRate;
-import br.com.dod.vcas.wav.CasPcmInputStream;
+import br.com.dod.vcas.model.TapeProfile;
+import br.com.dod.vcas.model.TapeSpeed;
+import br.com.dod.vcas.tape.TapeImage;
+import br.com.dod.vcas.tsx.TsxOutput;
+import br.com.dod.vcas.tsx.TsxWriter;
+import br.com.dod.vcas.wav.TapePcmInputStream;
 import br.com.dod.vcas.wav.WavOutput;
+import br.com.dod.vcas.wav.WavWriter;
 
 /**
- * Main class for the MSX2CAS core library
- * Provides functionality to convert MSX files to CAS format (primary) and optionally to WAV format
+ * Main orchestrator for the MSX2CAS v8.0.0 core library.
+ * Converts MSX files ({@code ROM}, {@code BIN}, {@code BAS}, {@code ASCII}, {@code CAS}, {@code TSX})
+ * into a unified {@link TapeImage} and exports to CAS, TSX, WAV, or streaming PCM audio.
  */
 public class VirtualCas {
 
     private final List<String> fileList = new ArrayList<>();
-    private final SampleRate sampleRate;
     private final FileConverterFactory converterFactory;
+    private TapeSpeed tapeSpeed;
+    private SampleRate sampleRate;
+    private boolean inverted;
     private boolean reset;
     private boolean megaRam;
     private MapperType mapperType = MapperType.AUTO;
     private boolean turbo;
 
     /**
-     * Constructor for VirtualCas when targeting CAS output only
+     * Create a {@link VirtualCas} with default speed ({@code 2400 bps} for non-TSX, native for TSX)
+     * and default audio sample rate ({@code 44100 Hz}).
      */
     public VirtualCas() {
-        this(null, new DefaultFileConverterFactory());
+        this(null, SampleRate.DEFAULT, new DefaultFileConverterFactory());
     }
 
     /**
-     * Constructor for VirtualCas with a custom converter factory when targeting CAS output only
+     * Create a {@link VirtualCas} initialized with a predefined {@link TapeProfile}.
+     *
+     * @param profile Preset {@link TapeProfile} ({@code null} leaves default speed/rate/turbo settings)
+     */
+    public VirtualCas(TapeProfile profile) {
+        this(null, SampleRate.DEFAULT, new DefaultFileConverterFactory());
+        profile(profile);
+    }
+
+    /**
+     * Create a {@link VirtualCas} with an explicit {@link TapeSpeed} and default {@code 44100 Hz} sample rate.
+     *
+     * @param tapeSpeed Tape baud rate ({@code null} preserves native TSX timings and defaults to {@code 2400 bps} otherwise)
+     */
+    public VirtualCas(TapeSpeed tapeSpeed) {
+        this(tapeSpeed, SampleRate.DEFAULT, new DefaultFileConverterFactory());
+    }
+
+    /**
+     * Create a {@link VirtualCas} with an explicit audio {@link SampleRate}.
+     *
+     * @param sampleRate Target PCM/WAV sample rate (defaults to {@link SampleRate#DEFAULT})
+     */
+    public VirtualCas(SampleRate sampleRate) {
+        this(null, sampleRate, new DefaultFileConverterFactory());
+    }
+
+    /**
+     * Create a {@link VirtualCas} with explicit {@link TapeSpeed} and {@link SampleRate}.
+     *
+     * @param tapeSpeed Tape baud rate (optional for TSX)
+     * @param sampleRate Target PCM/WAV sample rate
+     */
+    public VirtualCas(TapeSpeed tapeSpeed, SampleRate sampleRate) {
+        this(tapeSpeed, sampleRate, new DefaultFileConverterFactory());
+    }
+
+    /**
+     * Create a {@link VirtualCas} with a custom {@link FileConverterFactory}.
      *
      * @param converterFactory Factory to create file converters
      */
     public VirtualCas(FileConverterFactory converterFactory) {
-        this(null, converterFactory);
+        this(null, SampleRate.DEFAULT, converterFactory);
     }
 
     /**
-     * Constructor for VirtualCas
+     * Create a {@link VirtualCas} with explicit speed, sample rate, and converter factory.
      *
-     * @param sampleRate Sample rate to use for optional WAV conversion
-     */
-    public VirtualCas(SampleRate sampleRate) {
-        this(sampleRate, new DefaultFileConverterFactory());
-    }
-
-    /**
-     * Constructor for VirtualCas with a custom converter factory
-     *
-     * @param sampleRate Sample rate to use for optional WAV conversion
+     * @param tapeSpeed Tape baud rate
+     * @param sampleRate Target PCM/WAV sample rate
      * @param converterFactory Factory to create file converters
      */
-    public VirtualCas(SampleRate sampleRate, FileConverterFactory converterFactory) {
-        this.sampleRate = sampleRate;
-        this.converterFactory = converterFactory;
+    public VirtualCas(TapeSpeed tapeSpeed, SampleRate sampleRate, FileConverterFactory converterFactory) {
+        this.tapeSpeed = tapeSpeed;
+        this.sampleRate = sampleRate != null ? sampleRate : SampleRate.DEFAULT;
+        this.converterFactory = converterFactory != null ? converterFactory : new DefaultFileConverterFactory();
     }
 
     /**
-     * Add a file to the conversion list
+     * Apply a predefined {@link TapeProfile}, setting tape speed, sample rate, and turbo defaults.
+     * Subsequent calls to {@link #tapeSpeed(TapeSpeed)}, {@link #sampleRate(SampleRate)}, or
+     * {@link #turbo(boolean)} override individual settings.
+     *
+     * @param profile Preset {@link TapeProfile} (ignored when {@code null})
+     * @return This {@link VirtualCas} instance
+     */
+    public VirtualCas profile(TapeProfile profile) {
+        if (profile != null) {
+            this.tapeSpeed = profile.tapeSpeed();
+            this.sampleRate = profile.sampleRate();
+            this.turbo = profile.turbo();
+        }
+        return this;
+    }
+
+    /**
+     * Add an input file path to the batch list.
      *
      * @param filePath Path to the file
-     * @return This VirtualCas instance
+     * @return This {@link VirtualCas} instance
      */
     public VirtualCas addFile(String filePath) {
         this.fileList.add(filePath);
@@ -78,10 +137,44 @@ public class VirtualCas {
     }
 
     /**
-     * Set whether to reset ROMs during conversion
+     * Set the target {@link TapeSpeed}. Passing {@code null} preserves native T-state timings for TSX inputs
+     * and defaults to {@link TapeSpeed#BPS_2400} for all other formats.
      *
-     * @param reset True to reset ROMs, false otherwise
-     * @return This VirtualCas instance
+     * @param tapeSpeed Target tape speed
+     * @return This {@link VirtualCas} instance
+     */
+    public VirtualCas tapeSpeed(TapeSpeed tapeSpeed) {
+        this.tapeSpeed = tapeSpeed;
+        return this;
+    }
+
+    /**
+     * Set the PCM/WAV audio output sample rate.
+     *
+     * @param sampleRate Audio {@link SampleRate}
+     * @return This {@link VirtualCas} instance
+     */
+    public VirtualCas sampleRate(SampleRate sampleRate) {
+        this.sampleRate = sampleRate != null ? sampleRate : SampleRate.DEFAULT;
+        return this;
+    }
+
+    /**
+     * Set whether generated audio square waves are polarity-inverted.
+     *
+     * @param inverted {@code true} to invert waveform polarity
+     * @return This {@link VirtualCas} instance
+     */
+    public VirtualCas invertWaveform(boolean inverted) {
+        this.inverted = inverted;
+        return this;
+    }
+
+    /**
+     * Set whether to reset the MSX after loading a ROM.
+     *
+     * @param reset {@code true} to reset ROMs
+     * @return This {@link VirtualCas} instance
      */
     public VirtualCas resetRom(boolean reset) {
         this.reset = reset;
@@ -89,10 +182,10 @@ public class VirtualCas {
     }
 
     /**
-     * Set whether to convert ROMs for MegaRAM cartridges (port 0x8E)
+     * Set whether to convert ROMs for MegaRAM cartridges (port {@code 0x8E}).
      *
-     * @param megaRam True to enable MegaRAM mode, false otherwise
-     * @return This VirtualCas instance
+     * @param megaRam {@code true} to enable MegaRAM mode
+     * @return This {@link VirtualCas} instance
      */
     public VirtualCas megaRam(boolean megaRam) {
         this.megaRam = megaRam;
@@ -100,10 +193,10 @@ public class VirtualCas {
     }
 
     /**
-     * Set the source MegaROM mapper type for MegaRAM conversion/patching
+     * Set the source MegaROM mapper type for MegaRAM conversion/patching.
      *
      * @param mapperType Mapper type ({@link MapperType#AUTO} by default)
-     * @return This VirtualCas instance
+     * @return This {@link VirtualCas} instance
      */
     public VirtualCas mapperType(MapperType mapperType) {
         this.mapperType = mapperType != null ? mapperType : MapperType.AUTO;
@@ -111,10 +204,10 @@ public class VirtualCas {
     }
 
     /**
-     * Set whether to use the Stage-2 Z80 turbo loader for supported formats (ROM, BIN)
+     * Toggle Stage-2 Z80 PWM turbo mode for ROM and BIN files.
      *
-     * @param turbo True to enable the custom Z80 turbo loader, false for standard BIOS loading
-     * @return This VirtualCas instance
+     * @param turbo {@code true} to enable Stage-2 Z80 PWM turbo mode
+     * @return This {@link VirtualCas} instance
      */
     public VirtualCas turbo(boolean turbo) {
         this.turbo = turbo;
@@ -122,119 +215,226 @@ public class VirtualCas {
     }
 
     /**
-     * Convert a single file to CAS format
+     * Convert a single file into the unified {@link TapeImage} IR.
      *
-     * @param filePath Path to the file
-     * @return CAS output
-     * @throws FlowException If there's an error during conversion
+     * @param filePath Path to the input file
+     * @return Unified {@link TapeImage}
+     * @throws FlowException If reading or conversion fails
      */
-    public CasOutput convertToCas(String filePath) throws FlowException {
-        Converter converter = converterFactory.createConverter(
-                filePath, new ConversionOptions(reset, megaRam, mapperType, turbo));
-        return converter.convertToCas();
+    public TapeImage convertToTape(String filePath) throws FlowException {
+        Converter converter = converterFactory.createConverter(filePath, buildOptions());
+        return converter.convertToTape();
     }
 
     /**
-     * Convert all added files to CAS format
+     * Convert all added files into {@link TapeImage} instances.
+     *
+     * @return List of {@link TapeImage} objects
+     * @throws FlowException If reading or conversion fails
+     */
+    public List<TapeImage> convertToTape() throws FlowException {
+        List<TapeImage> tapes = new LinkedList<>();
+        ConversionOptions options = buildOptions();
+        for (String fileName : fileList) {
+            tapes.add(converterFactory.createConverter(fileName, options).convertToTape());
+        }
+        return tapes;
+    }
+
+    /**
+     * Convert a single file to CAS format.
+     *
+     * @param filePath Path to the input file
+     * @return CAS output
+     * @throws FlowException If conversion fails or the resulting tape contains non-MSX-KCS blocks
+     */
+    public CasOutput convertToCas(String filePath) throws FlowException {
+        return convertToCas(convertToTape(filePath));
+    }
+
+    /**
+     * Export a {@link TapeImage} to CAS format.
+     *
+     * @param tapeImage Source tape image
+     * @return CAS output
+     * @throws FlowException If the tape is empty or contains non-MSX-KCS blocks
+     */
+    public CasOutput convertToCas(TapeImage tapeImage) throws FlowException {
+        return new CasEncoder(tapeImage);
+    }
+
+    /**
+     * Convert all added files to CAS format.
      *
      * @return List of CAS outputs
-     * @throws FlowException If there's an error during conversion
+     * @throws FlowException If any conversion fails or contains non-MSX-KCS blocks
      */
     public List<CasOutput> convertToCas() throws FlowException {
-        final List<CasOutput> casList = new LinkedList<>();
-        ConversionOptions options = new ConversionOptions(reset, megaRam, mapperType, turbo);
-
-        for (String fileName : fileList) {
-            Converter converter = converterFactory.createConverter(fileName, options);
-            casList.add(converter.convertToCas());
+        List<CasOutput> casList = new LinkedList<>();
+        for (TapeImage tape : convertToTape()) {
+            casList.add(convertToCas(tape));
         }
         return casList;
     }
 
     /**
-     * Convert a CAS output to WAV format
+     * Convert a single file to TSX (TZX 1.21) format.
      *
-     * @param casOutput CAS output to convert
-     * @return WAV output
-     * @throws FlowException If there's an error during conversion
+     * @param filePath Path to the input file
+     * @return TSX output
+     * @throws FlowException If conversion fails
      */
-    public WavOutput convert(CasOutput casOutput) throws FlowException {
-        SampleRate effectiveRate = resolveSampleRate();
-        if (casOutput == null) {
-            throw FlowException.error("cas_list_empty");
+    public TsxOutput convertToTsx(String filePath) throws FlowException {
+        return convertToTsx(convertToTape(filePath));
+    }
+
+    /**
+     * Serialize a {@link TapeImage} to TSX (TZX 1.21) format.
+     *
+     * @param tapeImage Source tape image
+     * @return TSX output
+     * @throws FlowException If the tape image is null or empty
+     */
+    public TsxOutput convertToTsx(TapeImage tapeImage) throws FlowException {
+        if (tapeImage == null || tapeImage.getBlocks().isEmpty()) {
+            throw FlowException.error("tape_empty");
         }
-        return converterFactory.createConverter(casOutput.getTracks(), effectiveRate, casOutput.casName()).convert();
+        return new TsxWriter(tapeImage);
     }
 
     /**
-     * Convert a single file to WAV format (via CAS conversion)
+     * Convert all added files to TSX format.
      *
-     * @param filePath Path to the file
+     * @return List of TSX outputs
+     * @throws FlowException If any conversion fails
+     */
+    public List<TsxOutput> convertToTsx() throws FlowException {
+        List<TsxOutput> tsxList = new LinkedList<>();
+        for (TapeImage tape : convertToTape()) {
+            tsxList.add(convertToTsx(tape));
+        }
+        return tsxList;
+    }
+
+    /**
+     * Convert a single file to WAV format.
+     *
+     * @param filePath Path to the input file
      * @return WAV output
-     * @throws FlowException If there's an error during conversion
+     * @throws FlowException If conversion fails
      */
-    public WavOutput convert(String filePath) throws FlowException {
-        resolveSampleRate();
-        return convert(convertToCas(filePath));
+    public WavOutput convertToWav(String filePath) throws FlowException {
+        return convertToWav(convertToTape(filePath));
     }
 
     /**
-     * Open a streaming 8-bit unsigned mono PCM input stream directly from CAS output
+     * Render a {@link TapeImage} to WAV format.
      *
-     * @param casOutput CAS output to stream as PCM audio
-     * @return Streaming PCM input stream
-     * @throws FlowException If sample rate is missing or CAS tracks are empty
-     */
-    public CasPcmInputStream openPcmStream(CasOutput casOutput) throws FlowException {
-        return new CasPcmInputStream(casOutput, resolveSampleRate());
-    }
-
-    /**
-     * Open a streaming 8-bit unsigned mono PCM input stream directly from an input file via CAS conversion
-     *
-     * @param filePath Path to the file
-     * @return Streaming PCM input stream
-     * @throws FlowException If sample rate is missing or conversion fails
-     */
-    public CasPcmInputStream openPcmStream(String filePath) throws FlowException {
-        resolveSampleRate();
-        return openPcmStream(convertToCas(filePath));
-    }
-
-    /**
-     * Convert a list of CAS files to WAV format
-     *
-     * @param casList List of CAS files
+     * @param tapeImage Source tape image
      * @return WAV output
-     * @throws FlowException If there's an error during conversion
+     * @throws FlowException If rendering fails
      */
-    public WavOutput convert(List<CasFile> casList) throws FlowException {
-        Converter converter = converterFactory.createConverter(casList, resolveSampleRate());
-        return converter.convert();
+    public WavOutput convertToWav(TapeImage tapeImage) throws FlowException {
+        return new WavWriter(tapeImage, resolveSampleRate(), inverted);
     }
 
     /**
-     * Convert all added files to WAV format (via CAS conversion)
+     * Render a list of pre-parsed {@link CasFile} tracks to WAV format.
+     *
+     * @param casList List of CAS tracks
+     * @return WAV output
+     * @throws FlowException If conversion fails
+     */
+    public WavOutput convertToWav(List<CasFile> casList) throws FlowException {
+        TapeSpeed casSpeed = tapeSpeed != null ? tapeSpeed : TapeSpeed.BPS_2400;
+        TapeImage tape = converterFactory.createConverter(casList, casSpeed).convertToTape();
+        return convertToWav(tape);
+    }
+
+    /**
+     * Convert all added files to WAV format.
      *
      * @return List of WAV outputs
-     * @throws FlowException If there's an error during conversion
+     * @throws FlowException If any conversion fails
      */
-    public List<WavOutput> convert() throws FlowException {
-        resolveSampleRate();
-        final List<WavOutput> wavList = new LinkedList<>();
-        for (String fileName : fileList) {
-            wavList.add(convert(fileName));
+    public List<WavOutput> convertToWav() throws FlowException {
+        List<WavOutput> wavList = new LinkedList<>();
+        for (TapeImage tape : convertToTape()) {
+            wavList.add(convertToWav(tape));
         }
         return wavList;
     }
 
-    private SampleRate resolveSampleRate() throws FlowException {
-        if (sampleRate != null) {
-            return sampleRate;
-        }
-        if (turbo) {
-            return SampleRate.sr33075;
-        }
-        throw FlowException.error("sample_rate_required");
+    /**
+     * Alias for {@link #convertToWav(String)}.
+     *
+     * @param filePath Path to the input file
+     * @return WAV output
+     * @throws FlowException If conversion fails
+     */
+    public WavOutput convert(String filePath) throws FlowException {
+        return convertToWav(filePath);
+    }
+
+    /**
+     * Alias for {@link #convertToWav(TapeImage)}.
+     *
+     * @param tapeImage Source tape image
+     * @return WAV output
+     * @throws FlowException If rendering fails
+     */
+    public WavOutput convert(TapeImage tapeImage) throws FlowException {
+        return convertToWav(tapeImage);
+    }
+
+    /**
+     * Alias for {@link #convertToWav(List)}.
+     *
+     * @param casList List of CAS tracks
+     * @return WAV output
+     * @throws FlowException If conversion fails
+     */
+    public WavOutput convert(List<CasFile> casList) throws FlowException {
+        return convertToWav(casList);
+    }
+
+    /**
+     * Alias for {@link #convertToWav()}.
+     *
+     * @return List of WAV outputs
+     * @throws FlowException If conversion fails
+     */
+    public List<WavOutput> convert() throws FlowException {
+        return convertToWav();
+    }
+
+    /**
+     * Open a streaming 8-bit unsigned mono PCM input stream from a {@link TapeImage}.
+     *
+     * @param tapeImage Source tape image
+     * @return Streaming {@link TapePcmInputStream}
+     * @throws FlowException If tape is empty or sample rate is invalid
+     */
+    public TapePcmInputStream openPcmStream(TapeImage tapeImage) throws FlowException {
+        return new TapePcmInputStream(tapeImage, resolveSampleRate(), inverted);
+    }
+
+    /**
+     * Open a streaming 8-bit unsigned mono PCM input stream directly from an input file.
+     *
+     * @param filePath Path to the input file
+     * @return Streaming {@link TapePcmInputStream}
+     * @throws FlowException If conversion fails
+     */
+    public TapePcmInputStream openPcmStream(String filePath) throws FlowException {
+        return openPcmStream(convertToTape(filePath));
+    }
+
+    private ConversionOptions buildOptions() {
+        return new ConversionOptions(reset, megaRam, mapperType, tapeSpeed, turbo);
+    }
+
+    private SampleRate resolveSampleRate() {
+        return sampleRate != null ? sampleRate : SampleRate.DEFAULT;
     }
 }

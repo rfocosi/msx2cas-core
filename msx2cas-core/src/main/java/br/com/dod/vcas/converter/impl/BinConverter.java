@@ -1,83 +1,84 @@
 package br.com.dod.vcas.converter.impl;
 
-import br.com.dod.vcas.cas.CasEncoder;
-import br.com.dod.vcas.cas.CasOutput;
 import br.com.dod.vcas.converter.AbstractFileConverter;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.FileType;
-import br.com.dod.vcas.model.SampleRate;
+import br.com.dod.vcas.model.TapeSpeed;
+import br.com.dod.vcas.tape.TapeBuilder;
+import br.com.dod.vcas.tape.TapeImage;
 
 /**
- * Converter for binary files
+ * Converter for MSX binary ({@code BIN} / {@code LDR}) files.
  */
 public class BinConverter extends AbstractFileConverter {
-    
+
     private static final int FILE_OFFSET = 7;
 
     private boolean turbo;
 
     /**
-     * Constructor for BinConverter without WAV sample rate.
+     * Constructor for BinConverter with default {@link TapeSpeed#BPS_2400}.
      *
      * @param inputFileName Name of the input file
-     * @throws FlowException If there's an error reading the file
+     * @throws FlowException If reading the file fails
      */
     public BinConverter(String inputFileName) throws FlowException {
-        this(inputFileName, null, false);
+        this(inputFileName, TapeSpeed.BPS_2400, false);
     }
 
     /**
-     * Constructor for BinConverter without WAV sample rate.
+     * Constructor for BinConverter with optional turbo speed.
      *
      * @param inputFileName Name of the input file
-     * @param turbo True to enable the Stage-2 Z80 turbo loader
-     * @throws FlowException If there's an error reading the file
+     * @param turbo True to enable Stage-2 Z80 PWM turbo mode
+     * @throws FlowException If reading the file fails
      */
     public BinConverter(String inputFileName, boolean turbo) throws FlowException {
-        this(inputFileName, null, turbo);
-    }
-    
-    /**
-     * Constructor for BinConverter
-     * 
-     * @param inputFileName Name of the input file
-     * @param sampleRate Sample rate to use for conversion
-     * @throws FlowException If there's an error reading the file
-     */
-    public BinConverter(String inputFileName, SampleRate sampleRate) throws FlowException {
-        this(inputFileName, sampleRate, false);
+        this(inputFileName, TapeSpeed.BPS_2400, turbo);
     }
 
     /**
-     * Constructor for BinConverter
+     * Constructor for BinConverter.
      *
      * @param inputFileName Name of the input file
-     * @param sampleRate Sample rate to use for conversion
-     * @param turbo True to enable the Stage-2 Z80 turbo loader
-     * @throws FlowException If there's an error reading the file
+     * @param speed Target {@link TapeSpeed}
+     * @throws FlowException If reading the file fails
      */
-    public BinConverter(String inputFileName, SampleRate sampleRate, boolean turbo) throws FlowException {
-        super(inputFileName, sampleRate);
+    public BinConverter(String inputFileName, TapeSpeed speed) throws FlowException {
+        this(inputFileName, speed, false);
+    }
+
+    /**
+     * Constructor for BinConverter with Stage-1 {@link TapeSpeed} and Stage-2 turbo toggle.
+     *
+     * @param inputFileName Name of the input file
+     * @param speed Target {@link TapeSpeed} for Stage-1 MSX BIOS header/supervisor
+     * @param turbo True to enable Stage-2 Z80 PWM turbo mode
+     * @throws FlowException If reading the file fails
+     */
+    public BinConverter(String inputFileName, TapeSpeed speed, boolean turbo) throws FlowException {
+        super(inputFileName, speed);
         this.turbo = turbo;
     }
 
     /**
-     * Set whether to use the Stage-2 Z80 turbo loader
+     * Toggle Stage-2 Z80 PWM turbo mode.
      *
-     * @param turbo True for turbo mode, false otherwise
-     * @return This BinConverter instance
+     * @param turbo True to enable turbo mode
+     * @return This {@link BinConverter} instance
      */
     public BinConverter turbo(boolean turbo) {
         this.turbo = turbo;
         return this;
     }
-    
-    @Override
-    public CasOutput convertToCas() throws FlowException {
-        CasEncoder encoder = new CasEncoder(inputFileName);
 
-        encoder.beginTrack(FileType.BIN, getNameBuffer());
-        encoder.beginDataBlock();
+    @Override
+    public TapeImage convertToTape() throws FlowException {
+        TapeSpeed targetSpeed = effectiveSpeed();
+        TapeBuilder builder = new TapeBuilder(inputFileName, targetSpeed);
+
+        builder.beginTrack(FileType.BIN, getNameBuffer());
+        builder.beginDataBlock();
 
         char[] loader = getLoader();
         calculateBinCRC(loader);
@@ -86,56 +87,37 @@ public class BinConverter extends AbstractFileConverter {
         int payloadLength = inputMemPointer.length - FILE_OFFSET;
         if (turbo && payloadLength > 0) {
             char[] supervisor = RomLoaders.turboSupervisor(0x9000);
-            encoder.encodeData(buildBinaryAddressBuffer(sizeof(supervisor)));
-            encoder.encodeData(supervisor);
-            encoder.encodeTurboPayload(
+            builder.encodeData(buildBinaryAddressBuffer(sizeof(supervisor)));
+            builder.encodeData(supervisor);
+            builder.encodeTurboPayload(
                     RomLoaders.buildTurboFrame(loader, inputMemPointer, FILE_OFFSET, inputMemPointer.length, true));
         } else {
-            encoder.encodeData(buildBinaryAddressBuffer(sizeof(loader) + payloadLength));
-            encoder.encodeData(loader);
+            builder.encodeData(buildBinaryAddressBuffer(sizeof(loader) + payloadLength));
+            builder.encodeData(loader);
 
-            // Write file content
             for (int i = FILE_OFFSET; i < inputMemPointer.length; i++) {
-                encoder.writeDataByte((char) inputMemPointer[i]);
+                builder.writeDataByte((char) inputMemPointer[i]);
             }
         }
 
-        encoder.finish();
-
-        return encoder;
+        return builder.build();
     }
-    
-    /**
-     * Add the start address to the loader
-     * 
-     * @param loader Loader code
-     */
+
     private void addStartAddressToLoader(char[] loader) {
         for (int j = 0; j < 6; j++) {
             loader[j + 3] = (char) inputMemPointer[j + 1];
         }
     }
-    
-    /**
-     * Calculate the CRC for the binary file
-     * 
-     * @param loader Loader code
-     * @throws FlowException If there's an error calculating the CRC
-     */
+
     private void calculateBinCRC(char[] loader) throws FlowException {
         char binBegin = (char) (Byte.toUnsignedInt(inputMemPointer[2]) * 0x100 +
-                               Byte.toUnsignedInt(inputMemPointer[1]));
+                              Byte.toUnsignedInt(inputMemPointer[1]));
         char binEnd = (char) (Byte.toUnsignedInt(inputMemPointer[4]) * 0x100 +
-                             Byte.toUnsignedInt(inputMemPointer[3]));
-        
+                            Byte.toUnsignedInt(inputMemPointer[3]));
+
         loader[9] = calculateCRC(FILE_OFFSET, (binEnd - binBegin) + FILE_OFFSET);
     }
-    
-    /**
-     * Get the loader code for binary files
-     * 
-     * @return Loader code
-     */
+
     private char[] getLoader() {
         return new char[] {
                 0xC3, 0x27, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3C, 0x20, 0x4D,

@@ -1,7 +1,7 @@
 # GEMINI.md - msx2cas-core
 
 ## Project Overview
-**msx2cas-core** is a Java 17+ application that converts MSX files (BAS, BIN, CAS, ROM, ASCII) into cassette audio format (WAV) to be played on actual MSX hardware. It is a cross-platform solution (Windows, macOS, Linux) inspired by CasLink2.
+**msx2cas-core** is a Java 17+ application that converts MSX files (BAS, BIN, CAS, TSX, ROM, ASCII) into cassette audio format (WAV), CAS, or TSX (TZX 1.21 / `#4B`) tape images to be played on actual MSX hardware and emulators. It is a cross-platform solution (Windows, macOS, Linux) inspired by CasLink2.
 
 The project is structured as a Maven multi-module project:
 - `msx2cas-core`: The core library handling the conversion logic and waveform generation.
@@ -28,20 +28,24 @@ mvn clean package
 
 ### Running the CLI
 After building, you can find the artifacts in `msx2cas-cmd/target/`:
-- **JAR with dependencies**: `java -jar msx2cas-cmd/target/msx2cas-cmd-7.1.0-jar-with-dependencies.jar [options] <input-file>`
+- **JAR with dependencies**: `java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar [options] <input-file>`
 - **Linux Binary**: `./msx2cas-cmd/target/msx2cas`
 - **Windows EXE**: `msx2cas-cmd/target/msx2cas.exe`
 
 ### CLI Options
-- `-w [<output-file>]`: Write to WAV file instead of playing audio.
-- `-c [<output-file>]`: Write to CAS file (`<bps>` optional; cannot combine with `turbo` or `-w`).
-- `-r`: Reset MSX after loading a ROM.
-- `-m [<auto|konami4|konami5|ascii8|ascii16>]`: Load MegaROM (> 49 KB) into MegaRAM cartridge (port `0x8E`), defaulting to `auto` or forcing the specified mapper type.
-- `-i`: Inverted waveform (default is normal).
-- `<1200|2400|3000|turbo>`: Playback speed in bps (required unless `-c` is used; `turbo` uses custom Z80 turbo loader at `3600` bps for ROM and BIN files).
+- `-p`, `--profile <compatible|default|fastest>`: Predefined conversion profile (`compatible`: `1200 bps`, `44100 Hz`; `default`: `2400 bps`, `44100 Hz`; `fastest`: `2400 bps` Stage-1, `48000 Hz`, Stage-2 `-f` turbo). Preserves native `.tsx` timing when omitted; explicit `-b`/`-s`/`-f` flags override profile defaults.
+- `-w`, `--wav [<output-file>]`: Write to WAV file instead of playing audio (renders `#20` Stop-the-Tape markers as 4s silence).
+- `-t`, `--tsx [<output-file>]`: Write to TSX file (TZX 1.21 / `#4B`; preserves native timing on `.tsx` input when `-b`/`--bps` is omitted; cannot combine with `-w`/`--wav` or `-c`/`--cas`).
+- `-c`, `--cas [<output-file>]`: Write to CAS file (cannot combine with `-f`/`--turbo`, `-t`/`--tsx`, or `-w`/`--wav`).
+- `-f`, `--turbo`, `--fast-load`: Enable Stage-2 Z80 PWM turbo loader for ROM and BIN files (cannot combine with `-c`/`--cas`).
+- `-b`, `--bps <1200|2400|3000>`: Stage-1 / standard tape speed in bps (default: `2400`; preserves native timing for `.tsx` inputs when omitted).
+- `-s`, `--sr <11025|22050|33075|44100|48000>`: Output WAV/audio PCM sample rate in Hz (default: `44100`; use `-s 33075` for fastest Stage-2 `-f`/`--turbo` WAV/playback speed).
+- `-r`, `--reset`: Reset MSX after loading a ROM.
+- `-m`, `--megarom [<auto|konami4|konami5|ascii8|ascii16>]`: Load MegaROM (> 49 KB) into MegaRAM cartridge (port `0x8E`), defaulting to `auto` or forcing the specified mapper type.
+- `-i`, `--invert-waveform`: Inverted waveform (default is normal).
 
 ### Playback Controls (when streaming)
-- `SPACE`: Start/Pause playback.
+- `SPACE`: Start/Pause/Resume playback (also resumes after auto-pausing on a TSX `#20` Stop-the-Tape marker).
 - `ESC`: Stop playback.
 - `HOME`: Restart playback.
 
@@ -51,13 +55,11 @@ After building, you can find the artifacts in `msx2cas-cmd/target/`:
 - **Indentation**: 4 spaces.
 - **Encoding**: UTF-8.
 - **Naming**: `PascalCase` for classes, `camelCase` for methods/fields, `UPPER_SNAKE_CASE` for constants.
-- **Architecture**: Format-specific conversion logic lives in `br.com.dod.vcas.converter.impl` (created via `FileConverterFactory`), MegaROM mapper detection and MegaRAM patching live in `MegaRomPatcher` (with `MapperType` in `br.com.dod.vcas.model`), waveform generation lives in `br.com.dod.vcas.wav.WavEncoder`, and `VirtualCas` acts as the main orchestrator.
+- **Architecture**: Format-specific conversion logic lives in `br.com.dod.vcas.converter.impl` (created via `FileConverterFactory`), unified tape IR lives in `br.com.dod.vcas.tape` (`TapeBlock`, `TapeImage`, `TapeBuilder`), TZX 1.21 / `#4B` serialization lives in `br.com.dod.vcas.tsx` (`TsxParser`, `TsxWriter`), MegaROM mapper detection and MegaRAM patching live in `MegaRomPatcher` (with `MapperType` in `br.com.dod.vcas.model`), 3.5 MHz T-state audio synthesis and WAV writing live in `br.com.dod.vcas.wav` (`TapePcmInputStream`, `WavWriter`), and `VirtualCas` acts as the main orchestrator.
 
 ### Testing Practices
 - **Standard Tests**: Run `mvn test` (or `mvn -pl msx2cas-core test` for the core module).
 - **Integration Tests**: Run `mvn -pl msx2cas-core verify` to execute `*IT` openMSX integration tests (requires `openmsx` and system ROMs).
-- **Regression Testing**: `FileEncodingTest.java` is used to guard against waveform regressions. 
-- **Workflow**: Run `mvn -pl msx2cas-core -Dtest=FileEncodingTest test` before editing waveform code to generate reference artifacts, and again after changes to verify parity.
 
 ### Guidelines
 - Follow the [AGENTS.md](AGENTS.md) for detailed repository guidelines.

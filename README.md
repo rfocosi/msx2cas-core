@@ -29,21 +29,19 @@ Compile and package all artifacts (`jar-with-dependencies`, Linux `msx2cas`, Win
 mvn clean package
 ```
 
-To generate or validate waveform regression fixtures before/after editing audio code:
-
-```bash
-mvn -pl msx2cas-core -Dtest=FileEncodingTest test
-```
-
 ## CLI usage
 
 ```bash
-java -jar msx2cas-cmd/target/msx2cas-cmd-7.1.0-jar-with-dependencies.jar [-i] [-r] [-m [<auto|konami4|konami5|ascii8|ascii16>]] [-c [<output-file>] | -w [<output-file>]] [<1200|2400|3000|turbo>] <input-file> [<input-file>...]
+java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar [options] <input-file> [<input-file>...]
 ```
 
-- `-i`: Invert waveform (fix playback on some soundcards)
-- `-r`: Reset MSX after loading a ROM
-- `-m`: Load MegaROM (> 49 KB) into a MegaRAM cartridge (port `0x8E`); optionally force mapper type (`auto`, `konami4`, `konami5`, `ascii8`, `ascii16`; default: `auto`)
-- `-c`: Write a CAS file (`<output-file>` or first 6 characters of `<input-file>`); `<bps>` is optional (cannot combine with `turbo`)
-- `-w`: Write a WAV file (`<output-file>` or first 6 characters of `<input-file>`), instead of playing to the default sound interface
-- `<1200|2400|3000|turbo>`: Playback speed in bps (`turbo` uses the custom Z80 turbo loader at `3600` bps for ROM and BIN files)
+- `-p`, `--profile <compatible|default|fastest>`: Conversion preset (`compatible`: `1200 bps`, `44100 Hz`; `default`: `2400 bps`, `44100 Hz`; `fastest`: `2400 bps` Stage-1 + `48000 Hz` + Stage-2 `-f` turbo for ROM/BIN). Preserves native `.tsx` timing when omitted; explicit advanced flags (`-b`, `-s`, `-f`) override profile defaults
+- `-i`, `--invert-waveform`: Invert waveform (fix playback on some soundcards)
+- `-r`, `--reset`: Reset MSX after loading a ROM
+- `-m`, `--megarom [<auto|konami4|konami5|ascii8|ascii16>]`: Load MegaROM (> 49 KB) into a MegaRAM cartridge (port `0x8E`); optionally force mapper type (default: `auto`)
+- `-f`, `--turbo`, `--fast-load`: Enable Stage-2 Z80 PWM turbo loader for ROM and BIN files (cannot combine with `-c`/`--cas`)
+- `-b`, `--bps <1200|2400|3000>`: Stage-1 / standard tape speed in bps (default: `2400`; preserves native timing for `.tsx` inputs when omitted)
+- `-s`, `--sr <11025|22050|33075|44100|48000>`: PCM/WAV sample rate in Hz (default: `44100`; use `-s 33075` for fastest Stage-2 `-f`/`--turbo` WAV/playback speed)
+- `-c`, `--cas [<output-file>]`: Write a CAS file (`<output-file>` or first 6 characters of `<input-file>`); cannot combine with `-f`/`--turbo`, `-t`/`--tsx`, or `-w`/`--wav`
+- `-t`, `--tsx [<output-file>]`: Write a TSX (TZX 1.21 / `#4B`) file (`<output-file>` or first 6 characters of `<input-file>`); preserves native TSX timing when input is `.tsx` and `-b`/`--bps` is omitted; supports `-f`/`--turbo` Stage-2 `#11` encoding
+- `-w`, `--wav [<output-file>]`: Write a WAV file (`<output-file>` or first 6 characters of `<input-file>`), instead of playing to the default sound interface (renders `#20` Stop-the-Tape markers as 4s silence)

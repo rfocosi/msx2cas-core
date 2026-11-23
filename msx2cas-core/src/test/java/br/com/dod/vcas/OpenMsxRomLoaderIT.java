@@ -27,6 +27,8 @@ import org.junit.rules.TemporaryFolder;
 
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.SampleRate;
+import br.com.dod.vcas.model.TapeProfile;
+import br.com.dod.vcas.model.TapeSpeed;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -139,7 +141,7 @@ public class OpenMsxRomLoaderIT {
 
         Path userData = prepareUserData(null, null);
         assertAllLoaderVariants(userData, "Gradiente_Expert_GPC-1", "2 X", "2 X", false,
-                List.of(), 7, false, true, SampleRate.sr22050);
+                List.of(), 7, false, TapeSpeed.BPS_2400, true, SampleRate.sr44100, false);
     }
 
     @Test
@@ -156,29 +158,35 @@ public class OpenMsxRomLoaderIT {
 
         byte[] binFile = buildCheckBin(0xA000, 4096, "BN");
 
-        try {
-            for (SampleRate rate : SampleRate.values()) {
-                assertRomBoots(userData, "Gradiente_Expert_GPC-1", "turbo_" + rate.bps() + "_norm",
-                        rom16k, false, "OK16", "2 X", null, null, false, List.of(), 7, false,
-                        true, rate.invertWaveForm(false));
-                assertRomBoots(userData, "Gradiente_Expert_GPC-1", "turbo_" + rate.bps() + "_inv",
-                        rom16kPg2, false, "OKP2", null, null, "063607", false, List.of(), 7, false,
-                        true, rate.invertWaveForm(true));
-            }
-            assertBinBoots(userData, "Gradiente_Expert_GPC-1", "turbo_bin_2400",
-                    binFile, "OKBN", SampleRate.sr22050.invertWaveForm(false), true);
-            assertBinBoots(userData, "Gradiente_Expert_GPC-1", "turbo_bin_3600i",
-                    binFile, "OKBN", SampleRate.sr33075.invertWaveForm(true), true);
-            assertRomBoots(userData, "Gradiente_Expert_GPC-1", "std_3000_norm",
+        for (SampleRate rate : List.of(SampleRate.sr22050, SampleRate.sr33075, SampleRate.sr44100, SampleRate.sr48000)) {
+            assertRomBoots(userData, "Gradiente_Expert_GPC-1", "turbo_" + rate.intValue() + "_norm",
                     rom16k, false, "OK16", "2 X", null, null, false, List.of(), 7, false,
-                    false, SampleRate.sr27563.invertWaveForm(false));
-            assertBinBoots(userData, "Gradiente_Expert_GPC-1", "std_bin_3000i",
-                    binFile, "OKBN", SampleRate.sr27563.invertWaveForm(true), false);
-        } finally {
-            for (SampleRate rate : SampleRate.values()) {
-                rate.invertWaveForm(false);
-            }
+                    TapeSpeed.BPS_2400, true, rate, false);
+            assertRomBoots(userData, "Gradiente_Expert_GPC-1", "turbo_" + rate.intValue() + "_inv",
+                    rom16kPg2, false, "OKP2", null, null, "063607", false, List.of(), 7, false,
+                    TapeSpeed.BPS_2400, true, rate, true);
         }
+        assertRomBoots(userData, "Gradiente_Expert_GPC-1", "turbo_1200_11k",
+                rom16k, false, "OK16", "2 X", null, null, false, List.of(), 7, false,
+                TapeSpeed.BPS_1200, true, SampleRate.sr11025, false);
+        assertRomBoots(userData, "Gradiente_Expert_GPC-1", "turbo_1200_s1",
+                rom16k, false, "OK16", "2 X", null, null, false, List.of(), 7, false,
+                TapeSpeed.BPS_1200, true, SampleRate.sr44100, false);
+        assertRomBoots(userData, "Gradiente_Expert_GPC-1", "turbo_fastest_profile",
+                rom16k, false, "OK16", "2 X", null, null, false, List.of(), 7, false,
+                TapeProfile.FASTEST.tapeSpeed(), TapeProfile.FASTEST.turbo(), TapeProfile.FASTEST.sampleRate(), false);
+        assertBinBoots(userData, "Gradiente_Expert_GPC-1", "turbo_bin_44k",
+                binFile, "OKBN", TapeSpeed.BPS_2400, true, SampleRate.sr44100, false);
+        assertBinBoots(userData, "Gradiente_Expert_GPC-1", "turbo_bin_44ki",
+                binFile, "OKBN", TapeSpeed.BPS_2400, true, SampleRate.sr44100, true);
+        assertRomBoots(userData, "Gradiente_Expert_GPC-1", "std_1200_norm",
+                rom16k, false, "OK16", "2 X", null, null, false, List.of(), 7, false,
+                TapeSpeed.BPS_1200, false, SampleRate.sr11025, false);
+        assertRomBoots(userData, "Gradiente_Expert_GPC-1", "std_3000_norm",
+                rom16k, false, "OK16", "2 X", null, null, false, List.of(), 7, false,
+                TapeSpeed.BPS_3000, false, SampleRate.sr44100, false);
+        assertBinBoots(userData, "Gradiente_Expert_GPC-1", "std_bin_3000i",
+                binFile, "OKBN", TapeSpeed.BPS_3000, false, SampleRate.sr44100, true);
     }
 
     @Test
@@ -261,7 +269,7 @@ public class OpenMsxRomLoaderIT {
             boolean useCas)
             throws Exception, FlowException {
         assertAllLoaderVariants(userData, machine, expectedPage1Slot, expectedPage0Slot, holdCtrlOnBoot,
-                extraArgs, typeDelaySec, useCas, false, SampleRate.sr22050);
+                extraArgs, typeDelaySec, useCas, TapeSpeed.BPS_2400, false, SampleRate.sr44100, false);
     }
 
     private void assertAllLoaderVariants(
@@ -273,30 +281,32 @@ public class OpenMsxRomLoaderIT {
             List<String> extraArgs,
             int typeDelaySec,
             boolean useCas,
+            TapeSpeed tapeSpeed,
             boolean turbo,
-            SampleRate sampleRate)
+            SampleRate sampleRate,
+            boolean inverted)
             throws Exception, FlowException {
         // 8K at 0x4000 (ROM_16K & ROM_16K_RST)
         byte[] rom8k = buildCheckRom(8192, 0x0000, 0x4010, List.of(), "8K", false);
-        assertRomBoots(userData, machine, "rom8k_norm", rom8k, false, "OK8K", expectedPage1Slot, null, null, holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, turbo, sampleRate);
-        assertRomBoots(userData, machine, "rom8k_rst", rom8k, true, "OK8K", expectedPage1Slot, null, null, holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, turbo, sampleRate);
+        assertRomBoots(userData, machine, "rom8k_norm", rom8k, false, "OK8K", expectedPage1Slot, null, null, holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, tapeSpeed, turbo, sampleRate, inverted);
+        assertRomBoots(userData, machine, "rom8k_rst", rom8k, true, "OK8K", expectedPage1Slot, null, null, holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, tapeSpeed, turbo, sampleRate, inverted);
 
         // 8K at 0x0000 (ROM_16K LOAD_PG0 with IM1 VDP IRQ ack at 0x0038)
         byte[] rom8kPg0 = buildCheckRom(8192, 0x0000, 0x0050, List.of(new int[] { 0x1FFE, 0x77 }), "P0", true);
         rom8kPg0[0x1FFE] = 0x77;
-        assertRomBoots(userData, machine, "rom8k_pg0", rom8kPg0, false, "OKP0", null, expectedPage0Slot, null, holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, turbo, sampleRate);
+        assertRomBoots(userData, machine, "rom8k_pg0", rom8kPg0, false, "OKP0", null, expectedPage0Slot, null, holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, tapeSpeed, turbo, sampleRate, inverted);
 
         // 16K at 0x4000 (ROM_16K & ROM_16K_RST)
         byte[] rom16k = buildCheckRom(16384, 0x0000, 0x4010, List.of(new int[] { 0x7FFE, 0x5A }), "16", false);
         rom16k[0x3FFE] = 0x5A;
-        assertRomBoots(userData, machine, "rom16k_norm", rom16k, false, "OK16", expectedPage1Slot, null, null, holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, turbo, sampleRate);
-        assertRomBoots(userData, machine, "rom16k_rst", rom16k, true, "OK16", expectedPage1Slot, null, null, holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, turbo, sampleRate);
+        assertRomBoots(userData, machine, "rom16k_norm", rom16k, false, "OK16", expectedPage1Slot, null, null, holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, tapeSpeed, turbo, sampleRate, inverted);
+        assertRomBoots(userData, machine, "rom16k_rst", rom16k, true, "OK16", expectedPage1Slot, null, null, holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, tapeSpeed, turbo, sampleRate, inverted);
 
         // 16K at 0x8000 (Page-2 direct load + INIT32 VDP R2/R5/R6 Screen-1 defaults, e.g. Pitfall!)
         byte[] rom16kPg2 = buildCheckRom(16384, 0x0000, 0x8010,
                 List.of(new int[] { 0xBFFE, 0x99 }, new int[] { 0xFCAF, 0x01 }), "P2", false);
         rom16kPg2[0x3FFE] = (byte) 0x99;
-        assertRomBoots(userData, machine, "rom16k_pg2", rom16kPg2, false, "OKP2", null, null, "063607", holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, turbo, sampleRate);
+        assertRomBoots(userData, machine, "rom16k_pg2", rom16kPg2, false, "OKP2", null, null, "063607", holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, tapeSpeed, turbo, sampleRate, inverted);
 
         // 32K at 0x4000..0xBFFF with Konami-style RSLREG + ENASLT(Page1_slot, 0x80)
         // (BLOCK_LOADER + ROM_32K / ROM_32K_RST)
@@ -321,15 +331,15 @@ public class OpenMsxRomLoaderIT {
         System.arraycopy(konamiPage2Map, 0, rom32k, 0x10, konamiPage2Map.length);
         rom32k[0x3FFE] = 0x3C;
         rom32k[0x7FFE] = (byte) 0xA5;
-        assertRomBoots(userData, machine, "rom32k_norm", rom32k, false, "OK32", expectedPage1Slot, null, null, holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, turbo, sampleRate);
-        assertRomBoots(userData, machine, "rom32k_rst", rom32k, true, "OK32", expectedPage1Slot, null, null, holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, turbo, sampleRate);
+        assertRomBoots(userData, machine, "rom32k_norm", rom32k, false, "OK32", expectedPage1Slot, null, null, holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, tapeSpeed, turbo, sampleRate, inverted);
+        assertRomBoots(userData, machine, "rom32k_rst", rom32k, true, "OK32", expectedPage1Slot, null, null, holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, tapeSpeed, turbo, sampleRate, inverted);
 
         // 32K at 0x0000..0x7FFF (BLOCK_LOADER LR_PG0 + ROM_32K)
         byte[] rom32kPg0 = buildCheckRom(32768, 0x0000, 0x0050,
                 List.of(new int[] { 0x1000, 0x12 }, new int[] { 0x7FFE, 0x34 }), "3P", true);
         rom32kPg0[0x1000] = 0x12;
         rom32kPg0[0x7FFE] = 0x34;
-        assertRomBoots(userData, machine, "rom32k_pg0", rom32kPg0, false, "OK3P", expectedPage1Slot, expectedPage0Slot, null, holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, turbo, sampleRate);
+        assertRomBoots(userData, machine, "rom32k_pg0", rom32kPg0, false, "OK3P", expectedPage1Slot, expectedPage0Slot, null, holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, tapeSpeed, turbo, sampleRate, inverted);
 
         // 49K at 0x0000..0xC3FF with Konami-style RSLREG + ENASLT(Page1_slot, 0x80)
         // (BLOCK_LOADER x2 + ROM_49K / ROM_49K_RST)
@@ -342,8 +352,8 @@ public class OpenMsxRomLoaderIT {
         rom49k[0x7FFE] = 0x22;
         rom49k[0x8100] = 0x33;
         rom49k[0xC100] = 0x44;
-        assertRomBoots(userData, machine, "rom49k_norm", rom49k, false, "OK49", expectedPage1Slot, null, null, holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, turbo, sampleRate);
-        assertRomBoots(userData, machine, "rom49k_rst", rom49k, true, "OK49", expectedPage1Slot, null, null, holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, turbo, sampleRate);
+        assertRomBoots(userData, machine, "rom49k_norm", rom49k, false, "OK49", expectedPage1Slot, null, null, holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, tapeSpeed, turbo, sampleRate, inverted);
+        assertRomBoots(userData, machine, "rom49k_rst", rom49k, true, "OK49", expectedPage1Slot, null, null, holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, tapeSpeed, turbo, sampleRate, inverted);
 
         // 49K MSXB2R-style case: INIT returns via RET after hooking H.STKE (0xFEDA) and
         // reads Page 0 via LD A,(0xC01D); LD H,0x00; CALL ... (requires JP patch + GSP_CHK_PG0 on AX200)
@@ -396,8 +406,8 @@ public class OpenMsxRomLoaderIT {
         rom49kRet[0x8100] = 0x33;
         rom49kRet[0xC100] = 0x44;
         // Also use a <6-char CAS filename ("adv") to guard 6-byte filename padding in multi-block ROMs.
-        assertRomBoots(userData, machine, "adv", rom49kRet, false, "OK4R", expectedPage1Slot, null, null, holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, turbo, sampleRate);
-        assertRomBoots(userData, machine, "rom49k_rst_ret", rom49kRet, true, "OK4R", expectedPage1Slot, null, null, holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, turbo, sampleRate);
+        assertRomBoots(userData, machine, "adv", rom49kRet, false, "OK4R", expectedPage1Slot, null, null, holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, tapeSpeed, turbo, sampleRate, inverted);
+        assertRomBoots(userData, machine, "rom49k_rst_ret", rom49kRet, true, "OK4R", expectedPage1Slot, null, null, holdCtrlOnBoot, extraArgs, typeDelaySec, useCas, tapeSpeed, turbo, sampleRate, inverted);
     }
 
     private void assertRomBoots(
@@ -414,25 +424,28 @@ public class OpenMsxRomLoaderIT {
             List<String> extraArgs,
             int typeDelaySec,
             boolean useCas,
+            TapeSpeed tapeSpeed,
             boolean turbo,
-            SampleRate sampleRate) throws Exception, FlowException {
+            SampleRate sampleRate,
+            boolean inverted) throws Exception, FlowException {
         Path caseDir = tempFolder.newFolder(machine + "_" + caseName + (useCas ? "_cas" : (turbo ? "_turbo" : ""))).toPath();
         Path romFile = caseDir.resolve(caseName + ".rom");
         Files.write(romFile, romBytes);
 
         Path tapeFile;
         if (useCas) {
-            byte[] casBytes = new VirtualCas()
+            byte[] casBytes = new VirtualCas(tapeSpeed)
                     .resetRom(reset)
                     .convertToCas(romFile.toAbsolutePath().toString())
                     .toBytes();
             tapeFile = caseDir.resolve(caseName + ".cas");
             Files.write(tapeFile, casBytes);
         } else {
-            byte[] wavBytes = new VirtualCas(sampleRate)
-                    .resetRom(reset)
+            byte[] wavBytes = new VirtualCas(tapeSpeed, sampleRate)
                     .turbo(turbo)
-                    .convert(romFile.toAbsolutePath().toString())
+                    .invertWaveform(inverted)
+                    .resetRom(reset)
+                    .convertToWav(romFile.toAbsolutePath().toString())
                     .toBytes();
             tapeFile = caseDir.resolve(caseName + ".wav");
             Files.write(tapeFile, wavBytes);
@@ -461,15 +474,18 @@ public class OpenMsxRomLoaderIT {
             String caseName,
             byte[] binBytes,
             String expectedTag,
+            TapeSpeed tapeSpeed,
+            boolean turbo,
             SampleRate sampleRate,
-            boolean turbo) throws Exception, FlowException {
+            boolean inverted) throws Exception, FlowException {
         Path caseDir = tempFolder.newFolder(machine + "_" + caseName).toPath();
         Path binFile = caseDir.resolve(caseName + ".bin");
         Files.write(binFile, binBytes);
 
-        byte[] wavBytes = new VirtualCas(sampleRate)
+        byte[] wavBytes = new VirtualCas(tapeSpeed, sampleRate)
                 .turbo(turbo)
-                .convert(binFile.toAbsolutePath().toString())
+                .invertWaveform(inverted)
+                .convertToWav(binFile.toAbsolutePath().toString())
                 .toBytes();
         Path tapeFile = caseDir.resolve(caseName + ".wav");
         Files.write(tapeFile, wavBytes);
@@ -715,7 +731,7 @@ public class OpenMsxRomLoaderIT {
                 out.write(0x23); // INC HL
             }
         }
-        out.write(0xFB); // EI
+        out.write(0xF3); // DI (prevent H.TIMI DiskROM slot swap from racing openMSX slot inspection)
         out.write(0x18); // JR $
         out.write(0xFE);
     }
