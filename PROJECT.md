@@ -28,7 +28,7 @@ Core library handling file detection, conversion, MegaROM patching, CAS/TSX cont
   - `RomConverter`: Standard ROM (16K/32K/49K) and MegaRAM conversion
   - `RomLoaders`: Z80 cassette/MegaRAM boot loaders
   - `MegaRomPatcher`: MegaROM mapper detection (`detectMapper`) and MegaRAM write patching
-- `br.com.dod.vcas.model`: Domain enums (`FileType`, `MapperType`, `SampleRate`, `TapeSpeed`)
+- `br.com.dod.vcas.model`: Domain enums (`FileType`, `MapperType`, `SampleRate`, `TapeProfile`, `TapeSpeed`)
 - `br.com.dod.vcas.wav`: Unified 3.5 MHz T-state synthesis (`TapePcmInputStream`), WAV writer (`WavWriter`), and `WavOutput`
 - `br.com.dod.vcas.util`: Utilities (`FileCommons`, `WavHeader`)
 - `br.com.dod.vcas.exception`: Custom exceptions (`FlowException`)
@@ -85,6 +85,7 @@ Pre-compiled binaries (`msx2cas` for Linux, `msx2cas.exe` for Windows) are built
 
 ### Command Line Options
 
+- `-p`, `--profile <compatible|default|fastest>`: Predefined conversion profile (`compatible`: `1200 bps`, `44100 Hz`, standard; `default`: `2400 bps`, `44100 Hz`, standard; `fastest`: `2400 bps` Stage-1, `48000 Hz`, Stage-2 `-f` turbo for ROM/BIN). Preserves native timing on `.tsx` inputs when omitted; explicit advanced flags (`-b`, `-s`, `-f`) override profile defaults
 - `-i`, `--invert-waveform`: Invert waveform (fix playback on some soundcards)
 - `-r`, `--reset`: Reset MSX after loading a ROM
 - `-m`, `--megarom [<auto|konami4|konami5|ascii8|ascii16>]`: Load MegaROM (> 49 KB) into MegaRAM cartridge (port `0x8E`), defaulting to `auto` or forcing the specified mapper type
@@ -100,6 +101,11 @@ Pre-compiled binaries (`msx2cas` for Linux, `msx2cas.exe` for Windows) are built
 Convert a BASIC file to audio and play it at 2400 bps (default):
 ```bash
 java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar GAME.BAS
+```
+
+Convert a ROM file to a WAV file using the `fastest` profile (`2400 bps` Stage-1, `48000 Hz`, Stage-2 turbo):
+```bash
+java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar -r -p fastest -w GAME.ROM
 ```
 
 Convert a ROM file to a WAV file with reset enabled in turbo mode (use `--sr 33075` for fastest Stage-2 playback speed):

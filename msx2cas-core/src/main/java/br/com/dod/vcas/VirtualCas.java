@@ -14,6 +14,7 @@ import br.com.dod.vcas.converter.FileConverterFactory;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.MapperType;
 import br.com.dod.vcas.model.SampleRate;
+import br.com.dod.vcas.model.TapeProfile;
 import br.com.dod.vcas.model.TapeSpeed;
 import br.com.dod.vcas.tape.TapeImage;
 import br.com.dod.vcas.tsx.TsxOutput;
@@ -45,6 +46,16 @@ public class VirtualCas {
      */
     public VirtualCas() {
         this(null, SampleRate.DEFAULT, new DefaultFileConverterFactory());
+    }
+
+    /**
+     * Create a {@link VirtualCas} initialized with a predefined {@link TapeProfile}.
+     *
+     * @param profile Preset {@link TapeProfile} ({@code null} leaves default speed/rate/turbo settings)
+     */
+    public VirtualCas(TapeProfile profile) {
+        this(null, SampleRate.DEFAULT, new DefaultFileConverterFactory());
+        profile(profile);
     }
 
     /**
@@ -95,6 +106,23 @@ public class VirtualCas {
         this.tapeSpeed = tapeSpeed;
         this.sampleRate = sampleRate != null ? sampleRate : SampleRate.DEFAULT;
         this.converterFactory = converterFactory != null ? converterFactory : new DefaultFileConverterFactory();
+    }
+
+    /**
+     * Apply a predefined {@link TapeProfile}, setting tape speed, sample rate, and turbo defaults.
+     * Subsequent calls to {@link #tapeSpeed(TapeSpeed)}, {@link #sampleRate(SampleRate)}, or
+     * {@link #turbo(boolean)} override individual settings.
+     *
+     * @param profile Preset {@link TapeProfile} (ignored when {@code null})
+     * @return This {@link VirtualCas} instance
+     */
+    public VirtualCas profile(TapeProfile profile) {
+        if (profile != null) {
+            this.tapeSpeed = profile.tapeSpeed();
+            this.sampleRate = profile.sampleRate();
+            this.turbo = profile.turbo();
+        }
+        return this;
     }
 
     /**

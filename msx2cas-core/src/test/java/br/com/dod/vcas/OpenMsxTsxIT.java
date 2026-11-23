@@ -25,6 +25,7 @@ import org.junit.rules.TemporaryFolder;
 
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.SampleRate;
+import br.com.dod.vcas.model.TapeProfile;
 import br.com.dod.vcas.model.TapeSpeed;
 import br.com.dod.vcas.tape.TapeBlock;
 import br.com.dod.vcas.tape.TapeBlock.ArchiveInfoBlock;
@@ -141,6 +142,16 @@ public class OpenMsxTsxIT {
         rom16kPg2[0x3FFE] = (byte) 0x99;
         assertRomTsxBoots(userData, "r16p2_2400", rom16kPg2, TapeSpeed.BPS_2400, false, false, false, List.of(), "OKP2");
         assertRomTsxBoots(userData, "r16p2_turbo", rom16kPg2, TapeSpeed.BPS_2400, true, false, false, List.of(), "OKP2");
+
+        // ROM 16K via TapeProfile.FASTEST -> TSX -> openMSX
+        Path fastestDir = tempFolder.newFolder("tsx_r16_fastest").toPath();
+        Path fastestRomPath = fastestDir.resolve("r16f.rom");
+        Files.write(fastestRomPath, rom16k);
+        Path fastestTsxPath = fastestDir.resolve("r16f.tsx");
+        Files.write(fastestTsxPath, new VirtualCas(TapeProfile.FASTEST).convertToTsx(fastestRomPath.toString()).toBytes());
+        String fastestRes = runTapeInOpenMsx(userData, "Gradiente_Expert_GPC-1", List.of(), fastestTsxPath,
+                "BLOAD\\\"CAS:\\\",R\\r", null, null, true, fastestDir);
+        assertTrue("Expected OK16 from FASTEST profile TSX but got: " + fastestRes, fastestRes.contains("TAG=OK16"));
 
         // ROM 32K (2400 & turbo)
         byte[] konamiPage2Map = konamiPage2MapStub();

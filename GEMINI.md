@@ -33,6 +33,7 @@ After building, you can find the artifacts in `msx2cas-cmd/target/`:
 - **Windows EXE**: `msx2cas-cmd/target/msx2cas.exe`
 
 ### CLI Options
+- `-p`, `--profile <compatible|default|fastest>`: Predefined conversion profile (`compatible`: `1200 bps`, `44100 Hz`; `default`: `2400 bps`, `44100 Hz`; `fastest`: `2400 bps` Stage-1, `48000 Hz`, Stage-2 `-f` turbo). Preserves native `.tsx` timing when omitted; explicit `-b`/`-s`/`-f` flags override profile defaults.
 - `-w`, `--wav [<output-file>]`: Write to WAV file instead of playing audio (renders `#20` Stop-the-Tape markers as 4s silence).
 - `-t`, `--tsx [<output-file>]`: Write to TSX file (TZX 1.21 / `#4B`; preserves native timing on `.tsx` input when `-b`/`--bps` is omitted; cannot combine with `-w`/`--wav` or `-c`/`--cas`).
 - `-c`, `--cas [<output-file>]`: Write to CAS file (cannot combine with `-f`/`--turbo`, `-t`/`--tsx`, or `-w`/`--wav`).

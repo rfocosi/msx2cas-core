@@ -41,6 +41,7 @@ mvn -pl msx2cas-core -Dtest=FileEncodingTest test
 java -jar msx2cas-cmd/target/msx2cas-cmd-8.0.0-jar-with-dependencies.jar [options] <input-file> [<input-file>...]
 ```
 
+- `-p`, `--profile <compatible|default|fastest>`: Conversion preset (`compatible`: `1200 bps`, `44100 Hz`; `default`: `2400 bps`, `44100 Hz`; `fastest`: `2400 bps` Stage-1 + `48000 Hz` + Stage-2 `-f` turbo for ROM/BIN). Preserves native `.tsx` timing when omitted; explicit advanced flags (`-b`, `-s`, `-f`) override profile defaults
 - `-i`, `--invert-waveform`: Invert waveform (fix playback on some soundcards)
 - `-r`, `--reset`: Reset MSX after loading a ROM
 - `-m`, `--megarom [<auto|konami4|konami5|ascii8|ascii16>]`: Load MegaROM (> 49 KB) into a MegaRAM cartridge (port `0x8E`); optionally force mapper type (default: `auto`)

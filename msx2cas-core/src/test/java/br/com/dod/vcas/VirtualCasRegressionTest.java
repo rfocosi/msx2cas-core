@@ -19,6 +19,7 @@ import br.com.dod.vcas.converter.impl.RomConverter;
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.FileType;
 import br.com.dod.vcas.model.SampleRate;
+import br.com.dod.vcas.model.TapeProfile;
 import br.com.dod.vcas.model.TapeSpeed;
 import br.com.dod.vcas.tape.TapeBlock;
 import br.com.dod.vcas.tape.TapeBlock.KcsBlock;
@@ -452,6 +453,38 @@ public class VirtualCasRegressionTest {
                 multi32Stage1.contains("Loading, please wait..."));
         assertTrue("MegaRAM multi-block turbo Stage-1 must include MegaRAM loading banner",
                 multiMegaStage1.contains("MegaRAM loading..."));
+    }
+
+    @Test
+    public void profilesConfigureSpeedSampleRateAndTurboWithFluentOverrides() throws Exception, FlowException {
+        assertEquals(TapeProfile.COMPATIBLE, TapeProfile.fromToken("Compatible"));
+        assertEquals(TapeProfile.DEFAULT, TapeProfile.fromToken(" DEFAULT "));
+        assertEquals(TapeProfile.FASTEST, TapeProfile.fromToken("fastest"));
+        assertEquals(null, TapeProfile.tryFromToken("unknown"));
+
+        File rom16File = tempFolder.newFile("prof16.rom");
+        Files.write(rom16File.toPath(), createRom16K((byte) 0x40));
+
+        assertArrayEquals(
+                new VirtualCas(TapeSpeed.BPS_1200, SampleRate.sr44100).turbo(false)
+                        .convertToWav(rom16File.getAbsolutePath()).toBytes(),
+                new VirtualCas(TapeProfile.COMPATIBLE)
+                        .convertToWav(rom16File.getAbsolutePath()).toBytes());
+        assertArrayEquals(
+                new VirtualCas(TapeSpeed.BPS_2400, SampleRate.sr44100).turbo(false)
+                        .convertToWav(rom16File.getAbsolutePath()).toBytes(),
+                new VirtualCas(TapeProfile.DEFAULT)
+                        .convertToWav(rom16File.getAbsolutePath()).toBytes());
+        assertArrayEquals(
+                new VirtualCas(TapeSpeed.BPS_2400, SampleRate.sr48000).turbo(true)
+                        .convertToWav(rom16File.getAbsolutePath()).toBytes(),
+                new VirtualCas(TapeProfile.FASTEST)
+                        .convertToWav(rom16File.getAbsolutePath()).toBytes());
+        assertArrayEquals(
+                new VirtualCas(TapeSpeed.BPS_2400, SampleRate.sr33075).turbo(true)
+                        .convertToWav(rom16File.getAbsolutePath()).toBytes(),
+                new VirtualCas(TapeProfile.FASTEST).sampleRate(SampleRate.sr33075)
+                        .convertToWav(rom16File.getAbsolutePath()).toBytes());
     }
 
     private static String extractFirstKcsDataText(TapeImage image) {

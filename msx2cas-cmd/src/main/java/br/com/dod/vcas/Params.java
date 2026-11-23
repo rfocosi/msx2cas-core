@@ -13,13 +13,16 @@ import java.util.stream.Collectors;
 
 import br.com.dod.vcas.model.MapperType;
 import br.com.dod.vcas.model.SampleRate;
+import br.com.dod.vcas.model.TapeProfile;
 import br.com.dod.vcas.model.TapeSpeed;
 import br.com.dod.vcas.util.FileCommons;
 
 class Params {
+    private static final String PROFILES = "compatible|default|fastest";
     private static final String SPEEDS = "1200|2400|3000";
     private static final String SAMPLE_RATES = "11025|22050|33075|44100|48000";
 
+    private TapeProfile profile = TapeProfile.DEFAULT;
     private boolean resetRom;
     private boolean megaRam;
     private MapperType mapperType = MapperType.AUTO;
@@ -39,7 +42,10 @@ class Params {
                 return;
             }
 
+            boolean hasProfile = false;
             boolean hasBps = false;
+            boolean hasSampleRate = false;
+            boolean hasTurbo = false;
             OutputMode outputMode = OutputMode.PLAY;
             String customOutputName = "";
             LinkedHashSet<String> inputFiles = new LinkedHashSet<>();
@@ -56,9 +62,19 @@ class Params {
                 }
 
                 switch (arg) {
+                    case "-p", "--profile" -> {
+                        if (i + 1 >= args.length) {
+                            throw new IllegalArgumentException("Missing profile after " + arg);
+                        }
+                        this.profile = TapeProfile.fromToken(args[++i]);
+                        hasProfile = true;
+                    }
                     case "-i", "--invert-waveform" -> this.inverted = true;
                     case "-r", "--reset" -> this.resetRom = true;
-                    case "-f", "--turbo", "--fast-load" -> this.turbo = true;
+                    case "-f", "--turbo", "--fast-load" -> {
+                        this.turbo = true;
+                        hasTurbo = true;
+                    }
                     case "-m", "--megarom" -> {
                         this.megaRam = true;
                         if (i + 1 < args.length) {
@@ -74,6 +90,7 @@ class Params {
                             throw new IllegalArgumentException("Missing sample rate after " + arg);
                         }
                         this.sampleRate = SampleRate.fromString(args[++i]);
+                        hasSampleRate = true;
                     }
                     case "-b", "--bps" -> {
                         if (i + 1 >= args.length) {
@@ -119,6 +136,20 @@ class Params {
                 }
             }
 
+            if (hasProfile) {
+                if (!hasBps && outputMode != OutputMode.CAS) {
+                    this.tapeSpeed = this.profile.tapeSpeed();
+                }
+                if (!hasSampleRate) {
+                    this.sampleRate = this.profile.sampleRate();
+                }
+                if (!hasTurbo) {
+                    this.turbo = this.profile.turbo();
+                }
+            } else if (!hasBps && outputMode != OutputMode.CAS) {
+                this.tapeSpeed = TapeSpeed.BPS_2400;
+            }
+
             if (outputMode == OutputMode.CAS && this.turbo) {
                 throw new IllegalArgumentException("Cannot combine -f/--turbo and -c/--cas");
             }
@@ -132,15 +163,11 @@ class Params {
                 }
             }
 
-            if (!hasBps && outputMode != OutputMode.CAS) {
-                this.tapeSpeed = TapeSpeed.BPS_2400;
-            }
-
             if (inputFiles.size() != 1) {
                 customOutputName = "";
             }
 
-            populateFiles(inputFiles, customOutputName, outputMode, hasBps);
+            populateFiles(inputFiles, customOutputName, outputMode, hasBps || hasProfile);
         } catch (Throwable e) {
             displayUsage();
         }
@@ -162,7 +189,7 @@ class Params {
             LinkedHashSet<String> inputFiles,
             String customOutputName,
             OutputMode outputMode,
-            boolean hasBps) {
+            boolean hasSpeedOverride) {
         String extension = switch (outputMode) {
             case CAS -> ".cas";
             case TSX -> ".tsx";
@@ -177,13 +204,13 @@ class Params {
             if (outputMode == OutputMode.CAS && isCasFile(file)) {
                 continue;
             }
-            if (outputMode == OutputMode.TSX && !hasBps && !this.turbo && isTsxFile(file)) {
+            if (outputMode == OutputMode.TSX && !hasSpeedOverride && !this.turbo && isTsxFile(file)) {
                 continue;
             }
             String outName = outputMode == OutputMode.PLAY
                     ? ""
                     : getOutputFilename(file, customOutputName, extension);
-            TapeSpeed effectiveSpeed = (isTsxFile(file) && !hasBps && !this.turbo) ? null : this.tapeSpeed;
+            TapeSpeed effectiveSpeed = (isTsxFile(file) && !hasSpeedOverride && !this.turbo) ? null : this.tapeSpeed;
             files.add(new ConvertFile(
                     file,
                     outName,
@@ -226,7 +253,19 @@ class Params {
     private static void displayUsage() {
         System.out.println("""
                 Usage: msx2cas [options] <input-file> [<input-file>...]
-                Options:
+
+                Profiles:
+                  -p, --profile <name>              Conversion preset (%s; default: default; preserves native timing for TSX input when omitted)
+                                                      compatible: 1200 bps, 44100 Hz, standard loader
+                                                      default:    2400 bps, 44100 Hz, standard loader
+                                                      fastest:    2400 bps Stage-1, 48000 Hz, Stage-2 turbo (ROM/BIN)
+
+                Output options:
+                  -c, --cas [<output-file>]         Write a CAS file with <output-file> name OR with file token name (cannot combine with -f/--turbo or -p fastest)
+                  -t, --tsx [<output-file>]         Write a TSX file with <output-file> name OR with file token name
+                  -w, --wav [<output-file>]         Write a WAV file with <output-file> name OR with file token name
+
+                Advanced options (override profile defaults):
                   -i, --invert-waveform             Invert waveform (fix playback on some soundboards)
                   -r, --reset                       Reset MSX after loading a ROM
                   -m, --megarom [<mapper>]          Load MegaROM into MegaRAM cartridge (port 0x8E);
@@ -234,17 +273,18 @@ class Params {
                   -f, --turbo, --fast-load          Enable Stage-2 Z80 PWM turbo loader for ROM and BIN files (cannot combine with -c/--cas)
                   -b, --bps <rate>                  Tape speed in bps (%s; default: 2400; preserves native timing for TSX input when omitted)
                   -s, --sr <rate>                   Audio output sample rate in Hz (%s; default: 44100)
-                  -c, --cas [<output-file>]         Write a CAS file with <output-file> name OR with file token name (cannot combine with -f/--turbo)
-                  -t, --tsx [<output-file>]         Write a TSX file with <output-file> name OR with file token name
-                  -w, --wav [<output-file>]         Write a WAV file with <output-file> name OR with file token name
 
                 <input-file>: A ROM, BIN, LDR, MX1, MX2, CAS, TSX, BAS(tokenize or not) file
                 If you do not use -c/--cas, -t/--tsx, or -w/--wav, MSX2Cas will play to default sound interface""".formatted(
-                SPEEDS.replace("|", ", "), SAMPLE_RATES.replace("|", ", ")));
+                PROFILES.replace("|", ", "), SPEEDS.replace("|", ", "), SAMPLE_RATES.replace("|", ", ")));
     }
 
     List<ConvertFile> getFiles() {
         return files;
+    }
+
+    public TapeProfile profile() {
+        return this.profile;
     }
 
     public boolean resetRom() {

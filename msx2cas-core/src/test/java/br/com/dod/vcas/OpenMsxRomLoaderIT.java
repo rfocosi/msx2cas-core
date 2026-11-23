@@ -27,6 +27,7 @@ import org.junit.rules.TemporaryFolder;
 
 import br.com.dod.vcas.exception.FlowException;
 import br.com.dod.vcas.model.SampleRate;
+import br.com.dod.vcas.model.TapeProfile;
 import br.com.dod.vcas.model.TapeSpeed;
 
 import static org.junit.Assert.assertEquals;
@@ -171,6 +172,9 @@ public class OpenMsxRomLoaderIT {
         assertRomBoots(userData, "Gradiente_Expert_GPC-1", "turbo_1200_s1",
                 rom16k, false, "OK16", "2 X", null, null, false, List.of(), 7, false,
                 TapeSpeed.BPS_1200, true, SampleRate.sr44100, false);
+        assertRomBoots(userData, "Gradiente_Expert_GPC-1", "turbo_fastest_profile",
+                rom16k, false, "OK16", "2 X", null, null, false, List.of(), 7, false,
+                TapeProfile.FASTEST.tapeSpeed(), TapeProfile.FASTEST.turbo(), TapeProfile.FASTEST.sampleRate(), false);
         assertBinBoots(userData, "Gradiente_Expert_GPC-1", "turbo_bin_44k",
                 binFile, "OKBN", TapeSpeed.BPS_2400, true, SampleRate.sr44100, false);
         assertBinBoots(userData, "Gradiente_Expert_GPC-1", "turbo_bin_44ki",

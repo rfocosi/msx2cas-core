@@ -8,6 +8,7 @@ import org.junit.Test;
 
 import br.com.dod.vcas.model.MapperType;
 import br.com.dod.vcas.model.SampleRate;
+import br.com.dod.vcas.model.TapeProfile;
 import br.com.dod.vcas.model.TapeSpeed;
 
 import static org.junit.Assert.assertEquals;
@@ -383,6 +384,88 @@ public class ParamsTest {
     }
 
     @Test
+    public void profilesApplyDefaultsAndAllowAdvancedOverridesInAnyOrder() {
+        Params compat = new Params(new String[] { "-p", "compatible", "my.rom" });
+        assertEquals(TapeProfile.COMPATIBLE, compat.profile());
+        assertEquals(TapeSpeed.BPS_1200, compat.tapeSpeed());
+        assertEquals(SampleRate.sr44100, compat.sampleRate());
+        assertFalse(compat.turbo());
+        assertEquals(1, compat.getFiles().size());
+
+        Params def = new Params(new String[] { "-p", "default", "my.rom" });
+        assertEquals(TapeProfile.DEFAULT, def.profile());
+        assertEquals(TapeSpeed.BPS_2400, def.tapeSpeed());
+        assertEquals(SampleRate.sr44100, def.sampleRate());
+        assertFalse(def.turbo());
+        assertEquals(1, def.getFiles().size());
+
+        Params fastest = new Params(new String[] { "-p", "fastest", "my.rom" });
+        assertEquals(TapeProfile.FASTEST, fastest.profile());
+        assertEquals(TapeSpeed.BPS_2400, fastest.tapeSpeed());
+        assertEquals(SampleRate.sr48000, fastest.sampleRate());
+        assertTrue(fastest.turbo());
+        assertEquals(1, fastest.getFiles().size());
+
+        Params fastestUpper = new Params(new String[] { "--profile", "FASTEST", "-m", "my.rom" });
+        assertEquals(TapeProfile.FASTEST, fastestUpper.profile());
+        assertEquals(TapeSpeed.BPS_2400, fastestUpper.tapeSpeed());
+        assertEquals(SampleRate.sr48000, fastestUpper.sampleRate());
+        assertTrue(fastestUpper.turbo());
+        assertTrue(fastestUpper.megaRam());
+        assertEquals(1, fastestUpper.getFiles().size());
+
+        Params overrideAfter = new Params(new String[] { "-p", "fastest", "-s", "33075", "my.rom" });
+        assertEquals(TapeSpeed.BPS_2400, overrideAfter.tapeSpeed());
+        assertEquals(SampleRate.sr33075, overrideAfter.sampleRate());
+        assertTrue(overrideAfter.turbo());
+
+        Params overrideBefore = new Params(new String[] { "-s", "33075", "-p", "fastest", "my.rom" });
+        assertEquals(TapeSpeed.BPS_2400, overrideBefore.tapeSpeed());
+        assertEquals(SampleRate.sr33075, overrideBefore.sampleRate());
+        assertTrue(overrideBefore.turbo());
+
+        Params overrideBpsBefore = new Params(new String[] { "-b", "1200", "-p", "fastest", "my.rom" });
+        assertEquals(TapeSpeed.BPS_1200, overrideBpsBefore.tapeSpeed());
+        assertEquals(SampleRate.sr48000, overrideBpsBefore.sampleRate());
+        assertTrue(overrideBpsBefore.turbo());
+
+        Params compatTurbo = new Params(new String[] { "-p", "compatible", "-f", "my.rom" });
+        assertEquals(TapeSpeed.BPS_1200, compatTurbo.tapeSpeed());
+        assertEquals(SampleRate.sr44100, compatTurbo.sampleRate());
+        assertTrue(compatTurbo.turbo());
+
+        Params compatCas = new Params(new String[] { "-p", "compatible", "-c", "my.rom" });
+        assertEquals(1, compatCas.getFiles().size());
+        assertEquals(OutputMode.CAS, compatCas.getFiles().get(0).outputMode());
+        assertNull(compatCas.getFiles().get(0).tapeSpeed());
+        assertFalse(compatCas.getFiles().get(0).turbo());
+
+        Params defaultCas = new Params(new String[] { "-c", "-p", "default", "my.rom" });
+        assertEquals(1, defaultCas.getFiles().size());
+        assertEquals(OutputMode.CAS, defaultCas.getFiles().get(0).outputMode());
+        assertNull(defaultCas.getFiles().get(0).tapeSpeed());
+        assertFalse(defaultCas.getFiles().get(0).turbo());
+
+        Params fastestCas = new Params(new String[] { "-p", "fastest", "-c", "my.rom" });
+        assertEquals(0, fastestCas.getFiles().size());
+
+        Params invalidProfile = new Params(new String[] { "-p", "unknown", "my.rom" });
+        assertEquals(0, invalidProfile.getFiles().size());
+
+        Params missingProfile = new Params(new String[] { "-p", "my.rom" });
+        assertEquals(0, missingProfile.getFiles().size());
+
+        Params nativeTsx = new Params(new String[] { "game.tsx" });
+        assertEquals(1, nativeTsx.getFiles().size());
+        assertNull(nativeTsx.getFiles().get(0).tapeSpeed());
+
+        Params compatTsx = new Params(new String[] { "-t", "-p", "compatible", "game.tsx" });
+        assertEquals(1, compatTsx.getFiles().size());
+        assertEquals(OutputMode.TSX, compatTsx.getFiles().get(0).outputMode());
+        assertEquals(TapeSpeed.BPS_1200, compatTsx.getFiles().get(0).tapeSpeed());
+    }
+
+    @Test
     public void usageHelpListsSampleRateAndTurboOptions() {
         PrintStream originalOut = System.out;
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
@@ -393,6 +476,8 @@ public class ParamsTest {
             System.setOut(originalOut);
         }
         String usage = captured.toString(StandardCharsets.UTF_8);
+        assertTrue(usage.contains("-p, --profile <name>"));
+        assertTrue(usage.contains("compatible, default, fastest; default: default"));
         assertTrue(usage.contains("-i, --invert-waveform"));
         assertTrue(usage.contains("-r, --reset"));
         assertTrue(usage.contains("-m, --megarom"));
