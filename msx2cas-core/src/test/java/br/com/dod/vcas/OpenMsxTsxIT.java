@@ -177,12 +177,17 @@ public class OpenMsxTsxIT {
         rom49k[0xC100] = 0x44;
         assertRomTsxBoots(userData, "r49_turbo", rom49k, TapeSpeed.BPS_2400, true, true, false, List.of(), "OK49");
 
-        // MegaRAM 128K Konami4 (2400 & turbo)
+        // MegaRAM 128K & 256K Konami4 (2400, turbo, and TapeProfile.FASTEST)
         byte[] mega128 = buildKonami4CheckRom(128 * 1024, "MR");
         assertRomTsxBoots(userData, "mega_2400", mega128, TapeSpeed.BPS_2400, false, true, true,
                 List.of("-ext", "megaram"), "OKMR");
         assertRomTsxBoots(userData, "mega_turbo", mega128, TapeSpeed.BPS_2400, true, false, true,
                 List.of("-ext", "megaram"), "OKMR");
+
+        byte[] mega256 = buildKonami4CheckRom(256 * 1024, "M6");
+        assertRomTsxBoots(userData, "mega_turbo_256k", mega256,
+                TapeProfile.FASTEST.tapeSpeed(), TapeProfile.FASTEST.turbo(), false, true,
+                List.of("-ext", "megaram"), "OKM6");
     }
 
     @Test
@@ -419,20 +424,32 @@ public class OpenMsxTsxIT {
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         out.writeBytes(konamiPage2MapStub());
-        int bankLast = totalBanks - 1;
-        out.write(0x3E);
-        out.write(bankLast & 0xFF);
+        out.write(0x06);
+        out.write(0x01); // LD B, 1
+        out.write(0x0E);
+        out.write(0x22); // LD C, (1 * 17 + 0x11) & 0xFF
+        // LOOP (20 bytes):
+        out.write(0x78); // LD A, B
         out.write(0x32);
         out.write(0x00);
-        out.write((byte) 0xA0);
+        out.write((byte) 0xA0); // LD (0xA000), A
         out.write(0x3A);
         out.write(0x00);
-        out.write((byte) 0xA0);
-        out.write(0xFE);
-        out.write((byte) ((bankLast * 17 + 0x11) & 0xFF));
-        out.write(0x20);
+        out.write((byte) 0xA0); // LD A, (0xA000)
+        out.write(0xB9); // CP C
+        out.write(0x20); // JR NZ, fail
         int failPatch = out.size();
         out.write(0x00);
+        out.write(0x79); // LD A, C
+        out.write(0xC6);
+        out.write(17); // ADD A, 17
+        out.write(0x4F); // LD C, A
+        out.write(0x04); // INC B
+        out.write(0x78); // LD A, B
+        out.write(0xFE);
+        out.write(totalBanks & 0xFF); // CP totalBanks
+        out.write(0x20);
+        out.write(0xEC); // JR NZ, LOOP (-20)
 
         writeSignatureLoop(out, "OK" + tag2Chars);
         int failPos = out.size();
